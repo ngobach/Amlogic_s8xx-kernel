@@ -1083,6 +1083,7 @@ distclean: mrproper
 		\( -name '*.orig' -o -name '*.rej' -o -name '*~' \
 		-o -name '*.bak' -o -name '#*#' -o -name '.*.orig' \
 		-o -name '.*.rej' \
+		-o -name 'ccImage' -o -name 'ccImage.*' \
 		-o -name '*%' -o -name '.*.cmd' -o -name 'core' \) \
 		-type f -print | xargs rm -f
 
@@ -1198,7 +1199,7 @@ $(help-board-dirs): help-%:
 		printf "  %-24s - Build for %s\\n" $*/$(b) $(subst _defconfig,,$(b));) \
 		echo '')
 
-#build amlogic device tree file meson.dtd 
+#build amlogic device tree file meson.dtd
 dtd:
 	$(srctree)/scripts/amlogic/aml_dtd.sh $(srctree)
 
