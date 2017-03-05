@@ -98,7 +98,6 @@ tune-$(CONFIG_CPU_XSC3)		:=$(call cc-option,-mtune=xscale,-mtune=strongarm110) -
 tune-$(CONFIG_CPU_FEROCEON)	:=$(call cc-option,-mtune=marvell-f,-mtune=xscale)
 tune-$(CONFIG_CPU_V6)		:=$(call cc-option,-mtune=arm1136j-s,-mtune=strongarm)
 tune-$(CONFIG_CPU_V6K)		:=$(call cc-option,-mtune=arm1136j-s,-mtune=strongarm)
-tune-$(CONFIG_ARCH_MESON8B)	:=-mtune=cortex-a5 -mfloat-abi=softfp -mfpu=neon-vfpv4
 
 ifeq ($(CONFIG_AEABI),y)
 CFLAGS_ABI	:=-mabi=aapcs-linux -mno-thumb-interwork
@@ -310,15 +309,10 @@ zinstall uinstall install: vmlinux
 	$(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $@
 
 %.dtb: scripts
-	$(Q)$(MAKE) $(build)=$(subst $(wildcard $(srctree)//),,$(subst $(join /,$(subst dtb,dts,$@)),,$(firstword $(wildcard $(srctree)/$(boot)/dts/amlogic/$(subst dtb,dts,$@) $(srctree)/$(CUSTOMER_DIR_NAME)/meson/dt/$(subst dtb,dts,$@))))) \
-	MACHINE=$(MACHINE) \
-	$(subst $(wildcard $(srctree)//),,$(subst .dts,.dtb,$(firstword $(wildcard $(srctree)/$(boot)/dts/amlogic/$(subst dtb,dts,$@) $(srctree)/$(CUSTOMER_DIR_NAME)/meson/dt/$(subst dtb,dts,$@)))))
-	rm  $(firstword $(wildcard $(srctree)/$(boot)/dts/amlogic/$(subst dtb,dts,$@) $(srctree)/$(CUSTOMER_DIR_NAME)/meson/dt/$(subst dtb,dts,$@)))
+	$(Q)$(MAKE) $(build)=$(boot)/dts MACHINE=$(MACHINE) $(boot)/dts/$@
 
 dtbs: scripts
-	$(Q)$(MAKE) $(build)=$(subst $(wildcard $(srctree)//),,$(subst $(join /,$(subst dtb,dts,$@)),,$(firstword $(wildcard $(srctree)/$(boot)/dts/amlogic/$(subst dtb,dts,$@) $(srctree)/$(CUSTOMER_DIR_NAME)/meson/dt/$(subst dtb,dts,$@))))) \
-	MACHINE=$(MACHINE) \
-	dtbs
+	$(Q)$(MAKE) $(build)=$(boot)/dts MACHINE=$(MACHINE) dtbs
 
 zImage-dtb: vmlinux
 	$(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $(boot)/$@
