@@ -253,12 +253,17 @@ static int aml_spdif_audio_type_set_enum(struct snd_kcontrol *kcontrol,
     return 0;
 }
 
+static int hardware_resample_locked_flag = 0;
 #define RESAMPLE_BUFFER_SOURCE 1 //audioin fifo0
 #define RESAMPLE_CNT_CONTROL 255 //Cnt_ctrl = mclk/fs_out-1 ; fest 256fs
 static int hardware_resample_enable(int input_sr) {
     struct clk* clk_src;
     unsigned long clk_rate = 0;
     unsigned short Avg_cnt_init = 0;
+
+    if (hardware_resample_locked_flag == 1) {
+        return 0;
+    }
 
     if (input_sr < 8000 || input_sr > 48000) {
         printk(KERN_INFO "Error input sample rate, you must set sr first!\n");
@@ -288,7 +293,7 @@ static int hardware_resample_disable(void) {
 }
 
 static const char *hardware_resample_texts[] = { "Disable", "Enable:48K",
-        "Enable:44K", "Enable:32K" };
+        "Enable:44K", "Enable:32K", "Lock Resample", "Unlock Resample"};
 
 static const struct soc_enum hardware_resample_enum = SOC_ENUM_SINGLE(
         SND_SOC_NOPM, 0, ARRAY_SIZE(hardware_resample_texts),
@@ -314,6 +319,14 @@ static int aml_hardware_resample_set_enum(struct snd_kcontrol *kcontrol,
     } else if (ucontrol->value.enumerated.item[0] == 3) {
         hardware_resample_enable(32000);
         aml_audio_Hardware_resample = 3;
+    } else if (ucontrol->value.enumerated.item[0] == 4) {
+        hardware_resample_disable();
+        aml_audio_Hardware_resample = 4;
+        hardware_resample_locked_flag = 1;
+    } else if (ucontrol->value.enumerated.item[0] == 5) {
+        hardware_resample_locked_flag = 0;
+        hardware_resample_enable(48000);
+        aml_audio_Hardware_resample = 5;
     }
     return 0;
 }
@@ -488,50 +501,37 @@ static int get_audio_codec_i2c_info(struct device_node* p_node,
     err_out: return ret;
 }
 
-static int of_get_eq_pdata(struct tas57xx_platform_data *pdata,
-        struct device_node* p_node) {
-    int i, ret = 0, length = 0;
-    const char *str = NULL;
-    char *regs = NULL;
-
-    prob_priv.num_eq = of_property_count_strings(p_node, "eq_name");
-    if (prob_priv.num_eq <= 0) {
-        printk("no of eq_name config\n");
-        ret = -ENODEV;
-        goto exit;
+static char drc1_table[15] = "drc1_table_0";
+static char drc1_tko_table[20] = "drc1_tko_table_0";
+static char drc2_table[15] = "drc2_table_0";
+static char drc2_tko_table[20] = "drc2_tko_table_0";
+static int __init aml_drc_type_select(char *s) {
+    char *sel = s;
+    if (NULL != s) {
+        sprintf(drc1_table, "%s%s", "drc1_table_", sel);
+        sprintf(drc1_tko_table, "%s%s", "drc1_tko_table_", sel);
+        sprintf(drc2_table, "%s%s", "drc2_table_", sel);
+        sprintf(drc2_tko_table, "%s%s", "drc2_tko_table_", sel);
+        printk("select drc type: %s \n", sel);
     }
-
-    pdata->num_eq_cfgs = prob_priv.num_eq;
-
-    prob_priv.eq_configs = kzalloc(
-            prob_priv.num_eq * sizeof(struct tas57xx_eq_cfg), GFP_KERNEL);
-
-    for (i = 0; i < prob_priv.num_eq; i++) {
-        ret = of_property_read_string_index(p_node, "eq_name", i, &str);
-
-        if (of_find_property(p_node, str, &length) == NULL) {
-            printk("%s fail to get of eq_table\n", __func__);
-            goto exit1;
-        }
-
-        regs = kzalloc(length * sizeof(char *), GFP_KERNEL);
-        if (!regs) {
-            printk("ERROR, NO enough mem for eq_table!\n");
-            return -ENOMEM;
-        }
-
-        ret = of_property_read_u8_array(p_node, str, regs, length);
-
-        strncpy(prob_priv.eq_configs[i].name, str, NAME_SIZE);
-        prob_priv.eq_configs[i].regs = regs;
-    }
-
-    pdata->eq_cfgs = prob_priv.eq_configs;
-
     return 0;
-    exit1: kfree(prob_priv.eq_configs);
-    exit: return ret;
 }
+__setup("amp_drc_type=", aml_drc_type_select);
+
+static char table[10] = "table_0";
+static char wall[10] = "wall_0";
+static char sub_bq_table[20] = "sub_bq_table_0";
+static int __init aml_eq_type_select(char *s) {
+    char *sel = s;
+    if (NULL != s) {
+        sprintf(table, "%s%s","table_", sel);
+        sprintf(wall, "%s%s","wall_", sel);
+        sprintf(sub_bq_table, "%s%s", "sub_bq_table_", sel);
+        printk("select eq type: %s \n", sel);
+    }
+    return 0;
+}
+__setup("amp_eq_type=", aml_eq_type_select);
 
 static void *alloc_and_get_data_array(struct device_node *p_node, char *str,
         int *lenp) {
@@ -563,12 +563,45 @@ static void *alloc_and_get_data_array(struct device_node *p_node, char *str,
     exit: return p;
 }
 
+static int of_get_eq_pdata(struct tas57xx_platform_data *pdata,
+        struct device_node* p_node) {
+    int length = 0;
+    char *regs = NULL;
+
+    prob_priv.num_eq = 2;
+    pdata->num_eq_cfgs = prob_priv.num_eq;
+
+    prob_priv.eq_configs = kzalloc(
+            prob_priv.num_eq * sizeof(struct tas57xx_eq_cfg), GFP_KERNEL);
+
+    regs = alloc_and_get_data_array(p_node, table, &length);
+    if (regs == NULL) {
+        kfree(prob_priv.eq_configs);
+        return -2;
+    }
+    strncpy(prob_priv.eq_configs[0].name, table, NAME_SIZE);
+    prob_priv.eq_configs[0].regs = regs;
+    prob_priv.eq_configs[0].reg_bytes= length;
+
+    regs = alloc_and_get_data_array(p_node, wall, &length);
+    if (regs == NULL) {
+        kfree(prob_priv.eq_configs);
+        return -2;
+    }
+    strncpy(prob_priv.eq_configs[1].name, wall, NAME_SIZE);
+    prob_priv.eq_configs[1].regs = regs;
+    prob_priv.eq_configs[1].reg_bytes= length;
+
+    pdata->eq_cfgs = prob_priv.eq_configs;
+    return 0;
+}
+
 static int of_get_subwoofer_pdata(struct tas57xx_platform_data *pdata,
         struct device_node *p_node) {
     int length = 0;
     char *pd = NULL;
 
-    pd = alloc_and_get_data_array(p_node, "sub_bq_table", &length);
+    pd = alloc_and_get_data_array(p_node, sub_bq_table, &length);
 
     if (pd == NULL) {
         return -1;
@@ -586,7 +619,7 @@ static int of_get_drc_pdata(struct tas57xx_platform_data *pdata,
     char *pd = NULL;
 
     //get drc1 table
-    pd = alloc_and_get_data_array(p_node, "drc1_table", &length);
+    pd = alloc_and_get_data_array(p_node, drc1_table, &length);
     if (pd == NULL) {
         return -2;
     }
@@ -597,7 +630,7 @@ static int of_get_drc_pdata(struct tas57xx_platform_data *pdata,
     length = 0;
     pd = NULL;
 
-    pd = alloc_and_get_data_array(p_node, "drc1_tko_table", &length);
+    pd = alloc_and_get_data_array(p_node, drc1_tko_table, &length);
     if (pd == NULL) {
         return -2;
     }
@@ -608,7 +641,7 @@ static int of_get_drc_pdata(struct tas57xx_platform_data *pdata,
     //get drc2 table
     length = 0;
     pd = NULL;
-    pd = alloc_and_get_data_array(p_node, "drc2_table", &length);
+    pd = alloc_and_get_data_array(p_node, drc2_table, &length);
     if (pd == NULL) {
         return -1;
     }
@@ -618,7 +651,7 @@ static int of_get_drc_pdata(struct tas57xx_platform_data *pdata,
     //get drc2 tko table
     length = 0;
     pd = NULL;
-    pd = alloc_and_get_data_array(p_node, "drc2_tko_table", &length);
+    pd = alloc_and_get_data_array(p_node, drc2_tko_table, &length);
     if (pd == NULL) {
         return -1;
     }
@@ -708,8 +741,7 @@ static void aml_g9tv_pinmux_init(struct snd_soc_card *card) {
 
     printk(KERN_INFO "Set audio codec pinmux!\n");
 
-//    if (!IS_MESON_MG9TV_CPU_REVA)
-        p_aml_audio->pin_ctl = devm_pinctrl_get_select(card->dev,
+    p_aml_audio->pin_ctl = devm_pinctrl_get_select(card->dev,
                 "aml_snd_g9tv");
 
     p_audio = p_aml_audio;

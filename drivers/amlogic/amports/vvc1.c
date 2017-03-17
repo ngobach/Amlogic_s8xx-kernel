@@ -45,7 +45,7 @@
 #define MODULE_NAME "amvdec_vc1"
 
 #define DEBUG_PTS
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
 #define NV21
 #endif
 
@@ -75,7 +75,7 @@
 
 
 
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
 // TODO: move to register headers
 #define VPP_VD1_POSTBLEND       (1 << 10)
 #define MEM_FIFO_CNT_BIT        16
@@ -113,7 +113,6 @@ static struct timer_list recycle_timer;
 static u32 stat;
 static u32 buf_start, buf_size, buf_offset;
 static u32 avi_flag = 0;
-static u32 keyframe_pts_only;
 static u32 vvc1_ratio;
 static u32 vvc1_format;
 
@@ -153,6 +152,7 @@ enum {
 #define RATE_30_FPS  3003   /* 29.97 */
 #define DUR2PTS(x) ((x)*90/96)
 #define PTS2DUR(x) ((x)*96/90)
+#define ERRORDURATION(x) ((x<=0)||(x>=90000))
 
 static inline bool close_to(int a, int b, int m)
 {
@@ -162,7 +162,7 @@ static inline bool close_to(int a, int b, int m)
 static inline u32 index2canvas(u32 index)
 {
     const u32 canvas_tab[4] = {
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
         0x010100, 0x030302, 0x050504, 0x070706
 #else
         0x020100, 0x050403, 0x080706, 0x0b0a09
@@ -252,7 +252,7 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
     if (reg) {
         v_width = READ_VREG(AV_SCRATCH_J);
         v_height = READ_VREG(AV_SCRATCH_K);
-
+        
         if (v_width && (v_width != vvc1_amstream_dec_info.width)) {
             printk("frame width changed %d to %d\n", vvc1_amstream_dec_info.width, v_width);
             vvc1_amstream_dec_info.width = v_width;
@@ -260,17 +260,11 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
         if (v_height && (v_height != vvc1_amstream_dec_info.height)) {
             printk("frame height changed %d to %d\n", vvc1_amstream_dec_info.height, v_height);
             vvc1_amstream_dec_info.height = v_height;
-        }
-
-        repeat_count = READ_VREG(VC1_REPEAT_COUNT);
-        buffer_index = ((reg & 0x7) - 1) & 3;
-        picture_type = (reg >> 3) & 7;
-
+        } 
+        
         if (pts_by_offset) {
             offset = READ_VREG(VC1_OFFSET_REG);
-            if (keyframe_pts_only && (picture_type != I_PICTURE)) {
-                pts_valid = 0;
-            } else if (pts_lookup_offset_us64(PTS_TYPE_VIDEO, offset, &pts, 0, &pts_us64) == 0) {
+            if (pts_lookup_offset_us64(PTS_TYPE_VIDEO, offset, &pts, 0, &pts_us64) == 0) {
                 pts_valid = 1;
 #ifdef DEBUG_PTS
                 pts_hit++;
@@ -281,6 +275,10 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
 #endif
             }
         }
+
+        repeat_count = READ_VREG(VC1_REPEAT_COUNT);
+        buffer_index = ((reg & 0x7) - 1) & 3;
+        picture_type = (reg >> 3) & 7;
 
         if (buffer_index >= DECODE_BUFFER_NUM_MAX) {
             printk("fatal error, invalid buffer index.");
@@ -308,6 +306,9 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
             }
         }
 #endif
+        if ((picture_type == B_PICTURE) && avi_flag) {
+            pts_valid = 0;
+        }
 
         if ((pts_valid) && (frm.state != RATE_MEASURE_DONE)) {
             if (frm.state == RATE_MEASURE_START_PTS) {
@@ -323,7 +324,8 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
                     if ((close_to(frm.rate, RATE_30_FPS, RATE_CORRECTION_THRESHOLD) &&
                          close_to(DUR2PTS(vvc1_amstream_dec_info.rate), RATE_24_FPS, RATE_CORRECTION_THRESHOLD)) ||
                         (close_to(frm.rate, RATE_24_FPS, RATE_CORRECTION_THRESHOLD) &&
-                         close_to(DUR2PTS(vvc1_amstream_dec_info.rate), RATE_30_FPS, RATE_CORRECTION_THRESHOLD))) {
+                         close_to(DUR2PTS(vvc1_amstream_dec_info.rate), RATE_30_FPS, RATE_CORRECTION_THRESHOLD)) ||
+                         ERRORDURATION(vvc1_amstream_dec_info.rate)) {
                         printk("vvc1: frame rate converted from %d to %d\n",
                             vvc1_amstream_dec_info.rate, PTS2DUR(frm.rate));
                         vvc1_amstream_dec_info.rate = PTS2DUR(frm.rate);
@@ -336,7 +338,7 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
                         frm.state = RATE_MEASURE_END_PTS;
                         if(frm.trymax < 60*10)/*60 fps*60 S */
                             frm.trymax = RATE_MEASURE_NUM;
-                        frm.num = 0;
+                        frm.num = 0; 
                     }
                 }
             }
@@ -394,7 +396,9 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
             vf->type |= VIDTYPE_VIU_NV21;
 #endif
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-			vf->orientation = 0 ;
+            vf->orientation = 0 ;
+            vf->type_original = vf->type;
+
             set_aspect_ratio(vf, READ_VREG(VC1_PIC_RATIO));
 
             vfbuf_use[buffer_index]++;
@@ -436,7 +440,8 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
             vf->type |= VIDTYPE_VIU_NV21;
 #endif
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-			vf->orientation = 0 ;
+            vf->orientation = 0 ;
+            vf->type_original = vf->type;
             set_aspect_ratio(vf, READ_VREG(VC1_PIC_RATIO));
 
             vfbuf_use[buffer_index]++;
@@ -493,7 +498,9 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
             vf->type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD;
 #endif
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-			vf->orientation = 0 ;
+            vf->orientation = 0 ;
+            vf->type_original = vf->type;
+
             set_aspect_ratio(vf, READ_VREG(VC1_PIC_RATIO));
 
             vfbuf_use[buffer_index]++;
@@ -551,7 +558,7 @@ static int vvc1_vf_states(vframe_states_t *states, void* op_arg)
     states->buf_free_num = kfifo_len(&newframe_q);
     states->buf_avail_num = kfifo_len(&display_q);
     states->buf_recycle_num = kfifo_len(&recycle_q);
-
+    
     spin_unlock_irqrestore(&lock, flags);
 
     return 0;
@@ -568,13 +575,13 @@ static int vvc1_event_cb(int type, void *data, void *private_data)
         spin_lock_irqsave(&lock, flags);
         vvc1_local_init();
         vvc1_prot_init();
-        spin_unlock_irqrestore(&lock, flags);
+        spin_unlock_irqrestore(&lock, flags); 
 #ifndef CONFIG_POST_PROCESS_MANAGER
         vf_reg_provider(&vvc1_vf_prov);
-#endif
+#endif              
         amvdec_start();
     }
-    return 0;
+    return 0;        
 }
 
 int vvc1_dec_status(struct vdec_status *vstatus)
@@ -678,7 +685,7 @@ static void vvc1_canvas_init(void)
 
 static void vvc1_prot_init(void)
 {
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
     WRITE_VREG(DOS_SW_RESET0, (1<<7) | (1<<6) | (1<<4));
     WRITE_VREG(DOS_SW_RESET0, 0);
 
@@ -747,8 +754,6 @@ static void vvc1_local_init(void)
 
     avi_flag = (u32)vvc1_amstream_dec_info.param;
 
-    keyframe_pts_only = (u32)vvc1_amstream_dec_info.param & 0x100;
-
     total_frame = 0;
 
     next_pts = 0;
@@ -784,7 +789,7 @@ static void vvc1_ppmgr_reset(void)
     vvc1_local_init();
 
     //vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
-
+    
     printk("vvc1dec: vf_ppmgr_reset\n");
 }
 #endif
@@ -798,11 +803,11 @@ static void vvc1_put_timer_func(unsigned long arg)
         amvdec_stop();
 #ifdef CONFIG_POST_PROCESS_MANAGER
         vvc1_ppmgr_reset();
-#else
+#else 
         vf_light_unreg_provider(&vvc1_vf_prov);
         vvc1_local_init();
         vf_reg_provider(&vvc1_vf_prov);
-#endif
+#endif         
         vvc1_prot_init();
         amvdec_start();
     }
@@ -875,10 +880,10 @@ static s32 vvc1_init(void)
     vf_provider_init(&vvc1_vf_prov, PROVIDER_NAME, &vvc1_vf_provider, NULL);
     vf_reg_provider(&vvc1_vf_prov);
     vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
-#else
+#else 
     vf_provider_init(&vvc1_vf_prov, PROVIDER_NAME, &vvc1_vf_provider, NULL);
     vf_reg_provider(&vvc1_vf_prov);
-#endif
+#endif 
 
     vf_notify_receiver(PROVIDER_NAME, VFRAME_EVENT_PROVIDER_FR_HINT, (void *)vvc1_amstream_dec_info.rate);
 
@@ -1017,3 +1022,4 @@ module_exit(amvdec_vc1_driver_remove_module);
 MODULE_DESCRIPTION("AMLOGIC VC1 Video Decoder Driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Qi Wang <qi.wang@amlogic.com>");
+

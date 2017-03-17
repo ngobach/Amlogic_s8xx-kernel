@@ -86,7 +86,7 @@ uint8_t I2C_ReadByte(uint8_t deviceID, uint8_t offset)
 	buf[0] = offset;
 
 	ret = aml_sii9233a_i2c_read(deviceID, buf, 1, 1);
-
+	
 	return (uint8_t)buf[0];
 }
 
@@ -109,7 +109,7 @@ uint8_t I2C_ReadBlock(uint8_t deviceID, uint8_t offset, uint8_t *buffer, uint16_
 
 	buffer[0] = offset;
 	ret = aml_sii9233a_i2c_read(deviceID, buffer, 1, length);
-
+	
 	return (uint8_t)ret;
 }
 
@@ -127,6 +127,8 @@ uint8_t I2C_WriteBlock(uint8_t deviceID, uint8_t offset, uint8_t *buffer, uint16
 	memcpy(&tmp[1], buffer, length);
 
 	ret = aml_sii9233a_i2c_write(deviceID, tmp, length+1);
+
+	kfree(tmp);
 
 	return (uint8_t)ret;
 }

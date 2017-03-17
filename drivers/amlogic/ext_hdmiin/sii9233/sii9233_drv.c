@@ -113,7 +113,7 @@ int aml_sii9233a_i2c_write(unsigned char dev_addr, char *buf, int len)
 	ret = i2c_transfer(sii9233a_info.i2c_client->adapter, msg, 1);
 	if( ret < 0 )
 		pr_err("hdmirx i2c write error: %d, dev = 0x%x, reg = 0x%x, value = 0x%x!\n",ret,dev_addr,reg_addr,value);
-
+	
 	return ret;
 }
 
@@ -152,45 +152,45 @@ static void sii9233a_start_vdin_mode(unsigned int mode)
 	switch(mode)
 	{
 		case CEA_480I60:
-			width = 1440;	height = 480;	frame_rate = 60;	field_flag = 1;
+			width = 1440;	height = 480;	frame_rate = 60;	field_flag = 1;		
 			break;
-
+		
 		case CEA_480P60:
-			width = 720;	height = 480;	frame_rate = 60;	field_flag = 0;
+			width = 720;	height = 480;	frame_rate = 60;	field_flag = 0;		
 			break;
-
+		
 		case CEA_576I50:
-			width = 1440;	height = 576;	frame_rate = 50;	field_flag = 1;
+			width = 1440;	height = 576;	frame_rate = 50;	field_flag = 1;		
 			break;
-
+		
 		case CEA_576P50:
-			width = 720;	height = 576;	frame_rate = 50;	field_flag = 0;
+			width = 720;	height = 576;	frame_rate = 50;	field_flag = 0;		
 			break;
-
+		
 		case CEA_720P50:
-			width = 1280;	height = 720;	frame_rate = 50;	field_flag = 0;
+			width = 1280;	height = 720;	frame_rate = 50;	field_flag = 0;		
 			break;
-
+		
 		case CEA_720P60:
-			width = 1280;	height = 720;	frame_rate = 60;	field_flag = 0;
+			width = 1280;	height = 720;	frame_rate = 60;	field_flag = 0;		
 			break;
-
+		
 		case CEA_1080I60:
-			width = 1920;	height = 1080;	frame_rate = 60;	field_flag = 1;
+			width = 1920;	height = 1080;	frame_rate = 60;	field_flag = 1;		
 			break;
-
+		
 		case CEA_1080P60:
-			width = 1920;	height = 1080;	frame_rate = 60;	field_flag = 0;
+			width = 1920;	height = 1080;	frame_rate = 60;	field_flag = 0;		
 			break;
-
+		
 		case CEA_1080I50:
-			width = 1920;	height = 1080;	frame_rate = 50;	field_flag = 1;
+			width = 1920;	height = 1080;	frame_rate = 50;	field_flag = 1;		
 			break;
-
+		
 		case CEA_1080P50:
-			width = 1920;	height = 1080;	frame_rate = 50;	field_flag = 0;
+			width = 1920;	height = 1080;	frame_rate = 50;	field_flag = 0;		
 			break;
-
+		
 		default:
 			printk("[%s], invalid video mode!\n",__FUNCTION__);
 			return ;
@@ -256,6 +256,9 @@ static ssize_t sii9233a_debug_store(struct class *class, struct class_attribute 
 	int ret = 0;
 
 	p = kstrdup(buf, GFP_KERNEL);
+	if (p == NULL)
+		goto MALLOC_FAILED;
+
 	for( argn=0; argn<4; argn++ )
 	{
 		para = strsep(&p, " ");
@@ -269,7 +272,7 @@ static ssize_t sii9233a_debug_store(struct class *class, struct class_attribute 
 	if( !strcmp(argv[0], "r") )
 		cmd = 0;
 	else if( !strcmp(argv[0], "rb") )
-		cmd = 1;
+		cmd = 1; 
 	else if( !strcmp(argv[0], "dump") )
 		cmd = 2;
 	else if( !strcmp(argv[0], "w") )
@@ -281,15 +284,14 @@ static ssize_t sii9233a_debug_store(struct class *class, struct class_attribute 
 	else
 	{
 		printk("invalid cmd = %s\n", argv[0]);
-		return count;
+		goto PROCESS_END;
 	}
 
 	printk(" cmd = %d - \"%s\"\n", cmd, argv[0]);
 	if( (argn<1) || ((cmd==0)&&argn!=3) || ((cmd==1)&&(argn!=4)) || ((cmd==2)&&(argn!=4)) )
 	{
 		printk("invalid command format!\n");
-		kfree(p);
-		return count;
+		goto PROCESS_END;
 	}
 
 	if( cmd < 4 )
@@ -339,7 +341,7 @@ static ssize_t sii9233a_debug_store(struct class *class, struct class_attribute 
 		reg_start = (unsigned char)simple_strtoul(argv[2],NULL,16);
 		reg_end = (unsigned char)simple_strtoul(argv[3],NULL,16);
 		printk("\nsii9233a debug dump dev = 0x%x, start = 0x%x, end = 0x%x\n",dev_addr, reg_start, reg_end);
-
+		
 		for( i=reg_start; i<=reg_end; i++ )
 		{
 			i2c_buf[0] = i;
@@ -355,7 +357,7 @@ static ssize_t sii9233a_debug_store(struct class *class, struct class_attribute 
 	else if( cmd == 3 ) // write
 	{
 		reg_start = (unsigned char)simple_strtoul(argv[2],NULL,16);
-		value = (unsigned char)simple_strtoul(argv[3],NULL,16);
+		value = (unsigned char)simple_strtoul(argv[3],NULL,16); 
 		printk("\nsii9233a debug write dev = 0x%x, reg = 0x%x, value = 0x%x\n",dev_addr, reg_start, value);
 		i2c_buf[0] = reg_start;
 		i2c_buf[1] = value;
@@ -389,7 +391,7 @@ static ssize_t sii9233a_debug_store(struct class *class, struct class_attribute 
 				v1 = sii_get_chip_id();
 				msleep(2);
 				v2 = sii_get_h_total();
-
+				
 				if( v1 != 0x9233 )
 				{
 					err1 ++;
@@ -406,7 +408,12 @@ static ssize_t sii9233a_debug_store(struct class *class, struct class_attribute 
 		}
 	}
 
+PROCESS_END:
 	kfree(p);
+	return count;
+
+MALLOC_FAILED:
+	printk("[%s] kstrdup failed!\n", __FUNCTION__);
 	return count;
 }
 #if 0
@@ -424,9 +431,9 @@ static ssize_t sii9233a_reset_store(struct class *class, struct class_attribute 
 
     if( value != 0 )
     {
-	sii_hardware_reset(&sii9233a_info);
+    	sii_hardware_reset(&sii9233a_info);
 	}
-
+    
     return count;
 }
 
@@ -469,6 +476,9 @@ static ssize_t sii9233a_enable_store(struct class *class, struct class_attribute
 	int i = 0;
 
 	p = kstrdup(buf, GFP_KERNEL);
+	if (p == NULL)
+		goto MALLOC_FAILED;
+
 	for( argn=0; argn<4; argn++ )
 	{
 		para = strsep(&p, " ");
@@ -505,7 +515,7 @@ static ssize_t sii9233a_enable_store(struct class *class, struct class_attribute
 	if( (enable==1) && (argn!=5) && (argn!=1) )
 	{
 		printk("invalid parameters to enable cmd !\n");
-		return count;
+		goto PROCESS_END;
 	}
 
 	if( (enable==0) && (sii9233a_info.vdin_started==1) )
@@ -521,7 +531,7 @@ static ssize_t sii9233a_enable_store(struct class *class, struct class_attribute
 	}
 	else if( (enable==0xff) && (sii9233a_info.vdin_started==0) )
 	{
-
+		
 		switch(mode)
 		{
 			case 0: // 480i
@@ -551,6 +561,12 @@ static ssize_t sii9233a_enable_store(struct class *class, struct class_attribute
 		printk("sii9233a enable(0x%x) dvin !\n", enable);
 	}
 
+PROCESS_END:
+	kfree(p);
+	return count;
+
+MALLOC_FAILED:
+	printk("[%s] kstrdup failed!\n", __FUNCTION__);
 	return count;
 }
 
@@ -592,7 +608,9 @@ static ssize_t sii9233a_input_mode_show(struct class *class, struct class_attrib
 static ssize_t sii9233a_cable_status_show(struct class *class, struct class_attribute *attr, char *buf)
 {
 	sii9233a_info.cable_status = sii_get_pwr5v_status();
-	return sprintf(buf, "%d\n", sii9233a_info.cable_status);
+	sii9233a_info.cable_status_all = sii_get_pwr5v_status_all();
+
+	return sprintf(buf, "cable status active:all = %d:%.4d\n", sii9233a_info.cable_status, sii9233a_info.cable_status_all);
 }
 
 static ssize_t sii9233a_signal_status_show(struct class *class, struct class_attribute *attr, char *buf)
@@ -638,13 +656,13 @@ static struct class_attribute sii9233a_class_attrs[] =
 	__ATTR(cable_status,	S_IRUGO,			sii9233a_cable_status_show,	NULL),
 	__ATTR(signal_status,	S_IRUGO,			sii9233a_signal_status_show,	NULL),
 	__ATTR(audio_sample_rate,	S_IRUGO,			sii9233a_audio_sr_show,	NULL),
-	__ATTR_NULL
+	__ATTR_NULL	
 };
 
 static struct class sii9233a_class =
 {
 	.name = SII9233A_DRV_NAME,
-	.class_attrs = sii9233a_class_attrs,
+	.class_attrs = sii9233a_class_attrs,	
 };
 
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
@@ -670,7 +688,7 @@ extern void sii9223a_main(void);
 static int sii9233a_task_handler(void *data)
 {
 	TIMER_Init();
-
+	
 	sii_hardware_reset(&sii9233a_info);
 
 	//sii_set_hdmi_port(3);
@@ -692,7 +710,7 @@ static int sii9233a_get_of_data(struct device_node *pnode)
 	struct i2c_board_info board_info;
 	struct i2c_adapter *adapter;
 	unsigned int i2c_index;
-
+	
 	const char *str;
 	int ret = 0;
 
@@ -715,9 +733,9 @@ static int sii9233a_get_of_data(struct device_node *pnode)
 		else if (!strncmp(str, "i2c_bus_d", 9))
 			i2c_index = AML_I2C_MASTER_D;
 		else
-			return -1;
+			return -1; 
 	}
-
+	
 	sii9233a_info.i2c_bus_index = i2c_index;
 
 // for gpio_reset
@@ -768,7 +786,7 @@ static int sii9233a_get_of_data(struct device_node *pnode)
 static int sii9233a_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-
+	
 #ifdef CONFIG_USE_OF
 	sii9233a_get_of_data(pdev->dev.of_node);
 #else
@@ -801,7 +819,7 @@ static int sii9233a_probe(struct platform_device *pdev)
 
 static int sii9233a_remove(struct platform_device *pdev)
 {
-	return 0;
+	return 0;	
 }
 
 #ifdef CONFIG_USE_OF
@@ -823,7 +841,7 @@ static struct platform_driver sii9233a_driver = {
 						.name				= SII9233A_DRV_NAME,
 						.owner				= THIS_MODULE,
 						.of_match_table		= sii9233a_dt_match,
-					}
+					}	
 };
 static int __init sii9233a_drv_init(void)
 {
@@ -845,7 +863,7 @@ static void __exit sii9233a_drv_exit(void)
     printk("[%s]\n", __FUNCTION__);
     platform_driver_unregister(&sii9233a_driver);
     class_unregister(&sii9233a_class);
-
+    
     return ;
 }
 

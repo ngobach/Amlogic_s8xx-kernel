@@ -157,10 +157,12 @@
 
 #define AMSTREAM_IOC_GET_TRICK_VPTS          _IOR(AMSTREAM_IOC_MAGIC, 0xf0, unsigned long)
 #define AMSTREAM_IOC_DISABLE_SLOW_SYNC       _IOR(AMSTREAM_IOC_MAGIC, 0xf1, unsigned long)
+#define AMSTREAM_IOC_SET_TRICK_DURATION      _IOW(AMSTREAM_IOC_MAGIC, 0xf2, int)
 
 #define TRICKMODE_NONE       0x00
 #define TRICKMODE_I          0x01
 #define TRICKMODE_FFFB       0x02
+#define TRICKMODE_SS         0x04
 
 #define TRICK_STAT_DONE     0x01
 #define TRICK_STAT_WAIT     0x00
@@ -186,7 +188,7 @@ enum VIDEO_DEC_TYPE
         VIDEO_DEC_FORMAT_WMV3,
         VIDEO_DEC_FORMAT_WVC1,
         VIDEO_DEC_FORMAT_SW,
-	VIDEO_DEC_FORMAT_MAX
+    	VIDEO_DEC_FORMAT_MAX
 };
 
 struct buf_status {
@@ -320,7 +322,7 @@ void set_trickmode_func(int (*trickmode_func)(unsigned long trickmode));
 void wakeup_sub_poll(void);
 void set_userdata_poc(struct userdata_poc_info_t poc);
 void init_userdata_fifo(void);
-int wakeup_userdata_poll(int wp, int start_phyaddr, int buf_size, int data_length);
+int wakeup_userdata_poll(int wp, void *start_phyaddr, int buf_size, int data_length);
 int get_sub_type(void);
 #endif
 
@@ -342,3 +344,4 @@ typedef struct tcon_rgb_ogo_s {
 } tcon_rgb_ogo_t;
 
 #endif /* AMSTREAM_H */
+

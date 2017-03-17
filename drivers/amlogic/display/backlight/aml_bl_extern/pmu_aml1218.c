@@ -8,7 +8,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
-#include <linux/jiffies.h>
+#include <linux/jiffies.h> 
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <linux/miscdevice.h>

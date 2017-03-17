@@ -104,6 +104,14 @@ void am_set_regmap(struct am_regs_s *p)
 				else
 					cm2_patch_flag = 0;
 			}
+			/* add for cm patch size config */
+			if ((p->am_reg[i].addr == 0x205) ||
+				(p->am_reg[i].addr == 0x209) ||
+				(p->am_reg[i].addr == 0x20a)) {
+				pr_amcm_dbg("[amcm]:%s REG_TYPE_INDEX_VPPCHROMA addr:0x%x",
+					__func__, p->am_reg[i].addr);
+				break;
+			}
 			WRITE_VPP_REG(VPP_CHROMA_ADDR_PORT, p->am_reg[i].addr);
 			if (p->am_reg[i].mask == 0xffffffff)
 				WRITE_VPP_REG(VPP_CHROMA_DATA_PORT, p->am_reg[i].val);
@@ -140,9 +148,14 @@ void am_set_regmap(struct am_regs_s *p)
 	return;
 }
 
+void amcm_disable(void)
+{
+	WRITE_VPP_REG_BITS(VPP_MISC,0,28,1);//CM manage disable
+}
+
 void amcm_enable(void)
 {
-	WRITE_VPP_REG_BITS(VPP_MISC,0,28,1);//CM manage enable
+	WRITE_VPP_REG_BITS(VPP_MISC,1,28,1);//CM manage enable
 }
 
 void cm_regmap_latch(am_regs_t *am_regs,unsigned int reg_map)
@@ -240,7 +253,7 @@ void cm_latch_process(void)
 	}
 	else if((cm_en == 0)&&(cm_level_last != 0xff)){
 		cm_level_last = 0xff;
-		amcm_enable();//CM manage disable
+		amcm_disable();//CM manage disable
 	}
 }
 

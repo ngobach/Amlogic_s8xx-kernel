@@ -145,6 +145,88 @@ static int  meson_vout_resume(struct platform_device *pdev);
 
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 __nosavedata vmode_t mode_by_user = VMODE_INIT_NULL;
+extern int fps_playing_flag;
+extern vmode_t fps_target_mode;
+extern char* get_name_from_vmode(vmode_t mode);
+
+//for hdmi (un)plug during fps automation
+static int want_hdmi_mode(vmode_t mode)
+{
+	int ret=0;
+	switch(mode){
+		case VMODE_480I:
+		case VMODE_480I_RPT:
+		case VMODE_480P:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_480P_59HZ:// for framerate automation 480p 59.94hz
+#endif
+		case VMODE_480P_RPT:
+		case VMODE_576I:
+		case VMODE_576I_RPT:
+		case VMODE_576P:
+		case VMODE_576P_RPT:
+		case VMODE_720P:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_720P_59HZ: // for framerate automation 720p 59.94hz
+#endif
+		case VMODE_1080I:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_1080I_59HZ: // for framerate automation 1080i 59.94hz
+#endif
+		case VMODE_1080P:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_1080P_59HZ: // for framerate automation 1080p 59.94hz
+#endif
+		case VMODE_720P_50HZ:
+		case VMODE_1080I_50HZ:
+		case VMODE_1080P_50HZ:
+		case VMODE_1080P_24HZ:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_1080P_23HZ: // for framerate automation 1080p 23.97hz
+#endif
+		case VMODE_4K2K_30HZ:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_4K2K_29HZ: // for framerate automation 4k2k 29.97hz
+#endif
+		case VMODE_4K2K_25HZ:
+		case VMODE_4K2K_24HZ:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_4K2K_23HZ: // for framerate automation 4k2k 23.97hz
+#endif
+		case VMODE_4K2K_SMPTE:
+		case VMODE_4K2K_FAKE_5G:  // timing same as 4k2k30hz, Vsync from 30hz to 50hz
+		case VMODE_4K2K_60HZ:	  // timing same as 4k2k30hz, Vsync from 30hz to 60hz
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_4K2K_59HZ: // for framerate automation 4k2k 23.97hz
+#endif
+		case VMODE_4K2K_60HZ_Y420:	  // timing same as 4k2k30hz, Vsync from 30hz to 60hz
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_4K2K_59HZ_Y420: // for framerate automation 4k2k 23.97hz
+#endif
+		case VMODE_4K2K_50HZ:	  // timing same as 4k2k30hz, Vsync from 30hz to 60hz
+		case VMODE_4K2K_50HZ_Y420:	  // timing same as 4k2k30hz, Vsync from 30hz to 60hz
+		case VMODE_4K2K_5G:
+			ret=1;
+			break;
+		default:
+			ret=0;
+			break;
+	}
+	return ret;
+}
+
+//if plug hdmi during fps (stream is playing), then adjust mode to fps vmode
+static void fps_auto_adjust_mode( vmode_t *pmode)
+{
+	if( fps_playing_flag == 1 )
+	{
+		if( want_hdmi_mode(*pmode) == 1 )
+		{
+			*pmode = fps_target_mode;
+			printk("%s[%d]\n",__func__,__LINE__);
+		}
+	}
+}
 
 void update_vmode_status(char* name)
 {
@@ -160,6 +242,8 @@ static  void  set_vout_mode(char * name)
 	vmode_t    mode;
 
 	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"tvmode set to %s\n",name);
+	if (!name)
+		return;
 	mode=validate_vmode(name);
 	if(VMODE_MAX==mode)
 	{
@@ -176,9 +260,16 @@ static  void  set_vout_mode(char * name)
 		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"don't set the same mode as current.\n");
 		return ;
 	}
-
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	//if plug hdmi during fps (stream is playing), then adjust mode to fps vmode
+	fps_auto_adjust_mode(&mode);
+	printk("%s[%d]fps_target_mode=%d\n",__func__,__LINE__,mode);
+	update_vmode_status(get_name_from_vmode(mode));
+#endif
 	set_current_vmode(mode);
-	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"new mode %s set ok\n",name);
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"new mode =%s set ok\n",get_name_from_vmode(mode));
+#endif
 	vout_notifier_call_chain(VOUT_EVENT_MODE_CHANGE,&mode) ;
 	printk("%s[%d]\n", __func__, __LINE__);
 }
@@ -189,7 +280,8 @@ void set_vout_mode_fr_auto(char* name)
 	vmode_t    vmode;
 
 	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"tvmode set to %s\n",name);
-
+	if (!name)
+		return;
 	vmode=validate_vmode(name);
 	if(VMODE_MAX==vmode)
 	{
@@ -240,6 +332,37 @@ static void  set_vout_window(char *para)
 	vout_notifier_call_chain(VOUT_EVENT_OSD_DISP_AXIS,&disp_rect[0]) ;
 }
 
+static ssize_t aml_vout_attr_vinfo_show(struct class *class, struct class_attribute *attr, char *buf)
+{
+	const vinfo_t *info = NULL;
+
+	info = get_current_vinfo();
+	printk("current vinfo:\n");
+	printk("    name:                  %s\n"
+		"    mode:                  %d\n"
+		"    width:                 %d\n"
+		"    height:                %d\n"
+		"    field_height:          %d\n"
+		"    aspect_ratio_num:      %d\n"
+		"    aspect_ratio_den:      %d\n"
+		"    sync_duration_num:     %d\n"
+		"    sync_duration_den:     %d\n"
+		"    screen_real_width:     %d\n"
+		"    screen_real_height:    %d\n"
+		"    video_clk:             %d\n"
+		"    viu_color_fmt:         %d\n",
+		info->name, info->mode,
+		info->width, info->height, info->field_height,
+		info->aspect_ratio_num, info->aspect_ratio_den,
+		info->sync_duration_num, info->sync_duration_den,
+		info->screen_real_width, info->screen_real_height,
+		info->video_clk, info->viu_color_fmt);
+	return sprintf(buf, "\n");
+}
+
+static struct  class_attribute  class_vout_attr_vinfo =
+	__ATTR(vinfo, S_IRUGO|S_IWUSR|S_IWGRP, aml_vout_attr_vinfo_show, NULL);
+
 /*****************************************************************
 **
 **	sysfs  declare part
@@ -252,6 +375,7 @@ static  struct  class_attribute   *vout_attr[]={
 &class_vout_attr_axis ,
 &class_vout_attr_wr_reg,
 &class_vout_attr_rd_reg,
+&class_vout_attr_vinfo,
 };
 
 static int  create_vout_attr(void)
@@ -299,8 +423,8 @@ static int  meson_vout_resume(struct platform_device *pdev)
 {
 #ifdef CONFIG_SCREEN_ON_EARLY
     if (early_resume_flag) {
-	early_resume_flag = 0;
-	return 0;
+    	early_resume_flag = 0;
+    	return 0;
     }
 #endif
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -406,7 +530,7 @@ static int
 static int
  meson_vout_remove(struct platform_device *pdev)
 {
-	int i;
+   	int i;
 	if(vout_info.base_class==NULL) return -1;
 #ifdef CONFIG_HAS_EARLYSUSPEND
     unregister_early_suspend(&early_suspend);
@@ -460,9 +584,9 @@ static int __init vout_init_module(void)
     printk("%s\n", __func__);
 	if (platform_driver_register(&vout_driver))
 	{
-		amlog_level(LOG_LEVEL_HIGH,"failed to register osd driver\n");
-		ret= -ENODEV;
-	}
+       		amlog_level(LOG_LEVEL_HIGH,"failed to register osd driver\n");
+        	ret= -ENODEV;
+    	}
 
 	return ret;
 
@@ -472,7 +596,7 @@ static __exit void vout_exit_module(void)
 
 	amlog_level(LOG_LEVEL_HIGH,"osd_remove_module.\n");
 
-	platform_driver_unregister(&vout_driver);
+    	platform_driver_unregister(&vout_driver);
 }
 module_init(vout_init_module);
 module_exit(vout_exit_module);

@@ -13,6 +13,7 @@
 #include <linux/mmc/host.h>
 #include <linux/earlysuspend.h>
 
+#include <linux/amlogic/jtag.h>
 #include <mach/cpu.h>
 
 #define     AML_ERROR_RETRY_COUNTER         10
@@ -694,29 +695,39 @@ extern int ext_codec;
 // P_AO_SECURE_REG1 is "Secure Register 1" in <M8-Secure-AHB-Registers.doc>
 #ifdef CONFIG_SND_AML_M8_SOC
 #define aml_jtag_gpioao() do{\
+    if (is_jtag_disable()) {\
     aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \
     if(!ext_codec)\
         aml_set_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1))); \
+    }\
 }while(0)
 #else
 #define aml_jtag_gpioao() do{\
+	if (is_jtag_disable()) {\
 	aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \
+	}\
 }while(0)
 #endif
 
 #define aml_jtag_sd() do{\
+	if (is_jtag_disable()) {\
     aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1))); \
     aml_set_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \
+	}\
 }while(0)
 #else
 /* Secure REG can only be accessed in Secure World if TrustZone enabled.*/
 #include <mach/meson-secure.h>
 #define aml_jtag_gpioao() do {\
+	if (is_jtag_disable()) {\
 	meson_secure_reg_write(P_AO_SECURE_REG1, meson_secure_reg_read(P_AO_SECURE_REG1) & (~((1<<5) | (1<<9)))); \
+	}\
 } while(0)
 #define aml_jtag_sd() do {\
+	if (is_jtag_disable()) {\
 	meson_secure_reg_write(P_AO_SECURE_REG1, meson_secure_reg_read(P_AO_SECURE_REG1) & (~(1<<8) | (1<<1))); \
 	meson_secure_reg_write(P_AO_SECURE_REG1, meson_secure_reg_read(P_AO_SECURE_REG1) | ((1<<5) | (1<<9))); \
+	}\
 } while(0)
 #endif /* CONFIG_MESON_TRUSTZONE */
 

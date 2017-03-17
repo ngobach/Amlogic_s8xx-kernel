@@ -87,12 +87,11 @@ static int ntd_cls_suspend(struct device *dev, pm_message_t state)
 
 	if (ntd && ntd->suspend)
 	{
-	    printk( "ntd_cls_suspend %s\n",ntd->name);
+
 		return ntd->suspend(ntd);
 	}
 	else
 	{
-	    printk( "ntd_cls_suspend null \n");
 		return 0;
 	}
 }
@@ -110,12 +109,10 @@ static int ntd_cls_resume(struct device *dev)
 
 	if (ntd && ntd->resume)
 	{
-	    printk( "ntd_cls_resume %s\n",ntd->name);
 		ntd->resume(ntd);
 	}
 	else
 	{
-        printk( "ntd_cls_resume null\n");
 	}
 	return 0;
 }
@@ -670,6 +667,7 @@ static int init_ntd(void)
 #ifdef CONFIG_PROC_FS
 	proc_ntd = proc_create("ntd", 0, NULL, &ntd_proc_ops);
 #endif /* CONFIG_PROC_FS */
+	register_chrdev_region(MKDEV(NTD_CHAR_MAJOR, 0), 20, "ntd");
 	return 0;
 
 //err_bdi1:
@@ -693,7 +691,7 @@ static void cleanup_ntd(void)
 #ifdef CONFIG_PROC_FS
 	if (proc_ntd)
 		remove_proc_entry( "ntd", NULL);
-#endif
+#endif 
 	class_unregister(&ntd_class);
 //	bdi_destroy(&ntd_bdi_unmappable);
 }

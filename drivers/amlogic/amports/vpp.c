@@ -499,6 +499,13 @@ RESTART:
 			aspect_factor = 0x90;
 		wide_mode = VIDEO_WIDEOPTION_NORMAL;
 	}
+	else if (wide_mode == VIDEO_WIDEOPTION_16_10) {
+		if (vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+			aspect_factor = 0x199;
+		else
+			aspect_factor = 0xA0;
+		wide_mode = VIDEO_WIDEOPTION_NORMAL;
+	}
 	else if ((wide_mode >= VIDEO_WIDEOPTION_4_3_IGNORE) && (wide_mode <= VIDEO_WIDEOPTION_4_3_COMBINED)) {
 		if (aspect_factor != 0xc0)
 			fill_match = false;
@@ -807,12 +814,14 @@ RESTART:
 	filter->vpp_hsc_start_phase_step = ratio_x << 6;
 	next_frame_par->VPP_hf_ini_phase_ = vpp_zoom_center_x & 0xff;
 
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESONG9TV
 	if ((ratio_x == (1 << 18)) && (next_frame_par->VPP_hf_ini_phase_ == 0) &&
 		(vpp_wide_mode != VIDEO_WIDEOPTION_NONLINEAR)) {
 		filter->vpp_horz_coeff = vpp_filter_coefs_bicubic_sharp;
 	} else {
 		filter->vpp_horz_coeff = filter_table[COEF_BICUBIC];
 	}
+#endif
 
 	/* screen position for source */
 #ifdef TV_REVERSE
@@ -897,9 +906,11 @@ RESTART:
 	}
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESONG9TV
 	if (next_frame_par->VPP_line_in_length_ >= 2048) {
 		filter->vpp_vert_coeff = filter_table[COEF_2POINT_BILINEAR];
 	}
+#endif
 #endif
 
 	if ((wide_mode == VIDEO_WIDEOPTION_NONLINEAR) && (end > start)) {
@@ -1633,4 +1644,14 @@ void vpp_set_3d_scale(bool enable)
 	vpp_3d_scale = enable;
 }
 #endif
+#ifdef SUPER_SCALER_OPEN
+void vpp_set_video_scaler_path_sel(u32 r)
+{
+	scaler_path_sel = r;
+}
 
+u32 vpp_get_video_scaler_path_sel(void)
+{
+	return scaler_path_sel;
+}
+#endif

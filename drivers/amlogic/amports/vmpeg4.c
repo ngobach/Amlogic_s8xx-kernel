@@ -61,7 +61,7 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 #define DEBUG_PTS
 
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
 #define NV21
 #endif
 
@@ -73,6 +73,15 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 #define INTERLACE_FLAG          0x80
 #define TOP_FIELD_FIRST_FLAG    0x40
+
+
+#define RATE_2397_FPS  4004   /* 23.97 */
+#define RATE_2997_FPS  3203   /* 29.97 */
+
+static inline bool close_to(int a, int b, int m)
+{
+    return (abs(a-b) < m);
+}
 
 /* protocol registers */
 #define MP4_PIC_RATIO       AV_SCRATCH_5
@@ -148,7 +157,7 @@ static u64 vmpeg4_ratio64;
 static u32 rate_detect;
 static u32 vmpeg4_rotation;
 static u32 pts_unstable = 0;
-static u32 keyframe_pts_only;
+static u32 sync_outside = 0;
 
 static u32 total_frame;
 static u32 last_vop_time_inc, last_duration;
@@ -199,16 +208,16 @@ static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
 	if (vmpeg4_ratio64 != 0) {
 		num = vmpeg4_ratio64>>32;
 		den = vmpeg4_ratio64 & 0xffffffff;
-	} else {
+	} else {		
 		num = vmpeg4_ratio>>16;
 		den = vmpeg4_ratio & 0xffff;
-
+	
 	}
     if ((num == 0) || (den == 0)) {
         num = 1;
         den = 1;
     }
-
+    
     if (vmpeg4_ratio == 0) {
         vf->ratio_control |= (0x90 << DISP_RATIO_ASPECT_RATIO_BIT); // always stretch to 16:9
     } else if (pixel_ratio > 0x0f) {
@@ -220,7 +229,7 @@ static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
             num = vmpeg4_amstream_dec_info.width * num;
             ar = (vmpeg4_amstream_dec_info.height * den * 0x100 +  (num>>1))/ num;
             break;
-        case 1:
+        case 1: 
             num = vf->width * num;
             ar = (vf->height * den * 0x100 + (num>>1)) / num;
             break;
@@ -262,6 +271,7 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
     u64 pts_us64 = 0;
     u32 rate, vop_time_inc, repeat_cnt, duration = 3200;
     u32 trustable_pts;
+    u32 ret = -1;
     reg = READ_VREG(MREG_BUFFEROUT);
 
     if (reg) {
@@ -336,14 +346,19 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
         if (1 == pts_unstable) {
             trustable_pts = I_PICTURE == picture_type;
         } else {
-            trustable_pts = I_PICTURE == picture_type || (P_PICTURE == picture_type && keyframe_pts_only == 0);
+            trustable_pts = I_PICTURE == picture_type || P_PICTURE == picture_type;
+        }
+
+        if (1 == sync_outside) {
+            trustable_pts = 0;
         }
 
         /*2500-->3000,because some mpeg4 video may checkout failed;
          may have av sync problem.can changed small later.
          263 may need small?
         */
-        if (pts_lookup_offset_us64(PTS_TYPE_VIDEO, offset, &pts, 3000, &pts_us64) == 0 && trustable_pts) {
+        ret = pts_lookup_offset_us64(PTS_TYPE_VIDEO, offset, &pts, 3000, &pts_us64);
+        if (ret == 0 && trustable_pts) {
             pts_valid = 1;
             last_anch_pts = pts;
             last_anch_pts_us64 = pts_us64;
@@ -354,6 +369,21 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
 #ifdef CONFIG_AM_VDEC_MPEG4_LOG
             pts_missed++;
 #endif
+            if (1 == sync_outside) {
+                if (last_anch_pts == 0 && last_anch_pts_us64 == 0) {
+                    last_anch_pts = pts;
+                    last_anch_pts_us64 = pts_us64;
+                    frame_num_since_last_anch = 0;
+                    vop_time_inc_since_last_anch = 0;
+                }
+                else if ((ret == 0) && (I_PICTURE == picture_type)
+                       &&((abs(last_anch_pts - pts) > 3*PTS_UNIT) || (abs(last_anch_pts_us64 - pts_us64) > 3*PTS_UNIT*100/9))) {
+                    last_anch_pts = pts;
+                    last_anch_pts_us64 = pts_us64;
+                    frame_num_since_last_anch = 0;
+                    vop_time_inc_since_last_anch = 0;
+                }
+            }
         }
 
 #ifdef CONFIG_AM_VDEC_MPEG4_LOG
@@ -392,8 +422,8 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
             } else {
                 /* fixed VOP rate */
                 frame_num_since_last_anch++;
-                pts += DUR2PTS(frame_num_since_last_anch * vmpeg4_amstream_dec_info.rate);
-                pts_us64 += DUR2PTS(frame_num_since_last_anch * vmpeg4_amstream_dec_info.rate) * 100 / 9;
+                pts += frame_num_since_last_anch * DUR2PTS(vmpeg4_amstream_dec_info.rate);
+                pts_us64 += frame_num_since_last_anch  * DUR2PTS(vmpeg4_amstream_dec_info.rate) * 100 / 9;
 
                 if (frame_num_since_last_anch > (1 << 15)) {
                     /* avoid overflow */
@@ -425,6 +455,7 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
             vf->type |= VIDTYPE_VIU_NV21;
 #endif
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
+            vf->type_original = vf->type;
 
             set_aspect_ratio(vf, READ_VREG(MP4_PIC_RATIO));
 
@@ -456,6 +487,7 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
             vf->type |= VIDTYPE_VIU_NV21;
 #endif
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
+            vf->type_original = vf->type;
 
             set_aspect_ratio(vf, READ_VREG(MP4_PIC_RATIO));
 
@@ -491,6 +523,7 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
             vf->type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD;
 #endif
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
+            vf->type_original = vf->type;
 
             set_aspect_ratio(vf, READ_VREG(MP4_PIC_RATIO));
 
@@ -546,21 +579,21 @@ static void vmpeg_vf_put(vframe_t *vf, void* op_arg)
 static int vmpeg_event_cb(int type, void *data, void *private_data)
 {
     if(type & VFRAME_EVENT_RECEIVER_RESET){
-        unsigned long flags;
-        amvdec_stop();
+                           unsigned long flags;
+                           amvdec_stop();
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_light_unreg_provider(&vmpeg_vf_prov);
+                        vf_light_unreg_provider(&vmpeg_vf_prov);
 #endif
-        spin_lock_irqsave(&lock, flags);
-        vmpeg4_local_init();
-        vmpeg4_prot_init();
-        spin_unlock_irqrestore(&lock, flags);
+                        spin_lock_irqsave(&lock, flags);
+                        vmpeg4_local_init();
+                        vmpeg4_prot_init();
+                        spin_unlock_irqrestore(&lock, flags);
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_reg_provider(&vmpeg_vf_prov);
+                        vf_reg_provider(&vmpeg_vf_prov);
 #endif
-        amvdec_start();
-    }
-    return 0;
+                        amvdec_start();
+                }
+        return 0;
 }
 
 static int  vmpeg_vf_states(vframe_states_t *states, void* op_arg)
@@ -572,7 +605,7 @@ static int  vmpeg_vf_states(vframe_states_t *states, void* op_arg)
     states->buf_free_num = kfifo_len(&newframe_q);
     states->buf_avail_num = kfifo_len(&display_q);
     states->buf_recycle_num = kfifo_len(&recycle_q);
-
+    
     spin_unlock_irqrestore(&lock, flags);
 
     return 0;
@@ -593,6 +626,23 @@ static void vmpeg_put_timer_func(unsigned long arg)
 
             kfifo_put(&newframe_q, (const vframe_t **)&vf);
         }
+    }
+
+           if (READ_VREG(AV_SCRATCH_L)) {
+                         unsigned long flags;
+                         printk("mpeg4 fatal error happened,need reset    !!\n");
+                         amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+                         vf_light_unreg_provider(&vmpeg_vf_prov);
+#endif
+                         spin_lock_irqsave(&lock, flags);
+                         vmpeg4_local_init();
+                         vmpeg4_prot_init();
+                         spin_unlock_irqrestore(&lock, flags);
+#ifndef CONFIG_POST_PROCESS_MANAGER
+                         vf_reg_provider(&vmpeg_vf_prov);
+#endif
+                         amvdec_start();
     }
 
     timer->expires = jiffies + PUT_INTERVAL;
@@ -634,7 +684,7 @@ static void vmpeg4_canvas_init(void)
         /* HD & SD */
         if(vmpeg4_amstream_dec_info.height > vmpeg4_amstream_dec_info.width){
             canvas_width = 1088;
-            canvas_height = 1920;
+            canvas_height = 1920;            
         }
         else{
             canvas_width = 1920;
@@ -707,7 +757,7 @@ static void vmpeg4_canvas_init(void)
 
 static void vmpeg4_prot_init(void)
 {
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
     WRITE_VREG(DOS_SW_RESET0, (1<<7) | (1<<6));
     WRITE_VREG(DOS_SW_RESET0, 0);
 #else
@@ -736,7 +786,7 @@ static void vmpeg4_prot_init(void)
     WRITE_VREG(AV_SCRATCH_I, 0x141312);
     WRITE_VREG(AV_SCRATCH_J, 0x171615);
 #endif
-
+   WRITE_VREG(AV_SCRATCH_L, 0);    // fatal error flag
     /* notify ucode the buffer offset */
     WRITE_VREG(AV_SCRATCH_F, buf_offset);
 
@@ -778,10 +828,15 @@ static void vmpeg4_local_init(void)
 
     vmpeg4_rotation = (((u32)vmpeg4_amstream_dec_info.param) >> 16) & 0xffff;
     pts_unstable = ((u32)vmpeg4_amstream_dec_info.param & 0x40) >> 6;
-
-    keyframe_pts_only = (u32)vmpeg4_amstream_dec_info.param & 0x100;
+    sync_outside = ((u32)vmpeg4_amstream_dec_info.param & 0x02) >> 1;
 
     frame_width = frame_height = frame_dur = frame_prog = 0;
+
+    if (close_to(vmpeg4_amstream_dec_info.rate,RATE_2397_FPS,3)) {
+        vmpeg4_amstream_dec_info.rate = RATE_2397_FPS;
+    } else if (close_to(vmpeg4_amstream_dec_info.rate,RATE_2997_FPS,3)) {
+        vmpeg4_amstream_dec_info.rate = RATE_2997_FPS;
+    }
 
     total_frame = 0;
 
@@ -883,10 +938,10 @@ static s32 vmpeg4_init(void)
     vf_provider_init(&vmpeg_vf_prov, PROVIDER_NAME, &vmpeg_vf_provider, NULL);
     vf_reg_provider(&vmpeg_vf_prov);
     vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
-#else
+#else 
     vf_provider_init(&vmpeg_vf_prov, PROVIDER_NAME, &vmpeg_vf_provider, NULL);
     vf_reg_provider(&vmpeg_vf_prov);
-#endif
+#endif 
     vf_notify_receiver(PROVIDER_NAME, VFRAME_EVENT_PROVIDER_FR_HINT, (void *)vmpeg4_amstream_dec_info.rate);
 
     stat |= STAT_VF_HOOK;
@@ -1015,3 +1070,4 @@ module_exit(amvdec_mpeg4_driver_remove_module);
 MODULE_DESCRIPTION("AMLOGIC MPEG4 Video Decoder Driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Tim Yao <timyao@amlogic.com>");
+

@@ -17,6 +17,11 @@
 #define PWR_OFF   0
 
 #define dtmb_mobile_mode
+#if (defined CONFIG_AM_R840)
+#define MOBILE_DET_POWER 20
+#else
+#define MOBILE_DET_POWER 20
+#endif
 
 
 //#define DEMOD_BASE     APB_REG_ADDR(0x20000)

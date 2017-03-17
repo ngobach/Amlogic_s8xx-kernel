@@ -8,6 +8,7 @@
 #include <mach/am_regs.h>
 #include <mach/power_gate.h>
 #include <linux/amlogic/tvin/tvin.h>
+#include <linux/amlogic/jtag.h>
 
 #include <mach/gpio.h>
 #include <linux/amlogic/hdmi_tx/hdmi_info_global.h>
@@ -801,6 +802,9 @@ void cec_enable_irq(void)
 // 0xc8100014              
 void cec_pinmux_set(cec_pinmux_set_e cnt, int vaule)
 {
+    if (!is_jtag_disable()) {
+        return;
+    }
     //To do. gpioao_8/9
     switch(cnt)
     {
@@ -819,7 +823,9 @@ void cec_pinmux_set(cec_pinmux_set_e cnt, int vaule)
         aml_set_reg32_bits(P_PERIPHS_PIN_MUX_11, 0, 26, 1); 
         //disable JTAG on gpioao_8 pin for aocec
         // Secureregister[1:0] = 0;
+        if (is_jtag_disable()) {
         aml_set_reg32_bits(P_AO_SECURE_REG1, 0, 0, 2); 
+        }
         //disable HDMIRX_CEC on gpioao_8 pin
         // out: pm_hdmitx_cec_gpioAO_8          = pin_mux_reg[16];
         // in:  pm_hdmitx_cec_gpioAO_8          = pin_mux_reg11[28];

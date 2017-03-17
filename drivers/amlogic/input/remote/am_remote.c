@@ -72,7 +72,7 @@ static int NEC_REMOTE_IRQ_NO = INT_REMOTE;
 unsigned int g_remote_base;
 static int repeat_flag;
 DECLARE_TASKLET_DISABLED(tasklet, remote_tasklet, 0);
-
+	 
 static struct remote *gp_remote = NULL;
 char *remote_log_buf;
 static __u16 key_map[512];
@@ -264,14 +264,14 @@ static void remote_repeat_sr(unsigned long data)
 	struct remote *remote_data = (struct remote *)data;
 	u32 status;
 	u32 timer_period;
-
+ 
 	status = am_remote_read_reg(AM_IR_DEC_STATUS);
 	switch (status & REMOTE_HW_DECODER_STATUS_MASK) {
 	case REMOTE_HW_DECODER_STATUS_OK:
 		remote_send_key(remote_data->input, (remote_data->cur_keycode >> 16) & 0xff, 0);
 		repeat_flag = 0;
 		break;
-	default:
+	default: 
 		am_remote_set_mask(AM_IR_DEC_REG1, 1);	//reset ir deocoder
 		am_remote_clear_mask(AM_IR_DEC_REG1, 1);
 
@@ -390,7 +390,6 @@ static inline int remote_hw_reprot_key(struct remote *remote_data)
 		}
 #ifdef CONFIG_AML_HDMI_TX
 #ifdef CONFIG_ARCH_MESON6
-#ifndef CONFIG_AML_HDMI_TX_NEW_CEC_DRIVER
 		//printk("last_scan_code:%x\n", last_scan_code);
 		if((((scan_code >> 16) & 0xff) == 0x1a) && (!cec_repeat)) {
             extern int rc_long_press_pwr_key;
@@ -399,8 +398,7 @@ static inline int remote_hw_reprot_key(struct remote *remote_data)
 		    mdelay(20);
 		}
 		if(((scan_code >> 16) & 0xff) == 0x1a)
-		    cec_repeat--;
-#endif
+ 		    cec_repeat--;
 #endif
 #endif
 		if (remote_data->repeat_enable) {
@@ -526,15 +524,15 @@ void remote_comcast_config(int baserate)
 	float basetime = 1.085*(195.0+699.0);
 	float factor = 1.085*126.0;
 	int i;
-
+	
 	gp_remote->time_window[0] = 4;
 	for(i=0; i<=16; i++) {
 		gp_remote->time_window[i+1] = (unsigned int)((basetime-0.5*factor+factor*i)/(1.0+baserate));
 	//	input_dbg("time_window[%d]=%d,  %f.\n", i+1, gp_remote->time_window[i+1],  pulse);
-	}
+	}	
 #endif
-	gp_remote->repeat_delay = 200;
-	if(baserate == 0x04)
+	gp_remote->repeat_delay = 200;  
+	if(baserate == 0x04) 
 	{
 		gp_remote->time_window[0] = 4;
 		gp_remote->time_window[1] = 179;
@@ -555,7 +553,7 @@ void remote_comcast_config(int baserate)
 		gp_remote->time_window[16] = 590;
 		gp_remote->time_window[17] = 618;
 	}
-	else  //	if(baserate == 0x13)
+	else  //	if(baserate == 0x13) 
 	{
 		gp_remote->time_window[0] = 4;
 		gp_remote->time_window[1] = 44;
@@ -599,7 +597,7 @@ static int work_mode_config(unsigned int cur_mode)
 		control_value = am_remote_read_reg(AM_IR_DEC_REG0)&0xfff;
 		remote_comcast_config(control_value);
 	}
-
+	
 	switch (cur_mode & REMOTE_WORK_MODE_MASK) {
 	case REMOTE_WORK_MODE_HW:
 	case REMOTE_WORK_MODE_SW:
@@ -802,7 +800,7 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 		break;
 
 	case REMOTE_IOC_SET_FN_KEY_SCANCODE:
-		FN_KEY_SCANCODE = val;
+        	FN_KEY_SCANCODE = val;
                 break;
 
         case REMOTE_IOC_SET_LEFT_KEY_SCANCODE:
@@ -920,7 +918,7 @@ static int remote_probe(struct platform_device *pdev)
 
 	g_remote_base = ao_baseaddr;
 	printk("Remote platform_data g_remote_base=%x\n",ao_baseaddr);
-
+	
 	remote_enable = 1;
 	remote = kzalloc(sizeof(struct remote), GFP_KERNEL);
 	input_dev = input_allocate_device();
@@ -1087,12 +1085,12 @@ static int remote_resume(struct platform_device *pdev)
 		input_sync(gp_remote->input);
 		input_event(gp_remote->input, EV_KEY, KEY_POWER, 0);
 		input_sync(gp_remote->input);
-
+		
 		//aml_write_reg32(P_AO_RTC_ADDR0, (aml_read_reg32(P_AO_RTC_ADDR0) | (0x0000f000)));
 		WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0);
     }
 #endif
-
+	
 	return 0;
 }
 static struct platform_driver remote_driver = {
@@ -1102,7 +1100,7 @@ static struct platform_driver remote_driver = {
 	.resume = remote_resume,
 	.driver = {
 		.name = "meson-remote",
-		.of_match_table = remote_dt_match,
+		.of_match_table = remote_dt_match,	
 	},
 };
 

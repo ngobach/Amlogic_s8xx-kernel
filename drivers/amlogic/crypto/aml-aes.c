@@ -144,9 +144,7 @@ static void set_aes_key_normal(u32 *key, unsigned int keylen)
 static void set_aes_key_secure(u32 *key, unsigned int keylen)
 {
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_REG0,
-			(secure_apb_slot3_rd_reg(SEC_BLKMV_AES_REG0)
-			& ~(0x3 << 4))
-			| (AES_THREAD_INDEX << 4));
+			(AES_THREAD_INDEX << 4));
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_KEY_0, *key);
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_KEY_1, *(key+1));
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_KEY_2, *(key+2));
@@ -194,9 +192,7 @@ static void set_aes_iv_big_endian_normal(unsigned long *iv)
 static void set_aes_iv_secure(unsigned long *iv)
 {
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_REG0,
-			(secure_apb_slot3_rd_reg(SEC_BLKMV_AES_REG0)
-			& ~(0x3 << 4))
-			| (AES_THREAD_INDEX << 4));
+			(AES_THREAD_INDEX << 4));
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_IV_0, *iv);
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_IV_1, *(iv+1));
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_IV_2, *(iv+2));
@@ -206,9 +202,7 @@ static void set_aes_iv_secure(unsigned long *iv)
 static void set_aes_iv_big_endian_secure(unsigned long *iv)
 {
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_REG0,
-			(secure_apb_slot3_rd_reg(SEC_BLKMV_AES_REG0)
-			& ~(0x3 << 4))
-			| (AES_THREAD_INDEX << 4));
+			(AES_THREAD_INDEX << 4));
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_IV_3, swap_ulong32(*iv));
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_IV_2, swap_ulong32(*(iv+1)));
 	secure_apb_slot3_wr_reg(SEC_BLKMV_AES_IV_1, swap_ulong32(*(iv+2)));

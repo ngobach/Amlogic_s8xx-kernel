@@ -214,7 +214,7 @@
 ///	-	WATCHDOG
 	amlogic-watchdog{
 		compatible = "amlogic,aml-wdt";
-		status = "okay";
+		status = "disable";
 		default_timeout=<8>;
 		reset_watchdog_method=<1>;//0:sysfs,1:kernel
 		reset_watchdog_time=<2>;
@@ -473,37 +473,49 @@
 
 
 
-/// ****************************************************************************
+
+/// ***************************************************************************************
+///     -       DISP&MM-A/V stream
+//$$ MODULE = "DISP&MM-A/V video dec"
+/// ***************************************************************************************
 ///	-	DISP&MM-A/V stream
 //$$ MODULE = "DISP&MM-A/V stream"
 //$$ DEVICE="mesonstream"
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 4 ="reg"
-	mesonstream {
+	mesonstream{
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
 		status = "okay";
-		reserve-memory = <0x02000000>; // 32M
-		reserve-iomap = "true";
+		//reserve-memory = <0x02000000>; // 32M
+		//reserve-iomap = "true";
 	};
 
+/// ***************************************************************************************
+///     -       DISP&MM-A/V stream
+//$$ MODULE = "DISP&MM-A/V video dec"
+//$$ DEVICE="vdec"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 4 ="reg"
+        vdec{
+                compatible = "amlogic,vdec";
+                dev_name = "vdec.0";
+                status = "okay";
+///				reserve-memory = <0x04000000>; // 64M
+//				reserve-iomap = "true";
+//				linux,contiguous-region = <&mem_4k2k_decoder>;
+        };
 
 
-
-/// ****************************************************************************
-///	-	DISP&MM-A/V video dec
-// MODULE = "DISP&MM-A/V video dec"
-// DEVICE = "vdec"
-// L2 PROP_STR = "status"
-// L3 PROP_U32 4 ="reg"
-	vdec {
-		compatible = "amlogic,vdec";
-		dev_name = "vdec.0";
+	codec_mm{
+		compatible = "amlogic, codec, mm";
+		dev_name = "codec_mm";
 		status = "okay";
-		reserve-memory = <0x04000000>; // 64M
-		reserve-iomap = "true";
+		reserve-memory = <0x04100000>; // 65M
+		//reserve-iomap = "true";
 		linux,contiguous-region = <&mem_4k2k_decoder>;
 	};
+
 
 
 
@@ -628,6 +640,11 @@
 		status = "okay";
 	};
 
+	tvout {
+		compatible = "amlogic,tvout";
+		dev_name = "tvout";
+		status = "okay";
+	};
 
 /// ****************************************************************************
 /// -   Audio

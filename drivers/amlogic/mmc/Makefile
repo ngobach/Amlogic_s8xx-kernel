@@ -26,3 +26,4 @@ endif
 # ifeq ($(CONFIG_ARCH_MESON6),y)
 # obj-$(CONFIG_MMC_AML) += aml_sdhc.o
 # endif
+

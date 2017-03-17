@@ -51,24 +51,6 @@ static int mali_os_freeze(struct device *device)
 
 	return ret;
 }
-//copy from r4p1 linux/mali_pmu_power_up_down.c
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-static int mali_pmu_powerup(void)
-{
-	struct mali_pmu_core *pmu = mali_pmu_get_global_pmu_core();
-
-	MALI_DEBUG_PRINT(5, ("Mali PMU: Power up\n"));
-
-	MALI_DEBUG_ASSERT_POINTER(pmu);
-	if (NULL == pmu) {
-		return -ENXIO;
-	}
-
-	mali_pmu_power_up_all(pmu);
-
-	return 0;
-}
-#endif
 
 static int mali_os_thaw(struct device *device)
 {
@@ -101,7 +83,6 @@ static int mali_os_restore(struct device *device)
 }
 
 #ifdef CONFIG_PM_RUNTIME
-#if 0
 static int mali_runtime_suspend(struct device *device)
 {
 	int ret = 0;
@@ -143,7 +124,6 @@ static int mali_runtime_idle(struct device *device)
 	return 0;
 }
 #endif
-#endif
 
 static struct dev_pm_ops mali_gpu_device_type_pm_ops =
 {
@@ -152,7 +132,7 @@ static struct dev_pm_ops mali_gpu_device_type_pm_ops =
 	.freeze = mali_os_freeze,
 	.thaw = mali_os_thaw,
 	.restore = mali_os_restore,
-#if 0//def CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM_RUNTIME
 	.runtime_suspend = mali_runtime_suspend,
 	.runtime_resume = mali_runtime_resume,
 	.runtime_idle = mali_runtime_idle,

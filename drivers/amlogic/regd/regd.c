@@ -892,3 +892,4 @@ module_exit(regd_exit);
 MODULE_DESCRIPTION("Amlogic Register Debug Driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Zhihua Xie <zhihua.xie@amlogic.com>");
+

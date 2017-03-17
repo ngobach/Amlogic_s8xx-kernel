@@ -35,7 +35,7 @@
 static const struct of_device_id stmmac_dt_ids[] = {
 #ifdef CONFIG_DWMAC_MESON
 	{ .compatible = "amlogic,meson6-dwmac", /*.data = &meson6_dwmac_data*/},
-	{ .compatible = "amlogic,meson8-rmii-dwmac", /*s802 100m mode this chip have no gmac not support 1000m*/},
+	{ .compatible = "amlogic,meson8-rmii-dwmac", .data = &meson6_dwmac_data /*s802 100m mode this chip have no gmac not support 1000m*/},
 	{ .compatible = "amlogic,meson8m2-rgmii-dwmac",},// s812 chip 1000m mode
 	{ .compatible = "amlogic,meson8m2-rmii-dwmac", .data = &meson6_dwmac_data },// s812 chip 100m mode
 	{ .compatible = "amlogic,meson8b-rgmii-dwmac", },// s805 chip 1000m mode
@@ -140,14 +140,6 @@ static int dwmac1000_validate_ucast_entries(int ucast_entries)
 	}
 	return x;
 }
-#if defined (CONFIG_AML_NAND_KEY) || defined (CONFIG_SECURITYKEY)
-extern int get_aml_key_kernel(const char* key_name, unsigned char* data, int ascii_flag);
-extern int extenal_api_key_set_version(char *devvesion);
-static char print_buff[1025];
-#endif
-#if defined (CONFIG_EFUSE)
-extern int aml_efuse_get_item(unsigned char* key_name, unsigned char* data);
-#endif
 static int stmmac_probe_config_dt(struct platform_device *pdev,
 				  struct plat_stmmacenet_data *plat,
 				  const char **mac)
@@ -155,10 +147,6 @@ static int stmmac_probe_config_dt(struct platform_device *pdev,
 	struct device_node *np = pdev->dev.of_node;
 	struct stmmac_dma_cfg *dma_cfg;
 	const struct of_device_id *device;
-#if defined (CONFIG_AML_NAND_KEY) || defined (CONFIG_SECURITYKEY) || defined (CONFIG_EFUSE)
-	int i;
-	int ret;
-#endif
 	if (!np)
 		return -ENODEV;
 
@@ -183,46 +171,12 @@ static int stmmac_probe_config_dt(struct platform_device *pdev,
 		plat->exit = data->exit;
 	}
 
-#if defined (CONFIG_AML_NAND_KEY) || defined (CONFIG_SECURITYKEY)
-	if (g_mac_addr_setup == 0)
-	{
-		for (i=0; i < 2; i++)
-		{
-			ret = get_aml_key_kernel("mac", print_buff, 0);
-			extenal_api_key_set_version("auto3");
-			printk("ret = %d\nprint_buff=%s\n", ret, print_buff);
-			if (ret >= 0) break;
-		}
-		if (ret >= 0) {
-			for(i=0; i < ETH_ALEN; i++)
-			{
-				DEFMAC[i] = simple_strtol(&print_buff[3 * i], NULL, 16);
-			}
-			g_mac_addr_setup++;
-		}
+	if (g_mac_addr_setup) {
+		*mac = DEFMAC;
+	} else {
+		*mac = of_get_mac_address(np);
 	}
-#endif
 
-#if defined (CONFIG_EFUSE)
-	if (g_mac_addr_setup == 0)
-	{
-		ret = aml_efuse_get_item("mac", DEFMAC);
-		if (ret >= 0) {
-			printk("MAC address from eFuse: %02x:%02x:%02x:%02x:%02x:%02x\n",
-				DEFMAC[0],DEFMAC[1],DEFMAC[2],DEFMAC[3],DEFMAC[4],DEFMAC[5]);
-			g_mac_addr_setup++;
-		}
-	}
-#endif
-
-#if defined (CONFIG_AML_NAND_KEY) || defined (CONFIG_SECURITYKEY) || defined (CONFIG_EFUSE)
-
-	*mac = DEFMAC;
-
-#else
-	
-	*mac = of_get_mac_address(np);
-#endif
 	plat->interface = of_get_phy_mode(np);
 
 	/* Get max speed of operation from device tree */
@@ -408,9 +362,9 @@ static int stmmac_pltfr_probe(struct platform_device *pdev)
 	}
 
 	priv = stmmac_dvr_probe(&(pdev->dev), plat_dat, addr);
-	if (IS_ERR(priv)) {
+	if (!priv) {
 		pr_err("%s: main driver probe failed", __func__);
-		return PTR_ERR(priv);
+		return -ENODEV;
 	}
 
 	/* Get MAC address if available (DT) */

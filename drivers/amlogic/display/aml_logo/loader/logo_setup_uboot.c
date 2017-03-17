@@ -43,7 +43,7 @@ static inline int install_logo_info(logo_object_t *plogo,char *para)
 //head
 	{"head",INVALID_INFO,		PARA_END+1,		1,	0,	PARA_END+1},
 
-//dev
+//dev		
 	{"osd0",LOGO_DEV_OSD0,	PARA_FIRST_GROUP_START-1,	PARA_FIRST_GROUP_START+1,	PARA_FIRST_GROUP_START,	PARA_SECOND_GROUP_START-1},
 	{"osd1",LOGO_DEV_OSD1,	PARA_FIRST_GROUP_START,		PARA_FIRST_GROUP_START+2,	PARA_FIRST_GROUP_START,	PARA_SECOND_GROUP_START-1},
 	{"vid",LOGO_DEV_VID,		PARA_FIRST_GROUP_START+1,	PARA_FIRST_GROUP_START+3,	PARA_FIRST_GROUP_START,	PARA_SECOND_GROUP_START-1},  // 3
@@ -73,25 +73,33 @@ static inline int install_logo_info(logo_object_t *plogo,char *para)
 	{"4k2ksmpte",VMODE_4K2K_SMPTE,			PARA_SECOND_GROUP_START+20,	PARA_SECOND_GROUP_START+22,	PARA_SECOND_GROUP_START,	PARA_THIRD_GROUP_START-1},
 	{"lvds1080p",VMODE_LVDS_1080P,			PARA_SECOND_GROUP_START+21,	PARA_SECOND_GROUP_START+23,	PARA_SECOND_GROUP_START,	PARA_THIRD_GROUP_START-1},
 	{"lvds1080p50hz",VMODE_LVDS_1080P_50HZ, PARA_SECOND_GROUP_START+22,	PARA_SECOND_GROUP_START+24,	PARA_SECOND_GROUP_START,	PARA_THIRD_GROUP_START-1},
+	{"768p60hz",VMODE_768P, PARA_SECOND_GROUP_START+23,	PARA_SECOND_GROUP_START+25,	PARA_SECOND_GROUP_START,	PARA_THIRD_GROUP_START-1},
 //display mode
 	{"origin",DISP_MODE_ORIGIN,	PARA_THIRD_GROUP_START-1,	PARA_THIRD_GROUP_START+1,	PARA_THIRD_GROUP_START,PARA_FOURTH_GROUP_START-1},  //15
 	{"center",DISP_MODE_CENTER,	PARA_THIRD_GROUP_START,		PARA_THIRD_GROUP_START+2,	PARA_THIRD_GROUP_START,PARA_FOURTH_GROUP_START-1},
 	{"full",DISP_MODE_FULL_SCREEN,	PARA_THIRD_GROUP_START+1,	PARA_THIRD_GROUP_START+3,	PARA_THIRD_GROUP_START,PARA_FOURTH_GROUP_START-1},
 //dbg
 	{"dbg",LOGO_DBG_ENABLE,	PARA_FOURTH_GROUP_START-1,	PARA_FOURTH_GROUP_START+1,	PARA_FOURTH_GROUP_START,PARA_FIFTH_GROUP_START-1},  //18
-//progress
+//progress	
 	{"progress",LOGO_PROGRESS_ENABLE,PARA_FIFTH_GROUP_START-1,PARA_FIFTH_GROUP_START+1,PARA_FIFTH_GROUP_START,PARA_SIXTH_GROUP_START-1},
 //loaded
 	{"loaded",LOGO_LOADED,PARA_SIXTH_GROUP_START-1,PARA_SIXTH_GROUP_START+1,PARA_SIXTH_GROUP_START,PARA_END},
 
-//tail
+//tail	
 	{"tail",INVALID_INFO,PARA_END,0,0,PARA_END+1},
 	};
 
 	static u32 tail=PARA_END+1;
-	u32 first=para_info_pair[0].next_idx ;
+	u32 first=para_info_pair[0].next_idx ; 
 	u32 i,addr;
-
+	vmode_t vmode;
+	
+	vmode = vmode_name_to_mode(para);
+	if (vmode < VMODE_MAX) {
+		plogo->para.vout_mode = vmode;
+		printk("plogo vmode = %d\n", vmode);
+		return 0;
+	}
 	for(i=first;i<tail;i=para_info_pair[i].next_idx)
 	{
 		if(strcmp(para_info_pair[i].name,para)==0)
@@ -106,32 +114,32 @@ static inline int install_logo_info(logo_object_t *plogo,char *para)
 				case PARA_FIRST_GROUP_START:
 				plogo->para.output_dev_type=(platform_dev_t)para_info_pair[i].info;
 				break;
-				case PARA_SECOND_GROUP_START:
+/*				case PARA_SECOND_GROUP_START:
 				plogo->para.vout_mode=(vmode_t)para_info_pair[i].info;
 				break;
-				case PARA_THIRD_GROUP_START:
+*/				case PARA_THIRD_GROUP_START:
 				plogo->para.dis_mode=(logo_display_mode_t)para_info_pair[i].info;
 				break;
 				case PARA_FOURTH_GROUP_START:
-				amlog_level(LOG_LEVEL_MAX,"select debug mode\n");
+				amlog_level(LOG_LEVEL_MAX,"select debug mode\n");	
 				amlog_level_logo=AMLOG_DEFAULT_LEVEL;
 				amlog_mask_logo=AMLOG_DEFAULT_MASK;
 				break;
 				case PARA_FIFTH_GROUP_START:
 				plogo->para.progress=1;
-				break;
+				break;	
 				case PARA_SIXTH_GROUP_START:
 				plogo->para.loaded=1;
 				amlog_level(LOG_LEVEL_MAX,"logo has been loaded\n");
-				break;
+				break;	
 			}
 			para_info_pair[prev].next_idx=next;
 			para_info_pair[next].prev_idx=prev;
 			return 0;
-		}//addr we will deal with it specially.
+		}//addr we will deal with it specially. 
 	}
 	addr=simple_strtoul(para, NULL,16);
-	//addr we will deal with it specially.
+	//addr we will deal with it specially. 
 	if(addr >=PHYS_OFFSET)
 	{
 		plogo->para.mem_addr=(char*)phys_to_virt(addr);
@@ -188,7 +196,8 @@ int  __init  logo_setup(char *str)
 	plogo=&aml_logo;
 	memset(plogo,0,sizeof(logo_object_t));
 	sprintf(plogo->name,LOGO_NAME);
-
+	
+	plogo->para.vout_mode = VMODE_INIT_NULL;
 	do
 	{
 		if(!isalpha(*ptr)&&!isdigit(*ptr))

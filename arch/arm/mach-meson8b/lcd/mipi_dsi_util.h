@@ -170,7 +170,7 @@ typedef struct {
 #define BIT_EDPITE_INTR_PULSE  1
 #define BIT_ERR_INTR_PULSE     0
 
-// For MIPI_DSI_DWC_CLKMGR_CFG_OS
+// For MIPI_DSI_DWC_CLKMGR_CFG_OS 
 #define BIT_TO_CLK_DIV     8
 #define BIT_TX_ESC_CLK_DIV 0
 
@@ -238,7 +238,7 @@ typedef struct {
 
 // For MIPI_DSI_DWC_CMD_MODE_CFG_OS
 #define BIT_MAX_RD_PKT_SIZE        24
-#define BIT_DCS_LW_TX              19
+#define BIT_DCS_LW_TX              19 
 #define BIT_DCS_SR_0P_TX           18
 #define BIT_DCS_SW_1P_TX           17
 #define BIT_DCS_SW_0P_TX           16
@@ -253,27 +253,27 @@ typedef struct {
 #define BIT_TEAR_FX_EN              0
 
 // For MIPI_DSI_DWC_CMD_PKT_STATUS_OS
-#define BIT_DBI_RD_CMD_BUSY        14    // For DBI no usefull
-#define BIT_DBI_PLD_R_FULL         13    // For DBI no usefull
-#define BIT_DBI_PLD_R_EMPTY        12    // For DBI no usefull
-#define BIT_DBI_PLD_W_FULL         11    // For DBI no usefull
-#define BIT_DBI_PLD_W_EMPTY        10    // For DBI no usefull
-#define BIT_DBI_CMD_FULL            9    // For DBI no usefull
-#define BIT_DBI_CMD_EMPTY           8    // For DBI no usefull
+#define BIT_DBI_RD_CMD_BUSY        14    // For DBI no usefull 
+#define BIT_DBI_PLD_R_FULL         13    // For DBI no usefull 
+#define BIT_DBI_PLD_R_EMPTY        12    // For DBI no usefull 
+#define BIT_DBI_PLD_W_FULL         11    // For DBI no usefull 
+#define BIT_DBI_PLD_W_EMPTY        10    // For DBI no usefull 
+#define BIT_DBI_CMD_FULL            9    // For DBI no usefull 
+#define BIT_DBI_CMD_EMPTY           8    // For DBI no usefull 
 
-#define BIT_GEN_RD_CMD_BUSY         6    // For Generic interface
-#define BIT_GEN_PLD_R_FULL          5    // For Generic interface
-#define BIT_GEN_PLD_R_EMPTY         4    // For Generic interface
-#define BIT_GEN_PLD_W_FULL          3    // For Generic interface
-#define BIT_GEN_PLD_W_EMPTY         2    // For Generic interface
-#define BIT_GEN_CMD_FULL            1    // For Generic interface
-#define BIT_GEN_CMD_EMPTY           0    // For Generic interface
+#define BIT_GEN_RD_CMD_BUSY         6    // For Generic interface 
+#define BIT_GEN_PLD_R_FULL          5    // For Generic interface               
+#define BIT_GEN_PLD_R_EMPTY         4    // For Generic interface    
+#define BIT_GEN_PLD_W_FULL          3    // For Generic interface 
+#define BIT_GEN_PLD_W_EMPTY         2    // For Generic interface 
+#define BIT_GEN_CMD_FULL            1    // For Generic interface 
+#define BIT_GEN_CMD_EMPTY           0    // For Generic interface 
 
 // For MIPI_DSI_TOP_MEAS_CNTL
 #define BIT_CNTL_MEAS_VSYNC        10    // measure vsync control
 #define BIT_EDPITE_MEAS_EN          9    // tear measure enable
 #define BIT_EDPITE_ACCUM_MEAS_EN    8    // not clear the counter
-#define BIT_EDPITE_VSYNC_SPAN       0    //
+#define BIT_EDPITE_VSYNC_SPAN       0    // 
 
 // For MIPI_DSI_TOP_STAT
 #define BIT_STAT_EDPIHALT          31    // signal from halt
@@ -383,7 +383,7 @@ typedef enum tv_enc_lcd_type_e{
         TV_ENC_LCD3840x2160p_vic03 = 18,
         TV_ENC_LCD4096x2160p_vic04 = 19,
         TV_ENC_LCD640x480 = 20,
-        TV_ENC_LCD1920x1200p = 21,
+        TV_ENC_LCD1920x1200p = 21, 
         TV_ENC_LCD240x160_dsi   = 22,
         TV_ENC_LCD240x160_slow   = 23,
         TV_ENC_LCD3840x2160p_vic01 = 24,

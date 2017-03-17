@@ -16,7 +16,7 @@
 
 #define EMMC_KEYAREA_SIZE		(128*1024)
 #define EMMC_KEYAREA_COUNT		2
-
+#define MMC_CMD_RETRIES			2
 
 //#define KEY_PREVIOUS_PARTITION 	"boot_env"
 //#define KEY_LATER_PARTITION		"logo"
@@ -60,3 +60,4 @@ int emmc_key_read(void);
 int emmc_key_write(void);
 
 #endif
+

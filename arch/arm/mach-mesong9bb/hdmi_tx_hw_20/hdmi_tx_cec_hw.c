@@ -8,6 +8,7 @@
 #include <mach/am_regs.h>
 #include <mach/power_gate.h>
 #include <linux/amlogic/tvin/tvin.h>
+#include <linux/amlogic/jtag.h>
 
 #include <mach/gpio.h>
 #include <linux/amlogic/hdmi_tx/hdmi_info_global.h>
@@ -801,6 +802,9 @@ void cec_enable_irq(void)
 // 0xc8100014
 void cec_pinmux_set(cec_pinmux_set_e cnt, int vaule)
 {
+    if (!is_jtag_disable()) {
+        return;
+    }
     //To do. gpioao_8/9
     switch (cnt)
     {
@@ -819,7 +823,9 @@ void cec_pinmux_set(cec_pinmux_set_e cnt, int vaule)
         aml_set_reg32_bits(P_PERIPHS_PIN_MUX_11, 0, 26, 1);
         //disable JTAG on gpioao_8 pin for aocec
         // Secureregister[1:0] = 0;
+        if (is_jtag_disable()) {
         aml_set_reg32_bits(P_AO_SECURE_REG1, 0, 0, 2);
+        }
         //disable HDMIRX_CEC on gpioao_8 pin
         // out: pm_hdmitx_cec_gpioAO_8          = pin_mux_reg[16];
         // in:  pm_hdmitx_cec_gpioAO_8          = pin_mux_reg11[28];
@@ -996,7 +1002,6 @@ void cec_tx_irq_handle(void)
 #endif
 }
 
-#ifndef CONFIG_AML_HDMI_TX_NEW_CEC_DRIVER
 void cec_polling_online_dev(int log_addr, int *bool)
 {
 #ifdef AO_CEC
@@ -1006,7 +1011,7 @@ void cec_polling_online_dev(int log_addr, int *bool)
 #endif
     hdmi_print(INF, CEC "CEC: poll online logic device: 0x%x BOOL: %d\n", log_addr, *bool);
 }
-#endif
+
 
 // DELETE LATER, TEST ONLY
 void cec_test_(unsigned int cmd)

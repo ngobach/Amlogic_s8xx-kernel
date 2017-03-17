@@ -3,7 +3,6 @@
 #include <linux/workqueue.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
-
 #include <mach/am_regs.h>
 #include <linux/amlogic/amports/canvas.h>
 #include <linux/amlogic/amports/vframe.h>
@@ -12,6 +11,9 @@
 #include "deinterlace.h"
 #ifdef DET3D
 #include "detect3d.h"
+#endif
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+#include <mach/vpu.h>
 #endif
 
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
@@ -95,7 +97,7 @@ module_param(frame_dynamic_level, int, 0664);
 MODULE_PARM_DESC(cue_enable, "\n cue_enable\n");
 module_param(cue_enable, bool, 0664);
 #ifdef NEW_DI_V3
-static unsigned short mcen_mode = 1;
+unsigned short mcen_mode = 1;
 MODULE_PARM_DESC(mcen_mode, "\n blend mc enable\n");
 module_param(mcen_mode, ushort, 0664);
 #endif
@@ -236,6 +238,10 @@ void reset_di_para(void)
 	di_pre_ctrl__di_pre_repeat=0xff;
 
 	init_pd_para();
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB)
+	/* not do mc for g9bb,decrease bandwidth */
+	mcen_mode = 0;
+#endif
 }
 
 static int vdin_en = 0;
@@ -268,6 +274,19 @@ static void set_di_mem_fmt_more (
 
 static void set_di_mem_mif ( DI_MIF_t * mif, int urgent, int hold_line );
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+static void set_di_if0_fmt_more (
+		int hfmt_en,
+		int hz_yc_ratio,		//2bit
+		int hz_ini_phase,		//4bit
+		int vfmt_en,
+		int vt_yc_ratio,		//2bit
+		int vt_ini_phase,		//4bit
+		int y_length,
+		int c_length,
+		int hz_rpt				//1bit
+	);
+#endif
 static void set_di_if1_fmt_more (
 		int hfmt_en,
 		int hz_yc_ratio,		//2bit
@@ -307,7 +326,7 @@ static void mc_di_param_init(void)
 #endif
 void di_hw_init(void)
 {
-#ifdef NEW_DI_V1
+#if (defined NEW_DI_V1)|(defined NEW_DI_V4)
 	unsigned short fifo_size = 0x120;
 #endif
 #ifdef NEW_DI_V3
@@ -484,7 +503,8 @@ void enable_di_pre_aml (
 					(0 << 10) |										// pre drop first.
 					((di_pre_ctrl__di_pre_repeat!=0xff)?(di_pre_ctrl__di_pre_repeat&0x1):(0 << 11)) |	   //pre repeat.
 					(0 << 12) |					   // pre viu link
-					(pre_vdin_link<< 13) |				   //pre vdin link
+					(pre_vdin_link << 13) |				   //pre vdin link
+					(pre_vdin_link << 14) |				   //pre go line link
 					(hold_line << 16) |				   // pre hold line number
 					(1 << 22 ) |					   // MTN after NR.
 					(pre_field_num << 29) |			   // pre field number.
@@ -995,6 +1015,39 @@ static void set_di_mem_mif(DI_MIF_t *mif, int urgent, int hold_line)
 	}
 }
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+static void set_di_if0_fmt_more (int hfmt_en,
+				int hz_yc_ratio,		//2bit
+				int hz_ini_phase,		//4bit
+				int vfmt_en,
+				int vt_yc_ratio,		//2bit
+				int vt_ini_phase,		//4bit
+				int y_length,
+				int c_length,
+				int hz_rpt				//1bit
+				)
+{
+	int vt_phase_step = (16 >> vt_yc_ratio);
+
+	VSYNC_WR_MPEG_REG(VIU_VD1_FMT_CTRL,
+							  (hz_rpt << 28)		|		//hz rpt pixel
+							  (hz_ini_phase << 24)	|		//hz ini phase
+							  (0 << 23)				|		//repeat p0 enable
+							  (hz_yc_ratio << 21)	|		//hz yc ratio
+							  (hfmt_en << 20)		|		//hz enable
+							  (1 << 17)				|		//nrpt_phase0 enable
+							  (0 << 16)				|		//repeat l0 enable
+							  (0 << 12)				|		//skip line num
+							  (vt_ini_phase << 8)	|		//vt ini phase
+							  (vt_phase_step << 1)	|		//vt phase step (3.4)
+							  (vfmt_en << 0)				//vt enable
+					);
+
+	VSYNC_WR_MPEG_REG(VIU_VD1_FMT_W, (y_length << 16) |		//hz format width
+							 (c_length << 0)				//vt format width
+					);
+}
+#endif
 static void set_di_if1_fmt_more (int hfmt_en,
 				int hz_yc_ratio,		//2bit
 				int hz_ini_phase,		//4bit
@@ -1250,6 +1303,9 @@ static void set_di_chan2_mif ( DI_MIF_t *mif, int urgent, int hold_line)
 static void set_di_if0_mif (DI_MIF_t *mif, int urgent, int hold_line)
 {
 	unsigned int pat, loop=0;
+	#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	unsigned bytes_per_pixel, demux_mode;
+	#endif
 
 	if (mif->set_separate_en == 1) {
 	pat = vpat[(di_vscale_skip_count_real<<1)+1];
@@ -1261,6 +1317,25 @@ static void set_di_if0_mif (DI_MIF_t *mif, int urgent, int hold_line)
 	} else {
 		loop = 0;
 	pat = vpat[di_vscale_skip_count_real];
+	#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+		bytes_per_pixel = mif->set_separate_en ? 0 : (mif->video_mode ? 2 : 1);
+	demux_mode = mif->video_mode;
+	VSYNC_WR_MPEG_REG(VD1_IF0_GEN_REG, (1 << 29)    |	 //reset on go field
+								(urgent << 28)				|	// urgent
+								(urgent << 27)				|	// luma urgent
+								(1 << 25)					|	// no dummy data.
+								(hold_line << 19)			|	// hold lines
+								(1 << 18)					|	// push dummy pixel
+								(demux_mode << 16)			|	// demux_mode
+								(bytes_per_pixel << 14)		|
+								(mif->burst_size_cr << 12)	|
+								(mif->burst_size_cb << 10)	|
+								(mif->burst_size_y << 8)	|
+								(0 << 6)	|
+								((mif->set_separate_en!=0) << 1)	|
+								(1 << 0)						// cntl_enable
+		);
+	#endif
 	// ----------------------
 	// Canvas
 	// ----------------------
@@ -1296,6 +1371,32 @@ static void set_di_if0_mif (DI_MIF_t *mif, int urgent, int hold_line)
 				   (loop << 0));
 	VSYNC_WR_MPEG_REG(VD1_IF0_LUMA0_RPT_PAT,   pat);
 	VSYNC_WR_MPEG_REG(VD1_IF0_CHROMA0_RPT_PAT, pat);
+	#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+		if (mif->set_separate_en != 0)	 // 4:2:0 block mode.
+	{
+		set_di_if0_fmt_more (
+							 1, // hfmt_en
+							 1,	// hz_yc_ratio
+							 0,	// hz_ini_phase
+							 1,	// vfmt_en
+							 1, // vt_yc_ratio
+							 0, // vt_ini_phase
+						mif->luma_x_end0 - mif->luma_x_start0 + 1, // y_length
+						mif->chroma_x_end0 - mif->chroma_x_start0 + 1, // c length
+							 0 ); // hz repeat.
+	} else {
+		set_di_if0_fmt_more (
+							 1,	// hfmt_en
+							 1,	// hz_yc_ratio
+							 0, // hz_ini_phase
+							 0,	// vfmt_en
+							 0,	// vt_yc_ratio
+							 0, // vt_ini_phase
+						mif->luma_x_end0 - mif->luma_x_start0 + 1, // y_length
+						((mif->luma_x_end0 >>1 ) - (mif->luma_x_start0>>1) + 1), // c length
+							 0); // hz repeat
+	}
+	#endif
 }
 
 void initial_di_pre_aml(int hsize_pre, int vsize_pre, int hold_line)
@@ -1362,6 +1463,7 @@ void initial_di_post_2(int hsize_post, int vsize_post, int hold_line)
 					  (0 << 29) |						// post field number.
 					  (0x3 << 30)						// post soft rst  post frame rst.
 		);
+
 }
 
 void di_post_switch_buffer (
@@ -1472,7 +1574,11 @@ void di_post_switch_buffer (
 					  (di_vpp_en << 12) |							// post viu link
 					  (hold_line << 16) |							// post hold line number
 					  (post_field_num << 29) |						// post field number.
+					  #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+					  (0x3 << 30 )									// post soft rst  post frame rst.
+					  #else
 					  (0x1 << 30 )									// post soft rst  post frame rst.
+					  #endif
 		);
 }
 
@@ -1516,27 +1622,33 @@ void enable_di_post_2 (
 //printk("%s: ei_only %d,buf1_en %d,ei_en %d,di_vpp_en %d,di_ddr_en %d,blend_mtn_en %d,blend_mode %d.\n",
 			 //__func__,ei_only,buf1_en,ei_en,di_vpp_en,di_ddr_en,blend_mtn_en,blend_mode);
 	// motion for current display field.
-	if (blend_mtn_en)
-	{
-		VSYNC_WR_MPEG_REG(DI_MTNPRD_X, (di_mtnprd_mif->start_x <<16) | (di_mtnprd_mif->end_x));				// start_x 0 end_x 719.
-		VSYNC_WR_MPEG_REG(DI_MTNPRD_Y, (di_mtnprd_mif->start_y <<16) | (di_mtnprd_mif->end_y));				// start_y 0 end_y 239.
-   #ifndef NEW_DI_V2
-		VSYNC_WR_MPEG_REG(DI_MTNCRD_X, (di_mtncrd_mif->start_x <<16) | (di_mtncrd_mif->end_x));					// start_x 0 end_x 719.
-		VSYNC_WR_MPEG_REG(DI_MTNCRD_Y, (di_mtncrd_mif->start_y <<16) | (di_mtncrd_mif->end_y));					// start_y 0 end_y 239.
-	 #endif
-	VSYNC_WR_MPEG_REG(DI_MTNRD_CTRL, (di_mtnprd_mif->canvas_num <<8 ) |									//mtnp canvas index.
+	VSYNC_WR_MPEG_REG(DI_MTNPRD_X, (di_mtnprd_mif->start_x <<16) | (di_mtnprd_mif->end_x));
+	// start_x 0 end_x 719.
+	VSYNC_WR_MPEG_REG(DI_MTNPRD_Y, (di_mtnprd_mif->start_y <<16) | (di_mtnprd_mif->end_y));
+	// start_y 0 end_y 239.
+	#ifndef NEW_DI_V2
+	VSYNC_WR_MPEG_REG(DI_MTNCRD_X, (di_mtncrd_mif->start_x <<16) | (di_mtncrd_mif->end_x));
+	// start_x 0 end_x 719.
+	VSYNC_WR_MPEG_REG(DI_MTNCRD_Y, (di_mtncrd_mif->start_y <<16) | (di_mtncrd_mif->end_y));
+	// start_y 0 end_y 239.
+	#endif
+	if (blend_mtn_en) {
+		VSYNC_WR_MPEG_REG(DI_MTNRD_CTRL, (di_mtnprd_mif->canvas_num <<8 ) | //mtnp canvas index.
 					 (urgent << 16) // urgent
-					 #ifndef NEW_DI_V2
+					#ifndef NEW_DI_V2
 					 |di_mtncrd_mif->canvas_num
-					 #endif
-					 );
-										 // current field mtn canvas index
+					#endif
+					 ); // current field mtn canvas index
 	}
 
 	if (di_ddr_en)
 	{
 	   VSYNC_WR_MPEG_REG(DI_DIWR_X, (di_diwr_mif->start_x <<16) | (di_diwr_mif->end_x));				// start_x 0 end_x 719.
+	   #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	   VSYNC_WR_MPEG_REG(DI_DIWR_Y, (di_diwr_mif->start_y <<16) | (di_diwr_mif->end_y));			// start_y 0 end_y 479.
+	   #else
 	   VSYNC_WR_MPEG_REG(DI_DIWR_Y, (di_diwr_mif->start_y <<16) | (di_diwr_mif->end_y *2 + 1 ));			// start_y 0 end_y 479.
+	   #endif
 	   VSYNC_WR_MPEG_REG(DI_DIWR_CTRL, di_diwr_mif->canvas_num |										// canvas index.
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 						(urgent << 16));																// urgent.
@@ -1586,7 +1698,11 @@ void enable_di_post_2 (
 					  (di_vpp_en << 12) |							// post viu link
 					  (hold_line << 16) |							// post hold line number
 					  (post_field_num << 29) |						// post field number.
+					  #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+					  (0x3 << 30 )									// post soft rst  post frame rst.
+					  #else
 					  (0x1 << 30 )									// post soft rst  post frame rst.
+					  #endif
 		);
 #ifdef NEW_DI_V1
 		VSYNC_WR_MPEG_REG(DI_EI_CTRL3, ei_ctrl3);
@@ -1957,7 +2073,15 @@ void di_post_read_reverse_irq(bool reverse)
 	}
 #endif
 }
-
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+void diwr_set_power_control(unsigned char enable)
+{
+	#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	switch_vpu_mem_pd_vmod(VPU_VIU_VD1, enable?VPU_MEM_POWER_ON:VPU_MEM_POWER_DOWN);
+	switch_vpu_mem_pd_vmod(VPU_DI_POST, enable?VPU_MEM_POWER_ON:VPU_MEM_POWER_DOWN);
+	#endif
+}
+#endif
 static unsigned char pre_power_on = 0;
 //static unsigned char post_power_on = 0;
 void di_set_power_control(unsigned char type, unsigned char enable)

@@ -78,7 +78,7 @@
 #define  SP0838_P0_0x73  0x03
 #define  SP0838_P0_0x74  0x46
 //color
-#define  SP0838_P0_0x7f  0xd7  //R
+#define  SP0838_P0_0x7f  0xd7  //R 
 #define  SP0838_P0_0x87  0xf8  //B
 //satutation
 #define  SP0838_P0_0xd8  0x48
@@ -284,12 +284,12 @@ struct v4l2_querymenu sp0838_qmenu_wbmode[] = {
     },{
         .id         = V4L2_CID_DO_WHITE_BALANCE,
         .index      = CAM_WB_FLUORESCENT,
-        .name       = "fluorescent",
+        .name       = "fluorescent", 
         .reserved   = 0,
     },{
         .id         = V4L2_CID_DO_WHITE_BALANCE,
         .index      = CAM_WB_FLUORESCENT,
-        .name       = "warm-fluorescent",
+        .name       = "warm-fluorescent", 
         .reserved   = 0,
     },
 };
@@ -297,12 +297,12 @@ struct v4l2_querymenu sp0838_qmenu_wbmode[] = {
 struct v4l2_querymenu sp0838_qmenu_anti_banding_mode[] = {
     {
         .id         = V4L2_CID_POWER_LINE_FREQUENCY,
-        .index      = CAM_BANDING_50HZ,
+        .index      = CAM_BANDING_50HZ, 
         .name       = "50hz",
         .reserved   = 0,
     },{
         .id         = V4L2_CID_POWER_LINE_FREQUENCY,
-        .index      = CAM_BANDING_60HZ,
+        .index      = CAM_BANDING_60HZ, 
         .name       = "60hz",
         .reserved   = 0,
     },
@@ -2517,3 +2517,4 @@ static struct i2c_driver sp0838_i2c_driver = {
 };
 
 module_i2c_driver(sp0838_i2c_driver);
+

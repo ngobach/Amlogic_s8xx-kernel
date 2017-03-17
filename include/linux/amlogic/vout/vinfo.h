@@ -25,6 +25,7 @@
 #ifndef VINFO_H
 #define VINFO_H
 #include "../hdmi_tx/hdmi_common.h"
+#include "../tvin/tvin.h"
 //the MSB is represent vmode set by logo
 #define	VMODE_LOGO_BIT_MASK	0x8000
 #define	VMODE_MODE_BIT_MASK	0xff
@@ -36,9 +37,9 @@ typedef enum {
     VMODE_480I_RPT  ,
     VMODE_480CVBS,
     VMODE_480P  ,
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION    
     VMODE_480P_59HZ,// for framerate automation 480p 59.94hz
-#endif
+#endif   
     VMODE_480P_RPT  ,
     VMODE_576I   ,
     VMODE_576I_RPT  ,
@@ -49,16 +50,18 @@ typedef enum {
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 	VMODE_720P_59HZ , // for framerate automation 720p 59.94hz
 #endif
+    VMODE_720P_50HZ,
+    VMODE_768P,
+    VMODE_768P_50HZ,
     VMODE_1080I ,
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
     VMODE_1080I_59HZ , // for framerate automation 1080i 59.94hz
 #endif
+    VMODE_1080I_50HZ,
     VMODE_1080P ,
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 	VMODE_1080P_59HZ , // for framerate automation 1080p 59.94hz
 #endif
-    VMODE_720P_50HZ ,
-    VMODE_1080I_50HZ ,
     VMODE_1080P_50HZ ,
     VMODE_1080P_24HZ ,
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
@@ -76,7 +79,13 @@ typedef enum {
     VMODE_4K2K_SMPTE,
     VMODE_4K2K_FAKE_5G,   // timing same as 4k2k30hz, Vsync from 30hz to 50hz
     VMODE_4K2K_60HZ,	  // timing same as 4k2k30hz, Vsync from 30hz to 60hz
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    VMODE_4K2K_59HZ,	  // timing same as 4k2k30hz, Vsync from 30hz to 60hz
+#endif
     VMODE_4K2K_60HZ_Y420,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    VMODE_4K2K_59HZ_Y420,
+#endif
     VMODE_4K2K_50HZ,	  // timing same as 4k2k25hz, Vsync from 25hz to 50hz
     VMODE_4K2K_50HZ_Y420,
     VMODE_4K2K_5G,
@@ -122,16 +131,18 @@ typedef enum {
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 	TVMODE_720P_59HZ , // for framerate automation 720p 59.94hz
 #endif
+    TVMODE_720P_50HZ ,
+    TVMODE_768P,
+    TVMODE_768P_50HZ,
     TVMODE_1080I ,
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 	TVMODE_1080I_59HZ , // for framerate automation 1080i 59.94hz
 #endif
+    TVMODE_1080I_50HZ ,
     TVMODE_1080P ,
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 	TVMODE_1080P_59HZ , // for framerate automation 1080p 59.94hz
 #endif
-    TVMODE_720P_50HZ ,
-    TVMODE_1080I_50HZ ,
     TVMODE_1080P_50HZ ,
     TVMODE_1080P_24HZ ,
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
@@ -149,7 +160,13 @@ typedef enum {
     TVMODE_4K2K_SMPTE ,
     TVMODE_4K2K_FAKE_5G ,
     TVMODE_4K2K_60HZ ,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    TVMODE_4K2K_59HZ ,
+#endif
     TVMODE_4K2K_60HZ_Y420,
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    TVMODE_4K2K_59HZ_Y420,
+#endif
     TVMODE_4K2K_50HZ ,
     TVMODE_4K2K_50HZ_Y420,
     TVMODE_4K2K_5G,
@@ -183,6 +200,7 @@ typedef struct {
 	u32         screen_real_width;
     u32         screen_real_height;
 	u32			video_clk;
+	enum tvin_color_fmt_e viu_color_fmt;
 } vinfo_t;
 
 typedef struct reg_s {
@@ -206,5 +224,8 @@ typedef struct tvinfo_s {
     uint yres;
     const char *id;
 } tvinfo_t;
+
+extern vmode_t vmode_name_to_mode(char *name);
+extern const vinfo_t *get_invalid_vinfo(void);
 
 #endif /* VINFO_H */

@@ -21,8 +21,14 @@
 #define pr_error(fmt, args...) printk("FE: " fmt, ## args)
 
 MODULE_PARM_DESC(debug_demod, "\n\t\t Enable frontend debug information");
-static int debug_demod = 1;
+static int debug_demod = 0;
 module_param(debug_demod, int, 0644);
+
+
+MODULE_PARM_DESC(mobile_demod, "\n\t\t Enable mobile demod");
+static int mobile_demod = 1;
+module_param(mobile_demod, int, 0644);
+static int enable_mc_thresh=0;
 
 //8vsb
 static atsc_cfg_t list_8vsb[22] = {
@@ -281,7 +287,7 @@ static atsc_cfg_t list_qam256[113] = {
 	{0x0001, 0x05, 1},
 	{0x0000, 0x00, 1}};
 
-#if 0
+#if 0 
 #if (defined CONFIG_AM_SI2176)
 #include "../si2176/si2176_func.h"
 extern struct si2176_device_s *si2176_devp;
@@ -563,12 +569,12 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
     unit = 10000; // 10000 as 1 MHz, 0.1 kHz resolution.
     freq_osc = 24*unit;
 
-    if (clk_a < 1000)
+    if (clk_a < 1000) 
         freq_a = clk_a*unit;
     else
         freq_a = clk_a*(unit/1000);
 
-    if (clk_b < 1000)
+    if (clk_b < 1000) 
         freq_b = clk_b*unit;
     else
         freq_b = clk_b*(unit/1000);
@@ -585,20 +591,20 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
     pll_od_b = 1;
 	pll_n=1;
     for (pll_m=1; pll_m<512; pll_m++) {
-       // for (pll_n=1; pll_n<=5; pll_n++) {
+       // for (pll_n=1; pll_n<=5; pll_n++) { 
             freq_dco = freq_osc * pll_m / pll_n;
             if (freq_dco<750*unit || freq_dco>1550*unit) continue;
-
+            
             pll_xd_a = freq_dco / (1<<pll_od_a) / freq_a;
             pll_xd_b = freq_dco / (1<<pll_od_b) / freq_b;
-
+                
             freq_a_act = freq_dco / (1<<pll_od_a) / pll_xd_a;
             freq_b_act = freq_dco / (1<<pll_od_b) / pll_xd_b;
 
             err_tmp = (freq_a_act - freq_a)*ena + (freq_b_act - freq_b)*enb;
-
+                        
             if (err_tmp >= best_err) continue;
-
+                
             adc_pll_cntl.b.pll_m = pll_m;
             adc_pll_cntl.b.pll_n = pll_n;
             adc_pll_cntl.b.pll_od0 = pll_od_b;
@@ -607,22 +613,22 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
             adc_pll_cntl.b.pll_xd1 = pll_xd_a;
 
             adc_pll_cntl2.b.div2_ctrl = freq_dco > 1000*unit ? 1 : 0;
-
+            
             found = 1;
             best_err = err_tmp;
      //   }
     }
-
-    pll_m = adc_pll_cntl.b.pll_m;
-    pll_n = adc_pll_cntl.b.pll_n;
+    
+    pll_m = adc_pll_cntl.b.pll_m;   
+    pll_n = adc_pll_cntl.b.pll_n;   
     pll_od_b = adc_pll_cntl.b.pll_od0;
     pll_od_a = adc_pll_cntl.b.pll_od1;
     pll_xd_b = adc_pll_cntl.b.pll_xd0;
     pll_xd_a = adc_pll_cntl.b.pll_xd1;
-
+    
     div2 = adc_pll_cntl2.b.div2_ctrl;
- /*
-    *p_adc_pll_cntl  =  adc_pll_cntl.d32;
+ /*   
+    *p_adc_pll_cntl  =  adc_pll_cntl.d32; 
     *p_adc_pll_cntl2 = adc_pll_cntl2.d32;
     *p_adc_pll_cntl3 = adc_pll_cntl3.d32;
     *p_adc_pll_cntl4 = adc_pll_cntl4.d32;
@@ -631,11 +637,11 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
 //    *p_adc_pll_cntl3 = adc_pll_cntl3.d32;
 
     if (!found) {
-        pr_dbg(" ERROR can't setup %7ld kHz %7ld kHz\n",
+        pr_dbg(" ERROR can't setup %7ld kHz %7ld kHz\n", 
                   freq_b/(unit/1000), freq_a/(unit/1000));
     }
     else {
-        freq_dco = freq_osc * pll_m / pll_n;
+        freq_dco = freq_osc * pll_m / pll_n;    
         pr_dbg(" ADC PLL  M %3d   N %3d\n", pll_m, pll_n);
         pr_dbg(" ADC PLL DCO %ld kHz\n", freq_dco/(unit/1000));
 
@@ -645,32 +651,32 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
         freq_a_act = freq_dco / (1<<pll_od_a) / pll_xd_a;
         freq_b_act = freq_dco / (1<<pll_od_b) / pll_xd_b;
 
-        pr_dbg(" B %7ld kHz %7ld kHz\n",
+        pr_dbg(" B %7ld kHz %7ld kHz\n", 
                   freq_b/(unit/1000), freq_b_act/(unit/1000));
-        pr_dbg(" A %7ld kHz %7ld kHz\n",
+        pr_dbg(" A %7ld kHz %7ld kHz\n", 
                   freq_a/(unit/1000), freq_a_act/(unit/1000));
 
         if (clk_sys > 0) {
             dig_clk_cfg.b.demod_clk_en = 1;
-            dig_clk_cfg.b.demod_clk_sel = 3;
-            if (clk_sys < 1000)
+            dig_clk_cfg.b.demod_clk_sel = 3;        
+            if (clk_sys < 1000) 
                 freq_sys = clk_sys*unit;
             else
                 freq_sys = clk_sys*(unit/1000);
 
             dig_clk_cfg.b.demod_clk_div = freq_dco/(1+div2)/freq_sys - 1;
             freq_sys_act = freq_dco/(1+div2)/(dig_clk_cfg.b.demod_clk_div + 1);
-            pr_dbg(" SYS %7ld kHz div %d+1  %7ld kHz\n",
+            pr_dbg(" SYS %7ld kHz div %d+1  %7ld kHz\n", 
                    freq_sys/(unit/1000), dig_clk_cfg.b.demod_clk_div,
                    freq_sys_act/(unit/1000));
-
+            
         }
         else {
             dig_clk_cfg.b.demod_clk_en = 0;
         }
 
      //   *p_demod_dig_clk = dig_clk_cfg.d32;
-	demod_set_cbus_reg(ADC_RESET_VALUE,ADC_REG3);  //adc reset
+     	demod_set_cbus_reg(ADC_RESET_VALUE,ADC_REG3);  //adc reset
 		demod_set_cbus_reg(adc_pll_cntl.d32, ADC_REG1);
 	//	demod_set_cbus_reg(adc_pll_cntl2.d32, ADC_REG2);
 	//	demod_set_cbus_reg(adc_pll_cntl3.d32, ADC_REG3);
@@ -678,7 +684,7 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
 	//	demod_set_cbus_reg(dig_clk_cfg.d32, ADC_REG6);
 		demod_set_cbus_reg(dig_clk_cfg.d32, ADC_REG6);
 		demod_set_cbus_reg(ADC_REG3_VALUE,ADC_REG3);
-
+		
     }
 
 	//debug
@@ -695,8 +701,8 @@ void adc_dpll_setup(int clk_a, int clk_b, int clk_sys)
 	pr_dbg("[demod][%x]%lx\n",DEMOD_REG1,demod_read_demod_reg(DEMOD_REG1));
 	pr_dbg("[demod][%x]%lx\n",DEMOD_REG2,demod_read_demod_reg(DEMOD_REG2));
 	pr_dbg("[demod][%x]%lx\n",DEMOD_REG3,demod_read_demod_reg(DEMOD_REG3));
-
-
+		
+	
 }
 
 void demod_set_adc_core_clk(int adc_clk, int sys_clk,int dvb_mode)
@@ -756,7 +762,7 @@ void demod_power_switch(int pwr_cntl)
 	j=0;
 	pr_dbg("P_AO_RTI_GEN_PWR_SLEEP0 is %x,HHI_DEMOD_MEM_PD_REG is %x,P_RESET0_LEVEL is %x,P_AO_RTI_GEN_PWR_ISO0 is %x\n",P_AO_RTI_GEN_PWR_SLEEP0,P_HHI_DEMOD_MEM_PD_REG,P_RESET0_LEVEL,P_AO_RTI_GEN_PWR_ISO0);
 	 if(pwr_cntl == PWR_ON) {
-		pr_dbg("[PWR]: Power on demod_comp\n");
+	 	pr_dbg("[PWR]: Power on demod_comp\n");
 	// Powerup demod_comb
 	Wr(P_AO_RTI_GEN_PWR_SLEEP0, Rd(P_AO_RTI_GEN_PWR_SLEEP0) & (~(0x1<<10))); // [10] power on
 
@@ -770,22 +776,22 @@ void demod_power_switch(int pwr_cntl)
 
 
 	// reset
-	Wr( P_RESET0_LEVEL, Rd(P_RESET0_LEVEL) & (~(0x1<<8)) );
+	Wr( P_RESET0_LEVEL, Rd(P_RESET0_LEVEL) & (~(0x1<<8)) );	
 
-
+	
 //	*P_RESET0_LEVEL &= ~(0x1<<8);
 	msleep(5);
 
 	// remove isolation
-	Wr( P_AO_RTI_GEN_PWR_ISO0, Rd(P_AO_RTI_GEN_PWR_ISO0) & (~(0x3<<12)) );
+	Wr( P_AO_RTI_GEN_PWR_ISO0, Rd(P_AO_RTI_GEN_PWR_ISO0) & (~(0x3<<12)) );	
 
 	// pull up reset
-	Wr( P_RESET0_LEVEL, Rd(P_RESET0_LEVEL) | (0x1<<8) );
+	Wr( P_RESET0_LEVEL, Rd(P_RESET0_LEVEL) | (0x1<<8) );	
 //	*P_RESET0_LEVEL |= (0x1<<8);
 
 } else {
 		pr_dbg("[PWR]: Power off demod_comp\n");
-
+	    
 		// add isolation
         Wr( P_AO_RTI_GEN_PWR_ISO0, Rd(P_AO_RTI_GEN_PWR_ISO0) | (0x3<<12) );
 
@@ -806,12 +812,12 @@ static void clocks_set_sys_defaults(unsigned char dvb_mode)
 {
 	demod_cfg0_t cfg0;
 	demod_cfg2_t cfg2;
-
-
+	
+	
 #ifdef G9_TV
 		demod_power_switch(PWR_ON);
 #endif
-
+	
 	#ifndef G9_TV
 	demod_set_cbus_reg(ADC_REG1_VALUE,ADC_REG1);
 	demod_set_cbus_reg(ADC_REG2_VALUE,ADC_REG2);
@@ -852,7 +858,7 @@ static void clocks_set_sys_defaults(unsigned char dvb_mode)
 	cfg2.b.biasgen_en = 1;
     cfg2.b.en_adc = 1;
 	demod_set_demod_reg(cfg2.d32,DEMOD_REG3);
-
+	
 	pr_dbg("0xc8020c00 is %lx,dvb_mode is %d\n",demod_read_demod_reg(0xc00),dvb_mode);
 
 }
@@ -1005,7 +1011,7 @@ int atsc_set_ch(struct aml_demod_sta *demod_sta,
 	demod_sta->ch_freq	 = ch_freq;
 	demod_sta->dvb_mode  = demod_mode;
 	demod_sta->ch_bw	 = (8-bw)*1000;
-	atsc_initial(demod_sta);
+  	atsc_initial(demod_sta);
 	pr_dbg("ATSC mode\n");
 	return ret;
 }
@@ -1119,18 +1125,33 @@ void dtmb_all_reset(void)
 {
 	dtmb_write_reg(0x010, 0x52);
 	dtmb_write_reg(0x047, 0x33202);  //20 bits, 1 - fpga. 0 - m6tvd
-	dtmb_write_reg(0xd, 0x141a0320); // increase interleaver0 waiting time.
-    dtmb_write_reg(0xc, 0x41444400); // shorten che waiting time.
-    dtmb_write_reg(0x18,0x000a1316); // shorten mobile detect time.
-    dtmb_write_reg(0x15,0x0199999A); // shift -5M.
+	dtmb_write_reg(0xd, 0x141a0400); // increase interleaver0 waiting time. 20150921 modified by rsj  //0x141a0320
+	dtmb_write_reg(0xc, 0x41444400); // shorten che waiting time.
+	dtmb_write_reg(0x18,0x000a1316); // shorten mobile detect time.
+	dtmb_write_reg(0x15,0x0199999A); // shift -5M.
 	dtmb_write_reg(0x2f,0x13064263); // speed up src
-
+	dtmb_write_reg(0x6b,0x7810c0f);
+	dtmb_write_reg(0x46,0x1000000);
+	dtmb_write_reg(0x2e,0x131a747d);
+	dtmb_write_reg(0x11,0x10127); //improve agc wave
+	dtmb_write_reg(0x4f,0x380205df); //722 snr down 20151019
+	if (enable_mc_thresh == 1) {
+		dtmb_write_reg(0x45,0xa83080ff); //INCREASE MC THRESHOLD time 20151019  0xac3080ff
+	}
 }
 
 void dtmb_initial(struct aml_demod_sta *demod_sta)
 {
 //	dtmb_write_reg(0x049, memstart);		//only for init
+	if (demod_sta->ch_freq == 482000) {
+		enable_mc_thresh=1;
+		pr_dbg("482 case in\n");
+	} else {
+		enable_mc_thresh=0;
+	}
+	dtmb_register_reset();
 	dtmb_all_reset();
+
 #if 0
 	int i;
 	  for (i=0; list_dtmb_v1[i].adr != 0; i++) {
@@ -1181,17 +1202,16 @@ void dtmb_mobile_mode_set(int mode)
 		  dtmb_write_reg(0x46, (dtmb_read_reg(0x46) & 0xfffffff9) + (1 << 1)); // set mobile mode
 		  #ifdef dtmb_mobile_mode
 		  dtmb_write_reg(0x50, 0x1241);	//180m mobile mode
-		  dtmb_write_reg(0x4f, 0x303f05df);// set belta byhand
+		//  dtmb_write_reg(0x4f, 0x303f05df);// set belta byhand
+		  dtmb_write_reg(0x4f, 0x383f05df);// set belta byhand for skyworth
 		  #endif
 	  }else if(mode==disable_mobile){
 		  dtmb_write_reg(0x46, (dtmb_read_reg(0x46) & 0xfffffff9)); // set static mode
 		  #ifdef dtmb_mobile_mode
 		  dtmb_write_reg(0x50, 0x1120); //180m mobile mode
-		  dtmb_write_reg(0x4f, 0x1f0205df);// set belta byhand
+		  dtmb_write_reg(0x4f, 0x380205df);// set belta byhand 722 snr down
 		  #endif
 	}
-
-
 }
 
 void dtmb_time_eq_mode_set(int mode)
@@ -1238,6 +1258,8 @@ static int mobile_times = 0;
 static int time_eq_cnt = 0;
 static int time_eq_lost_cnt = 0;
 int dtmb_thread = 0;
+static int time_cnt_nr=0;
+
 int dtmb_read_snr(struct dvb_frontend *fe){
 	int tmp,che_snr,snr,snr_avg,fec_lock;
 	int fsm_state,fec_ldpc_it_avg,local_state,fbe_in_num,SC_mode,time_eq;
@@ -1291,7 +1313,8 @@ int dtmb_read_snr(struct dvb_frontend *fe){
 			time_eq = (dtmb_read_reg(0x46) >> 16) & 0x1;
 			fec_ldpc_it_avg = dtmb_read_reg(0xdd) & 0xffff;
 			mobi_det_power = (dtmb_read_reg(0xf1)>>8) & 0x7ffff;
-			if ((mobi_det_power > 10) && (time_eq == 0)) {
+		if (mobile_demod) {
+			if ((mobi_det_power > MOBILE_DET_POWER) && (time_eq == 0)) {  //modify for r840 tuner(agc problem) 20150721
 				mobile_times = 8;//8;
 				dtmb_mobile_mode_set(enable_mobile);
 				}
@@ -1302,6 +1325,7 @@ int dtmb_read_snr(struct dvb_frontend *fe){
 					mobile_times = 0;
 					}
 				}
+		}
 			if ((fbe_in_num > 360) && (pm_change == 0)) {// two path mode, test distance.
 				dtmb_write_reg(0x42, 0x03030202);
 				dtmb_write_reg(0x5c, 0x00000000);
@@ -1330,7 +1354,7 @@ int dtmb_read_snr(struct dvb_frontend *fe){
 					pr_dbg("*************** local_state = %d ************ \n",local_state);
 					}
 				else {
-					if (fbe_in_num < 30 || time_eq_lost_cnt > 5) { // MC mode or not two path mode, restore normal mode
+					if (fbe_in_num < 30 || time_eq_lost_cnt > 2) { // MC mode or not two path mode, restore normal mode
 						if (time_eq_cnt <= 0) {
 							time_eq_lost_cnt = 0;
 							dtmb_time_eq_mode_set(CLOSE_TIME_EQ);
@@ -1351,10 +1375,46 @@ int dtmb_read_snr(struct dvb_frontend *fe){
 			else {
 				local_state = AMLOGIC_DTMB_STEP7;
 				front_cci0_count=(dtmb_read_reg(0xe9) >> 22) & 0xff;
+					constell = (dtmb_read_reg(0xe5) >> 16) & 0x3;
 				pr_dbg("*************** local_state = %d ************ ,front_cci0_count is %d\n", local_state,front_cci0_count);
-				constell = (dtmb_read_reg(0xe5) >> 16) & 0x3;
-				if ((SC_mode == 0) && (fec_ldpc_it_avg > 640) && (constell > 0)/*2.5*256*/ && ((fbe_in_num > 30) || (front_cci0_count > 0))) { // switch to time_eq mode
-					time_eq_cnt = 5;
+				//for skyworth mxl tuner (mode 7 has bch add)
+				if ((constell == 3) && (SC_mode == 1)) {
+						pr_dbg("[debug]64qam MC mode set 0x42 0x43 0x4f\n");
+						dtmb_write_reg(0x42,0x11111010);
+							dtmb_write_reg(0x43,0x5e4a0a14);
+						dtmb_write_reg(0x4f,0x380205df);
+				}
+				//
+				//for skyworth mxl tuner (mode 6 has bch add)
+				if (fec_lock == 1) {
+					fec_bch_add = dtmb_read_reg(0xdf);
+					pr_dbg("[debug]fec lock,fec_bch_add is %d\n",fec_bch_add);
+					msleep(100);
+					if (((dtmb_read_reg(0xdf))-fec_bch_add) >= 50) {
+						printk("[debug]fec lock,but bch add ,need reset,wait not to reset\n");
+					//	dtmb_reset();
+					//	dtmb_all_reset();
+					}
+				}
+				//for 4qam-nr 20150921
+				if ((time_cnt_nr >= 1) && ((dtmb_read_reg(0xe5) >> 21) & 0x1) && (((dtmb_read_reg(0x0e3) >> 12) & 0x1) != 1)) {
+					dtmb_write_reg(0x46,0x1002000);
+					dtmb_write_reg(0xd, 0x141a0500); // increase interleaver0 waiting time for 4qam-nr.
+					pr_dbg("freeze spectrum for 4qam-nr \n");
+					time_cnt_nr=0;
+				}
+				if ((dtmb_read_reg(0xe5) >> 21) & 0x1) {
+					time_cnt_nr++;
+				}
+				//
+		            if ((front_cci0_count>0) && (SC_mode == 0) && (fec_ldpc_it_avg > 640) && (constell > 0)) {
+									pr_dbg("check cci wait 500ms\n");
+									msleep(500);
+									front_cci0_count=(dtmb_read_reg(0xe9) >> 22) & 0xff;
+									pr_dbg("front_cci0_count is %d\n",front_cci0_count);
+					}
+				if ((SC_mode == 0) && (fec_ldpc_it_avg > 640) && (constell > 0) && (constell < 3)/*2.5*256*/ && ((fbe_in_num > 30) || (front_cci0_count > 0))) { // switch to time_eq mode
+		                time_eq_cnt = 2;
 					time_eq_lost_cnt = 0;
 					dtmb_set_ddc_phase();
 					dtmb_time_eq_mode_set(OPEN_TIME_EQ);
@@ -1365,19 +1425,24 @@ int dtmb_read_snr(struct dvb_frontend *fe){
 					msleep(300);
 					}
 				}
-			}
-		else if (time_cnt >= 10) // don't sync, all reset
+	           }else if(time_cnt >=10) // don't sync, all reset
 		{
 			local_state = AMLOGIC_DTMB_STEP9;
 			pr_dbg("*************** local_state = %d ************ \n", local_state);
+			#if (defined CONFIG_AM_R840)
+	//		dtmb_register_reset();
+		    #else
 			dtmb_register_reset();
+			#endif
 			dtmb_all_reset();
-			if ((dtmb_read_reg(0xd7) == 1) && (dtmb_read_reg(0xd6) == 0) && (dtmb_read_reg(0xd5) == 0) && (dtmb_read_reg(0xd4) == 0))//tuner error,need reset
-			{
-				aml_fe_analog_set_frontend(fe);
-			}
+	//				if((dtmb_read_reg(0xd7)==1)&&(dtmb_read_reg(0xd6)==0)&&(dtmb_read_reg(0xd5)==0)&&(dtmb_read_reg(0xd4)==0))//tuner error,need reset
+	//				{
+	//					aml_fe_analog_set_frontend(fe);
+	//				}
+			time_eq_cnt = 0;
 			time_eq_lost_cnt = 0;
 			mobile_times= 0;
+			time_cnt_nr = 0;
 			pm_change = 0;
 			}
 		}
@@ -1421,7 +1486,7 @@ int dtmb_set_ch(struct aml_demod_sta *demod_sta,
 	demod_sta->ch_freq	 = ch_freq;
 	demod_sta->dvb_mode  = demod_mode;
 	demod_sta->ch_bw	 = (8-bw)*1000;
-	dtmb_initial(demod_sta);
+  	dtmb_initial(demod_sta);
 	pr_dbg("DTMB mode\n");
 	return ret;
 }
@@ -1446,7 +1511,7 @@ int dtmb_set_ch(struct aml_demod_sta *demod_sta,
     if (mode > 4) {
 	printk("Error: Invalid QAM mode option %d\n", mode);
 	mode = 2;
-	ret = -1;
+       	ret = -1;
     }
 
     if (symb_rate<1000 || symb_rate>7000) {
@@ -1516,10 +1581,10 @@ int dvbt_set_ch(struct aml_demod_sta *demod_sta,
     }
 
     if (demod_mode<0||demod_mode>4) {
-	//printk("Error: Invalid demod mode option %d\n", demod_mode);
-	//printk("Note: 0 is QAM, 1 is DVBT , 2 is ISDBT, 3 is DTMB, 4 is ATSC\n");
-	demod_mode = 1;
-	ret = -1;
+    	//printk("Error: Invalid demod mode option %d\n", demod_mode);
+    	//printk("Note: 0 is QAM, 1 is DVBT , 2 is ISDBT, 3 is DTMB, 4 is ATSC\n");
+    	demod_mode = 1;
+    	ret = -1;
     }
 
     //demod_sta->dvb_mode  = 1;
@@ -1548,12 +1613,12 @@ int dvbt_set_ch(struct aml_demod_sta *demod_sta,
 		demod_mode=2;
 	}
     ofdm_initial(
-		  bw            ,// 00:8M 01:7M 10:6M 11:5M
-		sr            ,// 00:45M 01:20.8333M 10:20.7M 11:28.57  100:24m
-		ifreq         ,// 000:36.13M 001:-5.5M 010:4.57M 011:4M 100:5M
-		demod_mode-1    ,// 00:DVBT,01:ISDBT
-		1        // 0: Unsigned, 1:TC
-	) ;
+  		  bw            ,// 00:8M 01:7M 10:6M 11:5M
+     		sr            ,// 00:45M 01:20.8333M 10:20.7M 11:28.57  100:24m
+     		ifreq         ,// 000:36.13M 001:-5.5M 010:4.57M 011:4M 100:5M
+     		demod_mode-1    ,// 00:DVBT,01:ISDBT
+     		1        // 0: Unsigned, 1:TC
+    	) ;
     pr_dbg("DVBT/ISDBT mode\n");
 
 
@@ -1591,7 +1656,7 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
     demod_set_adc_core_clk(clk_adc, clk_dem,dvb_mode);
 	//init for dtmb
 	if(dvb_mode==M6_Dtmb){
-		dtmb_write_reg(0x049, memstart);
+		dtmb_write_reg(0x049, memstart);	
 		pr_dbg("[dtmb]mem_buf is 0x%x\n",memstart);
 	}
 	//
@@ -1621,7 +1686,7 @@ void demod_set_reg(struct aml_demod_reg *demod_reg)
 		demod_reg->addr=demod_reg->addr+DEMOD_BASE;
 	//	printk("DEMOD_BASE    	0xf1100000+addr*4 \n ISDBT_BASE 	  	0xf1100000+addr*4\n QAM_BASE	  	0xf1100400+addr\n DEMOD_CFG_BASE	0xf1100c00+addr\n");
 	}else if(demod_reg->mode==6){
-
+	
 	//	demod_reg->addr=demod_reg->addr*4+DEMOD_CFG_BASE;
 	}
 	else if(demod_reg->mode==11){
@@ -1631,10 +1696,10 @@ void demod_set_reg(struct aml_demod_reg *demod_reg)
 	}
 	else if(demod_reg->mode==10){
 		demod_reg->addr=(u32_t)phys_to_virt(demod_reg->addr);
-
+	
 		}
 
-
+	
 	if(demod_reg->mode==3){
 		atsc_write_reg(demod_reg->addr, demod_reg->val);
 	//	apb_write_reg(demod_reg->addr, (demod_reg->val&0xffff)<<8 | (demod_reg->val&0xff));
@@ -1642,7 +1707,7 @@ void demod_set_reg(struct aml_demod_reg *demod_reg)
 		demod_set_cbus_reg(demod_reg->val,demod_reg->addr);
 	}
 	else
-		apb_write_reg(demod_reg->addr, demod_reg->val);
+   		apb_write_reg(demod_reg->addr, demod_reg->val);
 }
 
 
@@ -1682,7 +1747,7 @@ void demod_get_reg(struct aml_demod_reg *demod_reg)
 		demod_reg->val = demod_read_cbus_reg(demod_reg->addr);
 	}
 	else
-		demod_reg->val = apb_read_reg(demod_reg->addr);
+   		demod_reg->val = apb_read_reg(demod_reg->addr);
 
 }
 
@@ -2247,7 +2312,7 @@ void ofdm_initial(
         apb_write_reg(DVBT_BASE+(0x02<<2), (1<<20)|0x1001a);//{0x000,2'h1,20'h1_001a});    // For ISDBT , bandwith should be 1,
 
     apb_write_reg(DVBT_BASE+(0x45<<2), 0x00000000);  // SRC SFO_ADJ_CTRL
-	  apb_write_reg(DVBT_BASE+(0x46<<2), 0x02004000);  // SRC SFO_ADJ_CTRL
+ 	  apb_write_reg(DVBT_BASE+(0x46<<2), 0x02004000);  // SRC SFO_ADJ_CTRL
     apb_write_reg(DVBT_BASE+(0x48<<2), 0x000c0287);  // DAGC_CTRL1
     apb_write_reg(DVBT_BASE+(0x49<<2), 0x00000005);  // DAGC_CTRL2
     apb_write_reg(DVBT_BASE+(0x4c<<2), 0x00000bbf);  // CCI_RP
@@ -2263,13 +2328,13 @@ void ofdm_initial(
     apb_write_reg(DVBT_BASE+(0x56<<2), 0x00000000);  // CCI_NOTCH2_B1
     apb_write_reg(DVBT_BASE+(0x58<<2), 0x00000885);  // MODE_DETECT_CTRL // 582
     if (mode == 0) //DVBT
-	apb_write_reg(DVBT_BASE+(0x5c<<2), 0x00001011);  //
+    	apb_write_reg(DVBT_BASE+(0x5c<<2), 0x00001011);  //
     else
-	apb_write_reg(DVBT_BASE+(0x5c<<2), 0x00000753);  // ICFO_EST_CTRL ISDBT ICFO thres = 2
+    	apb_write_reg(DVBT_BASE+(0x5c<<2), 0x00000753);  // ICFO_EST_CTRL ISDBT ICFO thres = 2
 
     apb_write_reg(DVBT_BASE+(0x5f<<2), 0x0ffffe10);  // TPS_FCFO_CTRL
     apb_write_reg(DVBT_BASE+(0x61<<2), 0x0000006c);  // FWDT ctrl
-	apb_write_reg(DVBT_BASE+(0x68<<2), 0x128c3929);
+ 	apb_write_reg(DVBT_BASE+(0x68<<2), 0x128c3929);
     apb_write_reg(DVBT_BASE+(0x69<<2), 0x91017f2d);  // 0x1a8
     apb_write_reg(DVBT_BASE+(0x6b<<2), 0x00442211);  // 0x1a8
     apb_write_reg(DVBT_BASE+(0x6c<<2), 0x01fc400a);  // 0x
@@ -2540,22 +2605,22 @@ int find_2(int data, int *table, int len)
 	  //printf("data is %d\n",data);
 	  while ((len > 1)&&(cnt < 10))
 	  {
-		 cnt ++ ;
-		 index = (len/2);
-		 if (data > table[start + index])
-		 	{
-		 	  start = start + index;
-		 	  len   = len - index - 1;
-		 	}
-		 if (data < table[start + index])
-		 	{
-		 	  len   = index + 1;
-		 	}
-		 else if (data == table[start+index])
-		 	{
-		 		start = start + index;
-		 	  break;
-		 	}
+	  	 cnt ++ ;
+	  	 index = (len/2);
+	  	 if (data > table[start + index])
+	  	 	{
+	  	 	  start = start + index;
+	  	 	  len   = len - index - 1;
+	  	 	}
+	  	 if (data < table[start + index])
+	  	 	{
+	  	 	  len   = index + 1;
+	  	 	}
+	  	 else if (data == table[start+index])
+	  	 	{
+	  	 		start = start + index;
+	  	 	  break;
+	  	 	}
 	  }
 	  return start;
 }
@@ -2839,17 +2904,17 @@ int check_atsc_fsm_status()
 	int atsc_snr=0;
      int SNR_dB;
      int SNR_table[56] = {0 ,7   ,9   ,11  ,14  ,17  ,22  ,27  ,34  ,43  ,54  ,
-	                  68  ,86  ,108 ,136 ,171 ,215 ,271 ,341 ,429 ,540 ,
-	                  566 ,592 ,620 ,649 ,680 ,712 ,746 ,781 ,818 ,856 ,
-	                  896 ,939 ,983 ,1029,1078,1182,1237,1237,1296,1357,
-	                  1708,2150,2707,3408,4291,5402,6800,8561,10778,13568,
-	                  16312,17081,18081,19081,65536};
+     	                  68  ,86  ,108 ,136 ,171 ,215 ,271 ,341 ,429 ,540 ,
+     	                  566 ,592 ,620 ,649 ,680 ,712 ,746 ,781 ,818 ,856 ,
+     	                  896 ,939 ,983 ,1029,1078,1182,1237,1237,1296,1357,
+     	                  1708,2150,2707,3408,4291,5402,6800,8561,10778,13568,
+     	                  16312,17081,18081,19081,65536};
      int SNR_dB_table[56] = {360,350,340,330,320,310,300,290,280,270,260,
-	                     250,240,230,220,210,200,190,180,170,160,
-	                     158,156,154,152,150,148,146,144,142,140,
-	                     138,136,134,132,130,128,126,124,122,120,
-	                     110,100,90 ,80 ,70 ,60 ,50 ,40 ,30 ,20 ,
-	                     12 ,10 ,4  ,2  ,0  };
+     	                     250,240,230,220,210,200,190,180,170,160,
+     	                     158,156,154,152,150,148,146,144,142,140,
+     	                     138,136,134,132,130,128,126,124,122,120,
+     	                     110,100,90 ,80 ,70 ,60 ,50 ,40 ,30 ,20 ,
+     	                     12 ,10 ,4  ,2  ,0  };
 
      int tmp[3];
      int cr;

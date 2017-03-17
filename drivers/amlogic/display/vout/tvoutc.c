@@ -51,7 +51,7 @@ static const unsigned int  signal_set[SIGNAL_SET_MAX][3]=
 	{
 		VIDEO_SIGNAL_TYPE_CVBS,            	//cvbs&svideo
 		VIDEO_SIGNAL_TYPE_SVIDEO_LUMA,
-	VIDEO_SIGNAL_TYPE_SVIDEO_CHROMA,
+    	VIDEO_SIGNAL_TYPE_SVIDEO_CHROMA,
 	},
 	{	VIDEO_SIGNAL_TYPE_PROGRESSIVE_Y,     //progressive.
 		VIDEO_SIGNAL_TYPE_PROGRESSIVE_PB,
@@ -66,12 +66,12 @@ static const unsigned int  signal_set[SIGNAL_SET_MAX][3]=
 };
 static  const  char*   signal_table[]={
 	"INTERLACE_Y ", /**< Interlace Y signal */
-	"CVBS",            /**< CVBS signal */
-	"SVIDEO_LUMA",     /**< S-Video luma signal */
-	"SVIDEO_CHROMA",   /**< S-Video chroma signal */
-	"INTERLACE_PB",    /**< Interlace Pb signal */
-	"INTERLACE_PR",    /**< Interlace Pr signal */
-	"INTERLACE_R",     /**< Interlace R signal */
+    	"CVBS",            /**< CVBS signal */
+    	"SVIDEO_LUMA",     /**< S-Video luma signal */
+    	"SVIDEO_CHROMA",   /**< S-Video chroma signal */
+    	"INTERLACE_PB",    /**< Interlace Pb signal */
+    	"INTERLACE_PR",    /**< Interlace Pr signal */
+    	"INTERLACE_R",     /**< Interlace R signal */
          "INTERLACE_G",     /**< Interlace G signal */
          "INTERLACE_B",     /**< Interlace B signal */
          "PROGRESSIVE_Y",   /**< Progressive Y signal */
@@ -252,16 +252,6 @@ static void set_tvmode_misc(tvmode_t mode)
     set_vmode_clk(mode);
 }
 
-static const reg_t * tvregs_setting_mode(tvmode_t mode)
-{
-    int i = 0;
-    for(i = 0; i < ARRAY_SIZE(tvregsTab); i++) {
-        if(mode == tvregsTab[i].tvmode)
-            return tvregsTab[i].reg_setting;
-    }
-    return NULL;
-}
-
 /*
  * uboot_display_already() uses to judge whether display has already
  * be set in uboot.
@@ -270,15 +260,21 @@ static const reg_t * tvregs_setting_mode(tvmode_t mode)
  */
 static int uboot_display_already(tvmode_t mode)
 {
-    const  reg_t *s = tvregs_setting_mode(mode);
+    tvmode_t source = vmode_to_tvmode(get_resolution_vmode());
+    if(source == mode)
+        return 1;
+    else
+        return 0;
+    /*
+    const  reg_t *s = tvregsTab[mode];
     unsigned int pxcnt_tab = 0;
     unsigned int lncnt_tab = 0;
 
     while(s->reg != MREG_END_MARKER) {
-        if(s->reg == P_ENCP_VIDEO_MAX_PXCNT || s->reg == ENCP_VIDEO_MAX_PXCNT) {
+        if(s->reg == P_ENCP_VIDEO_MAX_PXCNT) {
             pxcnt_tab = s->val;
         }
-        if(s->reg == P_ENCP_VIDEO_MAX_LNCNT || s->reg == ENCP_VIDEO_MAX_LNCNT) {
+        if(s->reg == P_ENCP_VIDEO_MAX_LNCNT) {
             lncnt_tab = s->val;
         }
         s++;
@@ -290,6 +286,7 @@ static int uboot_display_already(tvmode_t mode)
     } else {
         return 0;
     }
+    */
 }
 
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8)
@@ -297,7 +294,7 @@ static unsigned int vdac_cfg_valid = 0, vdac_cfg_value = 0;
 static unsigned int cvbs_get_trimming_version(unsigned int flag)
 {
 	unsigned int version = 0xff;
-
+	
 	if( (flag&0xf0) == 0xa0 )
 		version = 5;
 	else if( (flag&0xf0) == 0x40 )
@@ -403,7 +400,7 @@ static void cvbs_performance_enhancement(tvmode_t mode)
 
 	while (MREG_END_MARKER != s->reg)
 	{
-	setreg(s++);
+    	setreg(s++);
 	}
 	return ;
 }
@@ -411,6 +408,16 @@ static void cvbs_performance_enhancement(tvmode_t mode)
 #endif// end of CVBS_PERFORMANCE_COMPATIBLITY_SUPPORT
 
 static DEFINE_MUTEX(setmode_mutex);
+
+static const reg_t * tvregs_setting_mode(tvmode_t mode)
+{
+    int i = 0;
+    for(i = 0; i < ARRAY_SIZE(tvregsTab); i++) {
+        if(mode == tvregsTab[i].tvmode)
+            return tvregsTab[i].reg_setting;
+    }
+    return NULL;
+}
 
 const static tvinfo_t * tvinfo_mode(tvmode_t mode)
 {
@@ -497,7 +504,16 @@ int tvoutc_setmode(tvmode_t mode)
 #endif
 	}
 
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB)
+// for g9tv tv project, don't close vdac for they may have atv source passthrough
+// to vdac to output cvbs directly.
+// for g9tv other projects, it need not to close vdac every times for hdmi resolutions.
+    if ((mode == TVMODE_480CVBS) || (mode == TVMODE_576CVBS))
+#endif
+{
     cvbs_cntl_output(0);
+}
+
 #endif
 
     while (MREG_END_MARKER != s->reg)
@@ -527,7 +543,7 @@ printk("%s[%d] mode is %d\n", __func__, __LINE__, mode);
     printk("%s[%d]\n", __func__, __LINE__);
     enable_vsync_interrupt();
 #endif
-#ifdef CONFIG_AM_TV_OUTPUT2
+#ifdef CONFIG_AMLOGIC_VOUT2
 	switch(mode)
 	{
 		case TVMODE_480I:
@@ -578,12 +594,20 @@ printk("%s[%d] mode is %d\n", __func__, __LINE__, mode);
         case TVMODE_4K2K_SMPTE:
         case TVMODE_4K2K_FAKE_5G:
         case TVMODE_4K2K_60HZ:
-		case TVMODE_VGA:
-		case TVMODE_SVGA:
-		case TVMODE_XGA:
-		case TVMODE_SXGA:
-		case TVMODE_WSXGA:
-		case TVMODE_FHDVGA:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+        case TVMODE_4K2K_59HZ:
+#endif
+        case TVMODE_4K2K_60HZ_Y420:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+        case TVMODE_4K2K_59HZ_Y420:
+#endif
+        case TVMODE_4K2K_50HZ:
+        case TVMODE_VGA:
+        case TVMODE_SVGA:
+        case TVMODE_XGA:
+        case TVMODE_SXGA:
+        case TVMODE_WSXGA:
+        case TVMODE_FHDVGA:
         default:
             aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, 2, 0, 2); //reg0x271a, select ENCP to VIU1
             aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, 2, 4, 4); //reg0x271a, Select encP clock to VDIN
@@ -641,3 +665,4 @@ printk(" clk_util_clk_msr 29 = %d\n", clk_util_clk_msr(29));
     mutex_unlock(&setmode_mutex);
     return 0;
 }
+

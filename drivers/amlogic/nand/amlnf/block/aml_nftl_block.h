@@ -1,16 +1,13 @@
 #ifndef __AML_NFTL_BLOCK_H
 #define __AML_NFTL_BLOCK_H
 
-
-
-
 #include "aml_nftl_cfg.h"
 #include <linux/device.h>
 //#include <linux/mtd/blktrans.h>
 #include "../ntd/aml_ntd.h"
 #include "../include/amlnf_dev.h"
 
-
+#define CFG_M2M_TRANSFER_TBL		(1)
 
 #pragma pack(1)
 
@@ -40,7 +37,8 @@ struct aml_nftl_blk;
 
 
 struct aml_nftl_dev{
-    uint64_t                size;
+	struct device dev;
+	uint64_t                size;
 	struct ntd_info*        ntd;
 	struct aml_nftl_part_t* aml_nftl_part;
 	struct mutex*           aml_nftl_lock;
@@ -49,17 +47,24 @@ struct aml_nftl_dev{
 	struct notifier_block   nb;
 	struct class            debug;
 	struct _nftl_cfg        nftl_cfg;
-	int 				  sync_flag;
-    int                   init_flag;
-    int                   reboot_flag;
+	int	sync_flag;
+	int	init_flag;
+	int	reboot_flag;
+	int	thread_stop_flag;
+	int fastboot_support;
 	uint32 (*read_data)(struct aml_nftl_dev *nftl_dev, unsigned long block, unsigned nblk, unsigned char *buf);
 	uint32 (*write_data)(struct aml_nftl_dev *nftl_dev, unsigned long block, unsigned nblk, unsigned char *buf);
-    uint32 (*discard_data)(struct aml_nftl_dev *nftl_dev, unsigned long block, unsigned nblk);
+	uint32 (*discard_data)(struct aml_nftl_dev *nftl_dev, unsigned long block, unsigned nblk);
 	uint32 (*flush_write_cache)(struct aml_nftl_dev *nftl_dev);
-    uint32 (*flush_discard_cache)(struct aml_nftl_dev *nftl_dev);
-    uint32 (*write_pair_page)(struct aml_nftl_dev *nftl_dev);
-    uint32 (*check_mapping)(struct aml_nftl_dev *nftl_dev,uint64_t offset, uint64_t size);
-    uint32 (*discard_partition)(struct aml_nftl_dev *nftl_dev,uint64_t offset, uint64_t size);
+	uint32 (*flush_discard_cache)(struct aml_nftl_dev *nftl_dev);
+	uint32 (*invalid_read_cache)(struct aml_nftl_dev *nftl_dev);	//fixme, yyh 0311
+	uint32 (*write_pair_page)(struct aml_nftl_dev *nftl_dev);
+	int (*get_current_part_no)(struct aml_nftl_dev *nftl_dev);
+	uint32 (*check_mapping)(struct aml_nftl_dev *nftl_dev,uint64_t offset, uint64_t size);
+	uint32 (*discard_partition)(struct aml_nftl_dev *nftl_dev,uint64_t offset, uint64_t size);
+	//TODO: rebuild tables.
+	uint32 (*rebuild_tbls)(struct aml_nftl_dev *nftl_dev);
+	uint32  (*compose_tbls)(struct aml_nftl_dev *nftl_dev);
 };
 
 struct aml_nftl_blk{
@@ -75,6 +80,7 @@ struct aml_nftl_blk{
 	struct timespec      	ts_write_start;
 	spinlock_t 				thread_lock;
 	struct mutex           *lock;
+	struct list_head		list;
 
 	uint32 (*read_data)(struct aml_nftl_blk *nftl_blk, unsigned long block, unsigned nblk, unsigned char *buf);
 	uint32 (*write_data)(struct aml_nftl_blk *nftl_blk, unsigned long block, unsigned nblk, unsigned char *buf);
@@ -83,5 +89,10 @@ struct aml_nftl_blk{
 };
 
 #pragma pack()
+
+static inline struct aml_nftl_dev *dev_to_nftl_dev(struct device *dev)
+{
+	return dev ? dev_get_drvdata(dev) : NULL;
+}
 
 #endif

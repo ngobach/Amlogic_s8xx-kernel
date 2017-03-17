@@ -33,7 +33,7 @@
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>
-
+#include <linux/reboot.h>
 #include <linux/amlogic/osd/osd_dev.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
 
@@ -64,6 +64,9 @@ const vinfo_t * hdmi_get_current_vinfo(void);
 extern void hdmitx_edid_ram_buffer_clear(hdmitx_dev_t*);
 
 struct hdmi_config_platform_data *hdmi_pdata;
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+static int suspend_flag=0;
+#endif
 
 static hdmitx_dev_t hdmitx_device;
 static struct switch_dev sdev = {      // android ics switch device
@@ -77,6 +80,9 @@ static void hdmitx_early_suspend(struct early_suspend *h)
     hdmitx_dev_t * phdmi = (hdmitx_dev_t *)h->param;
     if (info && (strncmp(info->name, "panel", 5) == 0 || strncmp(info->name, "null", 4) == 0))
         return;
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    suspend_flag=1;
+#endif
     phdmi->hpd_lock = 1;
     phdmi->HWOp.Cntl((hdmitx_dev_t *)h->param, HDMITX_EARLY_SUSPEND_RESUME_CNTL, HDMITX_EARLY_SUSPEND);
     phdmi->cur_VIC = HDMI_Unkown;
@@ -103,6 +109,9 @@ static void hdmitx_late_resume(struct early_suspend *h)
     hdmitx_device.HWOp.CntlDDC(&hdmitx_device, DDC_HDCP_OP, HDCP_OFF);
     hdmitx_device.internal_mode_change = 0;
     set_disp_mode_auto();
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    suspend_flag=0;
+#endif
     pr_info("amhdmitx: late resume module %d\n", __LINE__);
     phdmi->HWOp.Cntl((hdmitx_dev_t *)h->param, HDMITX_EARLY_SUSPEND_RESUME_CNTL, HDMITX_LATE_RESUME);
     hdmi_print(INF, SYS "late resume\n");
@@ -115,6 +124,16 @@ static struct early_suspend hdmitx_early_suspend_handler = {
     .param = &hdmitx_device,
 };
 #endif
+
+/* Set avmute_set signal to HDMIRX */
+static int hdmitx_reboot_notifier(struct notifier_block *nb,
+    unsigned long action, void *data)
+{
+    hdmitx_dev_t *hdev = container_of(nb, struct hdmi_tx_dev_s, nb);
+    hdev->HWOp.Cntl(hdev, HDMITX_AVMUTE_CNTL, AVMUTE_SET);
+    mdelay(25);
+    return NOTIFY_OK;
+}
 
 //static HDMI_TX_INFO_t hdmi_info;
 #define INIT_FLAG_VDACOFF        0x1
@@ -135,7 +154,7 @@ static int hpdmode = 1; /*
                             1, unmux hpd when unplug;
                             2, unmux hpd when unplug  or off;
                         */
-#ifdef CONFIG_AM_TV_OUTPUT2
+#ifdef CONFIG_AMLOGIC_VOUT2
 static int force_vout_index = 0;
 #endif
 static int hdmi_prbs_mode = 0xffff; /* 0xffff=disable; 0=PRBS 11; 1=PRBS 15; 2=PRBS 7; 3=PRBS 31*/
@@ -182,7 +201,7 @@ return value: 1, vout; 2, vout2;
 */
 {
     int vout_index = 1;
-#ifdef CONFIG_AM_TV_OUTPUT2
+#ifdef CONFIG_AMLOGIC_VOUT2
     if(force_vout_index){
         vout_index = force_vout_index;
     }
@@ -206,7 +225,7 @@ return value: 1, vout; 2, vout2;
 const vinfo_t * hdmi_get_current_vinfo(void)
 {
     const vinfo_t *info;
-#ifdef CONFIG_AM_TV_OUTPUT2
+#ifdef CONFIG_AMLOGIC_VOUT2
     if(get_cur_vout_index() == 2){
         info = get_current_vinfo2();
         if(info == NULL){ //add to fix problem when dual display is not enabled in UI
@@ -243,6 +262,20 @@ static  int  set_disp_mode(const char *mode)
     else if(strncmp(mode, "4k2k5G", strlen("4k2k5G")) == 0) {
         vic = HDMI_3840x2160p50_16x9;
     }
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    else if(strncmp(mode, "4k2k29hz", strlen("4k2k29hz")) == 0) {
+        vic = HDMI_4k2k_30;
+    }
+    else if(strncmp(mode, "4k2k23hz", strlen("4k2k23hz")) == 0) {
+        vic = HDMI_4k2k_24;
+    }
+    else if(strncmp(mode, "4k2k59hz", strlen("4k2k59hz")) == 0) {
+        vic = HDMI_4k2k_60;
+    }
+    else if(strncmp(mode, "4k2k59hz420", strlen("4k2k59hz420")) == 0) {
+        vic = HDMI_4k2k_60;
+    }
+#endif
     else {
         //nothing
     }
@@ -302,6 +335,59 @@ static void hdmitx_pre_display_init(void)
     hdmi_print(DET);
     hdmitx_device.internal_mode_change = 0;
 }
+
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+// judge whether the mode exchange is between similar vmode, such as between 1080p60 and 1080p59hz
+// "vic_old==HDMI_720P60" means old vic is HDMI_1080p60, but vmode maybe VMODE_1080P or VMODE_1080P_59HZ
+static int is_similar_hdmi_vic(HDMI_Video_Codes_t vic_old, vmode_t mode_new)
+{
+    printk("%s[%d] vic_old=%d,mode_new=%d\n", __FUNCTION__, __LINE__,vic_old,mode_new);
+    if ( (vic_old == HDMI_720p60) && (mode_new == VMODE_720P_59HZ) )
+        return 1;
+    if ( (vic_old == HDMI_1080i60) &&(mode_new == VMODE_1080I_59HZ) )
+        return 1;
+    if ( (vic_old == HDMI_1080p60) && (mode_new == VMODE_1080P_59HZ) )
+        return 1;
+    if ( (vic_old == HDMI_1080p24) && (mode_new == VMODE_1080P_23HZ) )
+        return 1;
+    if ( (vic_old == HDMI_4k2k_30) && (mode_new == VMODE_4K2K_29HZ) )
+        return 1;
+    if ( (vic_old == HDMI_4k2k_24) && (mode_new == VMODE_4K2K_23HZ) )
+        return 1;
+    if ( (vic_old == HDMI_4k2k_60) && (mode_new == VMODE_4K2K_59HZ) )
+        return 1;
+    if ( (vic_old == HDMI_4k2k_60) && (mode_new == VMODE_4K2K_59HZ_Y420) )
+        return 1;
+
+    return 0;
+}
+
+//
+// input para: name of vmode, such as "1080p50hz"
+// return values:
+//		0: not supported in edid
+//		1: supported in edid
+//		2: no edid
+//
+int hdmitx_is_vmode_supported(char *mode_name)
+{
+    HDMI_Video_Codes_t vic;
+
+    if ( hdmitx_device.tv_no_edid )
+        return 2;
+
+    vic = hdmitx_edid_get_VIC(&hdmitx_device, mode_name, 0);
+    if ( vic != HDMI_Unkown )
+        return 1;
+    else
+        return 0;
+
+    return 0;
+}
+
+EXPORT_SYMBOL(hdmitx_is_vmode_supported);
+
+#endif
 
 static int set_disp_mode_auto(void)
 {
@@ -374,6 +460,14 @@ static int set_disp_mode_auto(void)
     if(strstr(mode, "hz420") != NULL) {
         hdmitx_device.mode420 = 1;
     }
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    if (suspend_flag == 1)
+        vic_ready = HDMI_Unkown;
+    else if ( is_similar_hdmi_vic(vic_ready, info->mode) ) {
+        vic_ready = HDMI_Unkown;
+        printk("%s[%d] is similiar vic\n", __FUNCTION__, __LINE__);
+    }
+#endif
     if((vic_ready != HDMI_Unkown) && (vic_ready == vic)) {
         hdmi_print(IMP, SYS "[%s] ALREADY init VIC = %d\n", __func__, vic);
 #ifdef CONFIG_AML_HDMI_TX_CTS_DVI
@@ -503,7 +597,7 @@ static ssize_t store_cec(struct device * dev, struct device_attribute *attr, con
 static ssize_t show_cec_config(struct device * dev, struct device_attribute *attr, char * buf)
 {
     int pos=0;
-    pos+=snprintf(buf+pos, PAGE_SIZE, "P_AO_DEBUG_REG0:0x%x\r\n", aml_read_reg32(P_AO_DEBUG_REG0));
+    pos+=snprintf(buf+pos, PAGE_SIZE, "0x%x\n", aml_read_reg32(P_AO_DEBUG_REG0));
     return pos;
 }
 
@@ -947,11 +1041,39 @@ static DEVICE_ATTR(cec_lang_config, S_IWUSR | S_IRUGO | S_IWGRP, show_cec_lang_c
 ******************************/
 static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long cmd , void *para)
 {
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    const vinfo_t *info = NULL;
+    HDMI_Video_Codes_t vic_ready = HDMI_Unkown;
+#endif
     if(get_cur_vout_index()!=1)
         return 0;
 
     if (cmd != VOUT_EVENT_MODE_CHANGE)
         return 0;
+
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+    if (suspend_flag == 1)
+        return 0;
+    // vic_ready got from IP
+    vic_ready = hdmitx_device.HWOp.GetState(&hdmitx_device, STAT_VIDEO_VIC, 0);
+    // get current vinfo
+    info = hdmi_get_current_vinfo();
+    if (info == NULL) {
+        hdmi_print(ERR, VID "cann't get valid mode\n");
+        return -1;
+    }
+    else {
+        hdmi_print(IMP, VID "get current mode: %s\n", info->name);
+    }
+    if ( ((vic_ready == HDMI_1080p24) && (info->mode == VMODE_1080P_23HZ)) ||
+        ((vic_ready == HDMI_1080p24) && (info->mode == VMODE_1080P_24HZ)) ) {
+        if (hdmitx_device.HWOp.SetAudN) {
+            hdmitx_device.HWOp.SetAudN();
+        }
+    }
+    if ( is_similar_hdmi_vic(vic_ready, info->mode) )
+        return 0;
+#endif
     if(hdmitx_device.vic_count == 0){
         if(is_dispmode_valid_for_hdmi()){
             hdmitx_device.mux_hpd_if_pin_high_flag = 1;
@@ -966,7 +1088,7 @@ static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long 
     return 0;
 }
 
-#ifdef CONFIG_AM_TV_OUTPUT2
+#ifdef CONFIG_AMLOGIC_VOUT2
 static int hdmitx_notify_callback_v2(struct notifier_block *block, unsigned long cmd , void *para)
 {
     if(get_cur_vout_index()!=2)
@@ -994,7 +1116,7 @@ static struct notifier_block hdmitx_notifier_nb_v = {
     .notifier_call    = hdmitx_notify_callback_v,
 };
 
-#ifdef CONFIG_AM_TV_OUTPUT2
+#ifdef CONFIG_AMLOGIC_VOUT2
 static struct notifier_block hdmitx_notifier_nb_v2 = {
     .notifier_call    = hdmitx_notify_callback_v2,
 };
@@ -1429,6 +1551,8 @@ static int amhdmitx_probe(struct platform_device *pdev)
     extern struct switch_dev lang_dev;
     int r,ret=0;
 
+    const char *str;
+
 #ifdef CONFIG_USE_OF
     int psize, val;
     phandle phandle;
@@ -1460,7 +1584,8 @@ static int amhdmitx_probe(struct platform_device *pdev)
 #ifdef CONFIG_HAS_EARLYSUSPEND
     register_early_suspend(&hdmitx_early_suspend_handler);
 #endif
-
+    hdmitx_device.nb.notifier_call = hdmitx_reboot_notifier;
+    register_reboot_notifier(&hdmitx_device.nb);
     if((init_flag&INIT_FLAG_POWERDOWN)&&(hpdmode==2)){
         hdmitx_device.mux_hpd_if_pin_high_flag=0;
     }
@@ -1499,7 +1624,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
         return r;
     }
     vout_register_client(&hdmitx_notifier_nb_v);
-#ifdef CONFIG_AM_TV_OUTPUT2
+#ifdef CONFIG_AMLOGIC_VOUT2
     vout2_register_client(&hdmitx_notifier_nb_v2);
 #endif
 #ifdef CONFIG_SND_SOC
@@ -1522,6 +1647,21 @@ static int amhdmitx_probe(struct platform_device *pdev)
                 }
             }
         }
+/* GET GPIO HPD */
+        hdmitx_device.gpio_hpd_int = -1;
+        ret = of_property_read_string(pdev->dev.of_node, "hpd-gpio-int", &str);
+        if (!ret) {
+            hdmitx_device.gpio_hpd_int = amlogic_gpio_name_map_num(str);
+            amlogic_gpio_request(hdmitx_device.gpio_hpd_int,
+                "hdmitx_gpio_hpd");
+            amlogic_gpio_to_irq(hdmitx_device.gpio_hpd_int,
+                "hdmitx_gpio_hpd",
+            AML_GPIO_IRQ(GPIO_IRQ0, FILTER_NUM7, GPIO_IRQ_RISING));
+            amlogic_gpio_to_irq(hdmitx_device.gpio_hpd_int,
+                "hdmitx_gpio_hpd",
+            AML_GPIO_IRQ(GPIO_IRQ1, FILTER_NUM7, GPIO_IRQ_FALLING));
+        }
+        pr_info("gpio_hpd_int = %d\n", hdmitx_device.gpio_hpd_int);
 // Get vendor information
         ret = of_property_read_u32(pdev->dev.of_node,"vend-data",&val);
         if(ret) {
@@ -1602,7 +1742,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
     kthread_stop(hdmitx_device.task);
 
     vout_unregister_client(&hdmitx_notifier_nb_v);
-#ifdef CONFIG_AM_TV_OUTPUT2
+#ifdef CONFIG_AMLOGIC_VOUT2
     vout2_unregister_client(&hdmitx_notifier_nb_v2);
 #endif
 #ifdef CONFIG_SND_SOC
@@ -1851,7 +1991,7 @@ static  int __init hdmitx_boot_para_setup(char *s)
 
 __setup("hdmitx=",hdmitx_boot_para_setup);
 
-#ifdef CONFIG_AM_TV_OUTPUT2
+#ifdef CONFIG_AMLOGIC_VOUT2
 MODULE_PARM_DESC(force_vout_index, "\n force_vout_index\n");
 module_param(force_vout_index, uint, 0664);
 #endif

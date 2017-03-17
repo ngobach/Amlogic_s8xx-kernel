@@ -66,7 +66,7 @@ static int m1_nand_options_confirm(struct aml_nand_chip *aml_chip)
 	}
 	j = i;
 
-    for(i=max_bch_mode-1; i>0; i--)
+    for(i=max_bch_mode-1; i>0; i--) 
     {
         ecc_bytes = aml_chip->oob_size / (aml_chip->page_size / ecc_supports[i].bch_unit_size);
         if(ecc_bytes >= ecc_supports[i].bch_bytes + ecc_supports[i].user_byte_mode)
@@ -161,7 +161,7 @@ static int m1_nand_options_confirm(struct aml_nand_chip *aml_chip)
 			mtd->oobsize *= aml_chip->internal_chipnr;
 			break;
 
-		default:
+		default:		
 			break;
 	}
 

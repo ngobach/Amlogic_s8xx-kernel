@@ -2,7 +2,7 @@
  * AMLOGIC lcd external driver.
  *
  * Communication protocol:
- * SPI
+ * SPI 
  *
  */
 
@@ -11,7 +11,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
-#include <linux/jiffies.h>
+#include <linux/jiffies.h> 
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <linux/miscdevice.h>
@@ -71,7 +71,7 @@ static void set_lcd_scl(unsigned v)
     lcd_extern_gpio_direction_output(lcd_extern_config->spi_clk, v);
     udelay(SPI_DELAY);
 }
-
+    
 static void set_lcd_sda(unsigned v)
 {
     lcd_extern_gpio_direction_output(lcd_extern_config->spi_data, v);

@@ -2,7 +2,7 @@
  * AMLOGIC lcd external driver.
  *
  * Communication protocol:
- * I2C
+ * I2C 
  *
  */
 
@@ -11,7 +11,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
-#include <linux/jiffies.h>
+#include <linux/jiffies.h> 
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <linux/miscdevice.h>
@@ -60,12 +60,12 @@ static int aml_i2c_write(struct i2c_client *i2client,unsigned char *buff, unsign
         .buf = buff,
         }
     };
-
+    
     res = i2c_transfer(i2client->adapter, msg, 1);
     if (res < 0) {
         printk("%s: i2c transfer failed [addr 0x%02x]\n", __FUNCTION__, i2client->addr);
     }
-
+    
     return res;
 }
 #if 0

@@ -111,8 +111,8 @@ typedef struct {
     u32 hscale_skip_count;
     u32 vpp_3d_mode;
     u32 vpp_2pic_mode;//bit[1:0] 0: 1 pic,1:two pic one buf,2:tow pic two buf
-		      //bit[2]0:select pic0,1:select pic1
-		      //bit[3]0:pic0 first,1:pic1 first
+    		      //bit[2]0:select pic0,1:select pic1
+    		      //bit[3]0:pic0 first,1:pic1 first
     bool vpp_3d_scale;
 
     bool supsc0_enable;
@@ -214,10 +214,10 @@ vpp_set_zoom_ratio(u32 r);
 extern u32
 vpp_get_zoom_ratio(void);
 
-extern void
+extern void 
 vpp_set_osd_layer_preblend(u32*);
 
-extern
+extern 
 void vpp_set_osd_layer_position(s32*);
 
 extern

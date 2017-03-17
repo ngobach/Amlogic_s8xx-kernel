@@ -101,9 +101,8 @@ static int match_dev_by_name(struct device *dev, const void *data)
 {
 	const char* name = data;
 
-	//printk("cmp partition dev: %s, name: %s\n", dev_name(dev), name);
-
-	if (!strstr(name, dev_name(dev)))
+	/* delete string "block/" */
+	if (strcmp(&name[6], dev_name(dev)))
 		goto no_match;
 
 	return 1;

@@ -36,7 +36,10 @@
 #include <linux/dma-mapping.h>
 #include <linux/dma-contiguous.h>
 #include <linux/delay.h>
+#include "amports_priv.h"
 
+#include <linux/amlogic/codec_mm/codec_mm.h>
+#define MEM_NAME "codec_264_4k"
 #include <mach/am_regs.h>
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 #include <mach/vpu.h>
@@ -187,7 +190,7 @@ static struct device *cma_dev;
 #define DECODE_WAIT_BUFFER      7
 
 /********************************************
- *  Dual Core Communication
+ *  Dual Core Communication 
 ********************************************/
 #define FATAL_ERROR             DOS_SCRATCH16
 #define PRE_MASTER_UPDATE_TIMES DOS_SCRATCH20
@@ -244,6 +247,7 @@ typedef struct {
 #endif
 
     struct page *alloc_pages;
+    unsigned long phy_addr;
     int alloc_count;
 } buffer_spec_t;
 
@@ -386,7 +390,7 @@ int init_canvas(int start_addr, long dpb_size, int dpb_number, int mb_width, int
     disp_addr = (cur_canvas.addr + 7) >> 3;
 
     mutex_lock(&vh264_4k2k_mutex);
-
+    
     for (i=0; i<dpb_number; i++) {
         WRITE_VREG(canvas_addr++, index | ((index+1)<<8) | ((index+1)<<16));
         if (!H264_4K2K_SINGLE_CORE) {
@@ -405,38 +409,49 @@ int init_canvas(int start_addr, long dpb_size, int dpb_number, int mb_width, int
             int page_count = PAGE_ALIGN((mb_total << 8) + (mb_total << 7)) / PAGE_SIZE;
 #endif
 
-            if (buffer_spec[i].alloc_pages) {
+            if (buffer_spec[i].phy_addr) {
                 if (page_count != buffer_spec[i].alloc_count) {
-                    printk("Delay released CMA buffer %d\n", i);
+                    pr_info("Delay release CMA buffer%d\n", i);
 
-                    dma_release_from_contiguous(cma_dev, buffer_spec[i].alloc_pages, buffer_spec[i].alloc_count);
-                    buffer_spec[i].alloc_pages = NULL;
-                    buffer_spec[i].alloc_count = 0;
-                } else {
-                    printk("Re-use CMA buffer %d\n", i);
-                }
+                    /*dma_release_from_contiguous(cma_dev,
+                    buffer_spec[i].
+                    alloc_pages,
+                    buffer_spec[i].
+                    alloc_count);
+                    */
+                    codec_mm_free_for_dma(MEM_NAME,
+                        buffer_spec[i].phy_addr);
+                        buffer_spec[i].phy_addr = 0;
+                        buffer_spec[i].alloc_pages = NULL;
+                        buffer_spec[i].alloc_count = 0;
+                } else
+                   pr_info("Re-use CMA buffer %d\n", i);
             }
-
-            if (!buffer_spec[i].alloc_pages) {
+            if (!buffer_spec[i].phy_addr) {
                 buffer_spec[i].alloc_count = page_count;
-                buffer_spec[i].alloc_pages = dma_alloc_from_contiguous(cma_dev, page_count, 4);
+                buffer_spec[i].phy_addr =
+                codec_mm_alloc_for_dma(
+                    MEM_NAME, buffer_spec[i].alloc_count,
+                    4 + PAGE_SHIFT,
+                    CODEC_MM_FLAGS_CMA_CLEAR);
             }
             alloc_count++;
 
-            if (!buffer_spec[i].alloc_pages) {
+            if (!buffer_spec[i].phy_addr) {
                 buffer_spec[i].alloc_count = 0;
-                printk("264 4K2K decoder memory allocation failed %d.\n", i);
+                pr_info("264 4K2K decoder memory alloc failed %d.\n", i);
                 mutex_unlock(&vh264_4k2k_mutex);
                 return -1;
             }
-
-            addr = page_to_phys(buffer_spec[i].alloc_pages);
+            addr = buffer_spec[i].phy_addr;
             dpb_addr = addr;
         } else {
-            if (buffer_spec[i].alloc_pages) {
-                dma_release_from_contiguous(cma_dev, buffer_spec[i].alloc_pages, buffer_spec[i].alloc_count);
-                buffer_spec[i].alloc_pages = NULL;
-                buffer_spec[i].alloc_count = 0;
+            if (buffer_spec[i].phy_addr) {
+                codec_mm_free_for_dma(MEM_NAME,
+                    buffer_spec[i].phy_addr);
+                    buffer_spec[i].phy_addr = 0;
+                    buffer_spec[i].alloc_pages = NULL;
+                    buffer_spec[i].alloc_count = 0;
             }
 
             addr = dpb_addr;
@@ -581,13 +596,23 @@ static int get_max_dec_frame_buf_size(int level_idc, int max_reference_frame_num
 
 static void do_alloc_work(struct work_struct *work)
 {
-    int level_idc, max_reference_frame_num, mb_width, mb_height;
+    int level_idc, max_reference_frame_num, mb_width, mb_height, frame_mbs_only_flag;
     int dpb_size, ref_size;
     int dpb_start_addr, ref_start_addr, max_dec_frame_buffering, total_dec_frame_buffering;
+    unsigned int  chroma444;
+    unsigned int crop_infor, crop_bottom,crop_right;
     int ret = READ_VREG(MAILBOX_COMMAND);
-
     ref_start_addr = decoder_buffer_start;
     ret = READ_VREG(MAILBOX_DATA_0);
+   /*  MAILBOX_DATA_1 :
+         bit15    : frame_mbs_only_flag
+         bit 0-7 : chroma_format_idc
+         MAILBOX_DATA_2:
+          bit31-16: =  (left  << 8 | right ) << 1
+          bit15-0 :  =  (top << 8  | bottom ) <<  (2 - frame_mbs_only_flag)
+   */
+    frame_mbs_only_flag = READ_VREG(MAILBOX_DATA_1);
+    crop_infor = READ_VREG(MAILBOX_DATA_2);
     level_idc = (ret >> 24) & 0xff;
     max_reference_frame_num = (ret >> 16) & 0xff;
     mb_width = (ret >> 8) & 0xff;
@@ -595,16 +620,26 @@ static void do_alloc_work(struct work_struct *work)
         mb_width = 256;
     }
     mb_height = (ret >> 0) & 0xff;
-
     max_dec_frame_buffering = get_max_dec_frame_buf_size(level_idc, max_reference_frame_num, mb_width, mb_height);
-
     total_dec_frame_buffering = max_dec_frame_buffering + DISPLAY_BUFFER_NUM;
-
-    if ((frame_width == 0) || (frame_height == 0)) {
-        frame_width = mb_width << 4;
-        frame_height = mb_height << 4;
-        frame_ar = frame_height * 0x100 / frame_width;
-    }
+    chroma444 = ((frame_mbs_only_flag&0xffff) == 3) ? 1 : 0;
+    frame_mbs_only_flag  = (frame_mbs_only_flag >>16)&0x01;
+    crop_bottom = (crop_infor & 0xff) >> (2 - frame_mbs_only_flag);
+    crop_right = ((crop_infor >>16) & 0xff) >> 1;
+   printk("crop_right = 0x%x crop_bottom=0x%x  chroma_format_idc 0x%x \n",crop_right,crop_bottom,chroma444);
+   if ((frame_width == 0) || (frame_height == 0) || crop_infor) {
+                   frame_width = mb_width << 4;
+                   frame_height = mb_height << 4;
+                   if (frame_mbs_only_flag) {
+                           frame_height = frame_height - (2>>chroma444)*min(crop_bottom, (unsigned int)((8<<chroma444)-1));
+                           frame_width = frame_width - (2>>chroma444)*min(crop_right, (unsigned int)((8<<chroma444)-1));
+                   } else {
+                           frame_height = frame_height - (4>>chroma444)*min(crop_bottom, (unsigned int)((8<<chroma444)-1));
+                           frame_width = frame_width - (4>>chroma444)*min(crop_right, (unsigned int)((8<<chroma444)-1));
+                   }
+                     printk("frame_mbs_only_flag %d, crop_bottom %d,	frame_height %d, mb_height %d,crop_right %d, frame_width %d, mb_width %d\n",
+                     frame_mbs_only_flag, crop_bottom,frame_height, mb_height,crop_right,frame_width, mb_height);
+          }
 
     mb_width = (mb_width+3) & 0xfffffffc;
     mb_height = (mb_height+3) & 0xfffffffc;
@@ -614,7 +649,7 @@ static void do_alloc_work(struct work_struct *work)
     dpb_start_addr = ref_start_addr + (ref_size * (max_reference_frame_num+1)) * 2;
     //dpb_start_addr = reserved_buffer + dpb_size;
 
-    printk("dpb_start_addr=0x%x, dpb_size=%d, total_dec_frame_buffering=%d, mb_width=%d, mb_height=%d\n",
+    printk("dpb_start_addr=0x%x, dpb_size=%d, total_dec_frame_buffering=%d, mb_width=%d, mb_height=%d \n",
         dpb_start_addr, dpb_size, total_dec_frame_buffering, mb_width, mb_height);
 
     ret = init_canvas(dpb_start_addr, dpb_size,
@@ -641,23 +676,23 @@ static void do_alloc_work(struct work_struct *work)
 
 /////////////// FAKE FIRST PIC
 #if 0
-
-printk("Debug: send a fake picture to config VPP %dx%d\n", frame_width, frame_height);
+                
+printk("Debug: send a fake picture to config VPP %dx%d\n", frame_width, frame_height); 
 WRITE_VREG(DOS_SCRATCH0, 4);
 WRITE_VREG(DOS_SCRATCH1, 0x004c);
-
-    if (kfifo_get(&newframe_q, &vf)) {
+                                                                                  
+    if (kfifo_get(&newframe_q, &vf)) {                                            
         vfbuf_use[0]++;
         vf->index = 0;
         vf->pts = 0;
         vf->type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD;
-        vf->canvas0Addr = vf->canvas1Addr = spec2canvas(&buffer_spec[0]);
+        vf->canvas0Addr = vf->canvas1Addr = spec2canvas(&buffer_spec[0]);         
         set_frame_info(vf);
-        kfifo_put(&display_q, (const vframe_t **)&vf);
-        vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL);
-    }
-
-/////////////// FAKE END
+        kfifo_put(&display_q, (const vframe_t **)&vf);                            
+        vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL);    
+    }                                                                             
+        
+/////////////// FAKE END   
 #endif
 }
 
@@ -693,14 +728,15 @@ static irqreturn_t vh264_4k2k_isr(int irq, void *dev_id)
             printk("fatal error, no available buffer slot.");
             return IRQ_HANDLED;
         }
-
+        
         if (vf) {
             vfbuf_use[display_buff_id]++;
 
             vf->pts = 0;
+            vf->pts_us64 = 0;
 
             if ((!sync_outside) || (sync_outside && (slice_type == SLICE_TYPE_I))) {
-                pts_lookup_offset(PTS_TYPE_VIDEO, stream_offset, &vf->pts, 0);
+                pts_lookup_offset_us64(PTS_TYPE_VIDEO, stream_offset, &vf->pts, 0, &vf->pts_us64);
             }
 
 #ifdef H264_4K2K_SINGLE_CORE
@@ -708,6 +744,7 @@ static irqreturn_t vh264_4k2k_isr(int irq, void *dev_id)
                 // for I only mode, ignore the PTS information and only uses 10fps for each I frame decoded
                 if (p_last_vf) {
                     vf->pts = 0;
+                    vf->pts_us64 = 0;
                 }
                 frame_dur = 96000/10;
             }
@@ -1306,7 +1343,7 @@ static s32 vh264_4k2k_init(void)
         if (!H264_4K2K_SINGLE_CORE) {
             amvdec2_disable();
         }
-
+        
         return -ENOENT;
     }
 
@@ -1421,16 +1458,18 @@ static int vh264_4k2k_stop(void)
 #ifdef CONFIG_VSYNC_RDMA
     msleep(100);
 #endif
-
-    canvas_read((READ_VCBUS_REG(VD1_IF0_CANVAS0) & 0xff), &cur_canvas);
-    disp_addr = cur_canvas.addr;
-
+    if (!get_blackout_policy()) {
+        canvas_read((READ_VCBUS_REG(VD1_IF0_CANVAS0) & 0xff), &cur_canvas);
+        disp_addr = cur_canvas.addr;
+    }
     for (i=0; i<ARRAY_SIZE(buffer_spec); i++) {
-        if (buffer_spec[i].alloc_pages) {
-            if (disp_addr == page_to_phys(buffer_spec[i].alloc_pages)) {
-                printk("Skip releasing CMA buffer %d\n", i);
-            } else {
-                dma_release_from_contiguous(cma_dev, buffer_spec[i].alloc_pages, buffer_spec[i].alloc_count);
+        if (buffer_spec[i].phy_addr) {
+            if (disp_addr == (u32)buffer_spec[i].phy_addr)
+                pr_info("Skip releasing CMA buffer %d\n", i);
+            else {
+                codec_mm_free_for_dma(MEM_NAME,
+                buffer_spec[i].phy_addr);
+                buffer_spec[i].phy_addr = 0;
                 buffer_spec[i].alloc_pages = NULL;
                 buffer_spec[i].alloc_count = 0;
             }
@@ -1455,7 +1494,7 @@ static int amvdec_h264_4k2k_probe(struct platform_device *pdev)
     printk("amvdec_h264_4k2k probe start.\n");
 
     mutex_lock(&vh264_4k2k_mutex);
-
+    
     fatal_error = 0;
 
     if (pdata == NULL) {
@@ -1486,7 +1525,7 @@ static int amvdec_h264_4k2k_probe(struct platform_device *pdev)
             msleep(50);
             count++;
         }
-
+  
         if(get_vdec2_usage() != USAGE_NONE){
             printk("\namvdec_h264_4k2k --- vdec2 is used by encode now.\n");
             mutex_unlock(&vh264_4k2k_mutex);
@@ -1559,7 +1598,7 @@ static int amvdec_h264_4k2k_remove(struct platform_device *pdev)
     }
 
     mutex_unlock(&vh264_4k2k_mutex);
-
+    
     printk("amvdec_h264_4k2k_remove\n");
     return 0;
 }
@@ -1625,3 +1664,5 @@ module_exit(amvdec_h264_4k2k_driver_remove_module);
 MODULE_DESCRIPTION("AMLOGIC h264_4k2k Video Decoder Driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Tim Yao <tim.yao@amlogic.com>");
+
+

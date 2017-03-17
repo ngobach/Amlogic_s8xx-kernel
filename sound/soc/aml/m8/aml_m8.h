@@ -25,7 +25,7 @@ struct aml_audio_private_data {
 
     bool mic_det;
     bool hp_disable;
-
+    
 
     int timer_en;
     int detect_flag;
@@ -43,3 +43,4 @@ void aml_spdif_pinmux_init(struct device *pdev);
 
 void aml_spdif_pinmux_deinit(struct device *pdev);
 #endif
+

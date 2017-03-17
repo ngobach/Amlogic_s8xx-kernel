@@ -55,3 +55,4 @@ extern int get_bl_extern_dt_data(struct device_node* of_node, struct bl_extern_c
 extern void get_bl_ext_level(struct bl_extern_config_t *bl_ext_cfg);
 
 #endif
+

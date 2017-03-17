@@ -33,6 +33,9 @@
 #include <linux/blkdev.h>
 #include <linux/reboot.h>
 #include <linux/kmod.h>
+#include <linux/pm.h>
+#include <linux/platform_device.h>
+
 //#include <linux/mtd/mtd.h>
 //#include <linux/mtd/nand.h>
 //#include <linux/mtd/blktrans.h>
@@ -73,11 +76,10 @@ extern int aml_nftl_set_status(struct aml_nftl_part_t *part,unsigned char status
 //static int ntd_blktrans_thread_blk(void *arg);
 //static void blktrans_dev_release_blk(struct kref *kref);
 
-
 //static struct mutex aml_nftl_lock;
 static int nftl_num;
 static int dev_num;
-//extern int test_flag;
+extern int test_flag;
 
 int aml_ntd_nftl_flush(struct ntd_info *ntd);
 
@@ -195,25 +197,23 @@ static int aml_nftl_calculate_sg(struct aml_nftl_blk *nftl_blk, size_t buflen, u
 }
 
 uint32 write_sync_flag(struct aml_nftl_blk *aml_nftl_blk)
-{
+{ 
 	struct aml_nftl_dev *nftl_dev = aml_nftl_blk->nftl_dev;
-//    if(test_flag)
-//    {
-//        return 0;
-//    }
-#if NFTL_CACHE_FLUSH_SYNC
+	if ( test_flag ) {
+		return 0;
+	}
+#if NFTL_CACHE_FLUSH_SYNC   	
 #ifdef CONFIG_SUPPORT_USB_BURNING
         return 0;
 #endif
 
-
-	nftl_dev->sync_flag = 0;
+   	nftl_dev->sync_flag = 0;
 	if(memcmp(aml_nftl_blk->name, "media", 5)==0)
 		return 0;
 	else {
-			if(aml_nftl_blk->req->cmd_flags & REQ_SYNC)
-				nftl_dev->sync_flag = 1;
-		}
+		if ( aml_nftl_blk->req->cmd_flags & REQ_SYNC )
+			nftl_dev->sync_flag = 1;
+	}
 	return 0;
 #else
 	return 0;
@@ -274,48 +274,48 @@ int aml_nftl_init_bounce_buf(struct ntd_blktrans_dev *dev, struct request_queue 
 *****************************************************************************/
 static int do_nftltrans_request(struct ntd_blktrans_ops *tr,struct ntd_blktrans_dev *dev,struct request *req)
 {
-    struct aml_nftl_blk *nftl_blk = (void *)dev;
-    int ret = 0, segments, i;
-    unsigned long block, nblk, blk_addr, blk_cnt;
+	struct aml_nftl_blk *nftl_blk = (void *)dev;
+	int ret = 0, segments, i;
+	unsigned long block, nblk, blk_addr, blk_cnt;
 
 
-    unsigned short max_segm = queue_max_segments(nftl_blk->queue);
-    unsigned *buf_addr[max_segm+1];
-    unsigned offset_addr[max_segm+1];
-    size_t buflen;
-    char *buf;
+	unsigned short max_segm = queue_max_segments(nftl_blk->queue);
+	unsigned *buf_addr[max_segm+1];
+	unsigned offset_addr[max_segm+1];
+	size_t buflen;
+	char *buf;
 
-    if(!nftl_blk->queue || !nftl_blk->bounce_sg)
-    {
-        if (aml_nftl_init_bounce_buf(&nftl_blk->nbd, nftl_blk->nbd.rq))
-        {
-            aml_nftl_dbg("_nftl_init_bounce_buf  failed\n");
-        }
-    }
-    memset((unsigned char *)buf_addr, 0, (max_segm+1)*4);
-    memset((unsigned char *)offset_addr, 0, (max_segm+1)*4);
-    nftl_blk->req = req;
-    block = blk_rq_pos(req) << SHIFT_PER_SECTOR >> tr->blkshift;
-    nblk = blk_rq_sectors(req);
-    buflen = (nblk << tr->blkshift);
+	if ( !nftl_blk->queue || !nftl_blk->bounce_sg )
+	{
+		if (aml_nftl_init_bounce_buf(&nftl_blk->nbd, nftl_blk->nbd.rq))
+		{
+			aml_nftl_dbg("_nftl_init_bounce_buf  failed\n");
+		}
+	}
+	memset((unsigned char *)buf_addr, 0, (max_segm+1)*4);
+	memset((unsigned char *)offset_addr, 0, (max_segm+1)*4);
+	nftl_blk->req = req;
+	block = blk_rq_pos(req) << SHIFT_PER_SECTOR >> tr->blkshift;
+	nblk = blk_rq_sectors(req);
+	buflen = (nblk << tr->blkshift);
 
-//    if (!blk_fs_request(req))
-      //  return -EIO;
+	//if (!blk_fs_request(req))
+	//	return -EIO;
 
-    if (blk_rq_pos(req) + blk_rq_cur_sectors(req) > get_capacity(req->rq_disk))
-        return -EIO;
+	if (blk_rq_pos(req) + blk_rq_cur_sectors(req) > get_capacity(req->rq_disk))
+		return -EIO;
 
- ///   if (blk_discard_rq(req))
-       // return tr->discard(dev, block, nblk);
+	//if (blk_discard_rq(req))
+	// return tr->discard(dev, block, nblk);
 
 
-    //just return since notifier only need once
-    if(nftl_blk->nftl_dev->reboot_flag){
-        PRINT("Just ignore nand req here after reboot nb block:0x%lx nblk:0x%lx, cmd_flags:0x%x nftl_blk:%s\n", \
-            block, nblk, req->cmd_flags, nftl_blk->name);
-        return 0;
-    }
-
+	//just return since notifier only need once
+	if ( nftl_blk->nftl_dev->reboot_flag ) {
+		PRINT("Just ignore nand req here after reboot nb block:0x%lx nblk:0x%lx, cmd_flags:0x%x nftl_blk:%s\n", \
+			block, nblk, req->cmd_flags, nftl_blk->name);
+		return 0;
+	}
+    	
 	if (req->cmd_flags & REQ_DISCARD){
         mutex_lock(nftl_blk->nftl_dev->aml_nftl_lock);
 		//printk("%s discard block:%d, nblk:%d nftl_blk->name:%s\n", __func__, block, nblk, nftl_blk->name);
@@ -324,54 +324,60 @@ static int do_nftltrans_request(struct ntd_blktrans_ops *tr,struct ntd_blktrans_
 
 		return 0;
 	}
+	
 
+	nftl_blk->bounce_sg_len = blk_rq_map_sg(nftl_blk->queue, nftl_blk->req, nftl_blk->bounce_sg);
+	segments = aml_nftl_calculate_sg(nftl_blk, buflen, buf_addr, offset_addr);
+	if (offset_addr[segments+1] != (nblk << tr->blkshift))
+		return -EIO;
 
-    nftl_blk->bounce_sg_len = blk_rq_map_sg(nftl_blk->queue, nftl_blk->req, nftl_blk->bounce_sg);
-    segments = aml_nftl_calculate_sg(nftl_blk, buflen, buf_addr, offset_addr);
-    if (offset_addr[segments+1] != (nblk << tr->blkshift))
-        return -EIO;
+	//aml_nftl_dbg("nftl segments: %d\n", segments+1);
 
-//  aml_nftl_dbg("nftl segments: %d\n", segments+1);
-
-    mutex_lock(nftl_blk->nftl_dev->aml_nftl_lock);
-    switch(rq_data_dir(req)) {
+	mutex_lock(nftl_blk->nftl_dev->aml_nftl_lock);
+	switch ( rq_data_dir(req) ) {
         case READ:
-            for(i=0; i<(segments+1); i++) {
-                blk_addr = (block + (offset_addr[i] >> tr->blkshift));
-                blk_cnt = ((offset_addr[i+1] - offset_addr[i]) >> tr->blkshift);
-                buf = (char *)buf_addr[i];
-//              aml_nftl_dbg("read blk_addr: %d blk_cnt: %d buf: %x\n", blk_addr,blk_cnt,buf);
-                if (nftl_blk->read_data(nftl_blk, blk_addr, blk_cnt, buf)) {
-                    ret = -EIO;
-                    break;
-                }
-            }
-            bio_flush_dcache_pages(nftl_blk->req->bio);
-            break;
+	for (i=0; i<(segments+1); i++) {
+		blk_addr = (block + (offset_addr[i] >> tr->blkshift));
+		blk_cnt = ((offset_addr[i+1] - offset_addr[i]) >> tr->blkshift);
+		buf = (char *)buf_addr[i];
+		/*
+		aml_nftl_dbg("read blk_addr: %d blk_cnt: %d buf: %x\n",
+			blk_addr,blk_cnt,buf);
+		*/
+		if (nftl_blk->read_data(nftl_blk, blk_addr, blk_cnt, buf)) {
+			ret = -EIO;
+			break;
+		}
+	}
+	bio_flush_dcache_pages(nftl_blk->req->bio);
+	break;
 
         case WRITE:
-		write_sync_flag(nftl_blk);
-            bio_flush_dcache_pages(nftl_blk->req->bio);
-            for(i=0; i<(segments+1); i++) {
-                blk_addr = (block + (offset_addr[i] >> tr->blkshift));
-                blk_cnt = ((offset_addr[i+1] - offset_addr[i]) >> tr->blkshift);
-                buf = (char *)buf_addr[i];
-//              aml_nftl_dbg("write blk_addr: %d blk_cnt: %d buf: %x\n", blk_addr,blk_cnt,buf);
-                if (nftl_blk->write_data(nftl_blk, blk_addr, blk_cnt, buf)) {
-                    ret = -EIO;
-                    break;
-                }
-            }
-            break;
+	bio_flush_dcache_pages(nftl_blk->req->bio);
+	nftl_blk->nftl_dev->sync_flag = 0;
+	for (i=0; i<(segments+1); i++) {
+		blk_addr = (block + (offset_addr[i] >> tr->blkshift));
+		blk_cnt = ((offset_addr[i+1] - offset_addr[i]) >> tr->blkshift);
+		buf = (char *)buf_addr[i];
+		//aml_nftl_dbg("write blk_addr: %d blk_cnt: %d buf: %x\n", blk_addr,blk_cnt,buf);
+		if (nftl_blk->write_data(nftl_blk, blk_addr, blk_cnt, buf)) {
+			ret = -EIO;
+			break;
+		}
+	}
+	write_sync_flag(nftl_blk);
+	if (nftl_blk->req->cmd_flags & REQ_SYNC)
+		nftl_blk->flush_write_cache(nftl_blk);
+	break;
 
         default:
-            aml_nftl_dbg(KERN_NOTICE "Unknown request %u\n", rq_data_dir(req));
-            break;
-    }
+	aml_nftl_dbg(KERN_NOTICE "Unknown request %u\n", rq_data_dir(req));
+	break;
+	}
 
-    mutex_unlock(nftl_blk->nftl_dev->aml_nftl_lock);
+	mutex_unlock(nftl_blk->nftl_dev->aml_nftl_lock);
 
-    return ret;
+	return ret;
 }
 
 /*****************************************************************************
@@ -395,12 +401,17 @@ static int aml_nftl_writesect(struct ntd_blktrans_dev *dev, unsigned long block,
 *****************************************************************************/
 static int aml_nftl_thread(void *arg)
 {
-    struct aml_nftl_dev *nftl_dev= arg;
-    unsigned long period = NFTL_MAX_SCHEDULE_TIMEOUT / 10;
-    struct timespec ts_nftl_current;
+	struct aml_nftl_dev *nftl_dev= arg;
+	unsigned long period = NFTL_MAX_SCHEDULE_TIMEOUT / 10;
+	struct timespec ts_nftl_current;
 
-    while (!kthread_should_stop()) {
-//      struct aml_nftl_part_t *aml_nftl_part = nftl_blk->aml_nftl_part;
+	while (!kthread_should_stop()) {
+		//struct aml_nftl_part_t *aml_nftl_part=nftl_blk->aml_nftl_part;
+		if (nftl_dev->thread_stop_flag == 1) {
+			set_current_state(TASK_INTERRUPTIBLE);
+			schedule_timeout(period);
+			continue;
+		}
 
         mutex_lock(nftl_dev->aml_nftl_lock);
 
@@ -453,7 +464,7 @@ static int aml_nftl_reboot_notifier(struct notifier_block *nb, unsigned long pri
         PRINT("nand reboot notify Just ignore here for %s\n", nftl_dev->ntd->name);
         return error;
     }
-
+    
     mutex_lock(nftl_dev->aml_nftl_lock);
     error = nftl_dev->flush_write_cache(nftl_dev);
 
@@ -483,13 +494,14 @@ int aml_nftl_reinit_part(struct aml_nftl_blk *nftl_blk)
        uint64_t tmp_offset = 0;
        struct aml_nftl_dev * nftl_dev = nftl_blk->nftl_dev;
        part = nftl_dev->aml_nftl_part;
-
+       
        aml_nftl_set_status(part,0);
        if(nftl_dev->nftl_thread!=NULL){
-            kthread_stop(nftl_dev->nftl_thread); //add stop thread to ensure nftl quit safely
+            //kthread_stop(nftl_dev->nftl_thread); //add stop thread to ensure nftl quit safely
+            nftl_dev->thread_stop_flag = 1;
         }
       mutex_lock(nftl_dev->aml_nftl_lock);
-        // do not erase this part because this phy partition has more than 1 logic partition.
+        // do not erase this part because this phy partition has more than 1 logic partition. 
        if(nftl_dev->ntd->nr_partitions > 1)
        {
             // discard logic partition
@@ -502,7 +514,7 @@ int aml_nftl_reinit_part(struct aml_nftl_blk *nftl_blk)
                     PRINT("logic_partition name:%s,size:%llx,tmp_offset:%llx\n",logic_partition->name,logic_partition->size,tmp_offset);
                     if((logic_partition->offset != 0xffffffffffffffff)&&(logic_partition->size != 0xffffffffffffffff))
                     {
-                        // first check if this logic partition has valid mapping.
+                        // first check if this logic partition has valid mapping. 
                         if(nftl_dev->check_mapping(nftl_dev,tmp_offset,logic_partition->size))
                         {
                             //discard all pages of this partition
@@ -510,14 +522,14 @@ int aml_nftl_reinit_part(struct aml_nftl_blk *nftl_blk)
                             nftl_dev->discard_partition(nftl_dev,tmp_offset,logic_partition->size);
                         }else{
                             // do no thing
-						PRINT("this partition has no valid mapping\n");
+    						PRINT("this partition has no valid mapping\n");
                         }
                     }
                     else
                     {
                         //the last partition
                         PRINT("last logic partition name:%s,size:%llx,offset:%llx,tmp_offset:%llx\n",logic_partition->name,logic_partition->size,logic_partition->offset,tmp_offset);
-                        // first check if this logic partition has valid mapping.
+                        // first check if this logic partition has valid mapping. 
                         if(nftl_dev->check_mapping(nftl_dev,tmp_offset,0xffffffffffffffff))
                         {
                             //discard all pages of this partition
@@ -525,48 +537,201 @@ int aml_nftl_reinit_part(struct aml_nftl_blk *nftl_blk)
                             nftl_dev->discard_partition(nftl_dev,tmp_offset,0xffffffffffffffff);
                         }else{
                             // do no thing
-						PRINT("this partition has no valid mapping\n");
+    						PRINT("this partition has no valid mapping\n");
                         }
                     }
                 }
-
+                
                 if(logic_partition->size != 0xffffffffffffffff)
                 {
                     tmp_offset = tmp_offset+logic_partition->size;
                 }
             }
-       }
-       else
-       {
-           ret = aml_nftl_erase_part(part);
-           if(ret){
-                   PRINT("aml_nftl_erase_part : failed\n");
-           }
+	} else {
+		ret = aml_nftl_erase_part(part);
+		if (ret)
+			PRINT("aml_nftl_erase_part : failed\n");
 
-       if(aml_nftl_initialize(nftl_dev,-1)){
-          PRINT("aml_nftl_reinit_part : aml_nftl_initialize failed\n");
-       }
-       }
-      mutex_unlock(nftl_dev->aml_nftl_lock);
-      if(nftl_dev->nftl_thread!=NULL){
-       wake_up_process(nftl_dev->nftl_thread);
-       }
-       return ret ;
+		if (aml_nftl_initialize(nftl_dev, nftl_dev->get_current_part_no(nftl_dev)))
+			PRINT("aml_nftl_reinit_part : aml_nftl_initialize failed\n");
+	}
+	mutex_unlock(nftl_dev->aml_nftl_lock);
+	if (nftl_dev->nftl_thread != NULL) {
+		//wake_up_process(nftl_dev->nftl_thread);
+		nftl_dev->thread_stop_flag = 0;
+	}
+
+	return ret ;
 }
 
 static int aml_nftl_wipe_part(struct ntd_blktrans_dev *dev)
 {
 	struct aml_nftl_blk *nftl_blk = (void *)dev;
 	int error = 0;
-    printk("%s,%d nftl_blk->name:%s,nftl_blk->offset:%llx,nftl_blk->size:%llx\n",__func__,__LINE__,nftl_blk->name,nftl_blk->offset,nftl_blk->size);
+    //printk("%s,%d nftl_blk->name:%s,nftl_blk->offset:%llx,nftl_blk->size:%llx\n",__func__,__LINE__,nftl_blk->name,nftl_blk->offset,nftl_blk->size);
 	//struct aml_nftl_dev * nftl_dev = nftl_blk->nftl_dev;
-
+	
 	error = aml_nftl_reinit_part(nftl_blk);
 	if(error){
 		PRINT("aml_nftl_reinit_part: failed\n");
 	}
 	return error;
 }
+
+int aml_nftl_reinit(struct aml_nftl_dev * nftl_dev)
+{
+	int ret =0;
+	struct aml_nftl_part_t *part = NULL;
+
+	part = nftl_dev->aml_nftl_part;
+
+	//printk("%s() %d, enter\n", __FUNCTION__, __LINE__);
+	aml_nftl_set_status(part, 0);
+	if(nftl_dev->nftl_thread != NULL) {
+		//kthread_stop(nftl_dev->nftl_thread); //add stop thread to ensure nftl quit safely
+		nftl_dev->thread_stop_flag = 1;
+	}
+	
+	//mutex_lock(nftl_dev->aml_nftl_lock);
+	//invalid cache.
+	nftl_dev->invalid_read_cache(nftl_dev);
+
+#if	(CFG_M2M_TRANSFER_TBL)
+	//reinit, using memory 1st
+	nftl_dev->init_flag = 2;
+	if (aml_nftl_initialize(nftl_dev, nftl_dev->get_current_part_no(nftl_dev))) {
+#else 
+	if (aml_nftl_initialize(nftl_dev, -1)) {
+#endif //
+		PRINT("%s() %d: aml_nftl_initialize failed\n", __FUNCTION__, __LINE__);
+		ret = -1;
+	}
+	//mutex_unlock(nftl_dev->aml_nftl_lock);
+	
+	if (nftl_dev->nftl_thread != NULL) {
+		//wake_up_process(nftl_dev->nftl_thread);
+		nftl_dev->thread_stop_flag = 0;
+	}
+	
+	//printk("%s() %d, exit\n", __FUNCTION__, __LINE__);
+	return ret ;
+}
+
+#ifdef CONFIG_HIBERNATION
+
+/*
+pm(hibernate) ops
+*/
+
+
+
+
+static int aml_nftl_freeze(struct device *dev)
+{
+	struct aml_nftl_dev *nftl_dev = dev_to_nftl_dev(dev);
+	//struct aml_nftl_blk *b;
+	struct ntd_info* ntd;
+
+	if (nftl_dev == NULL) {
+		printk("%s : get nftl_dev failed\n", __func__);
+		return 0;
+	}
+
+	ntd = nftl_dev->ntd;
+
+	mutex_lock(nftl_dev->aml_nftl_lock);
+
+	if (!strncmp(ntd->name, "nfdata", strlen(ntd->name))) {
+		nftl_dev->thread_stop_flag = 1;
+		ntd->thread_stop_flag = 1;
+	}
+
+	//second flush nand cache
+	nftl_dev->flush_write_cache(nftl_dev);
+	nftl_dev->flush_discard_cache(nftl_dev);
+	nftl_dev->invalid_read_cache(nftl_dev);
+
+	//fourth compose tbl and nand important data
+	nftl_dev->compose_tbls(nftl_dev);
+
+	mutex_unlock(nftl_dev->aml_nftl_lock);
+
+	//printk("%s() %s\n", __FUNCTION__, nftl_dev->ntd->name);
+
+	return 0;
+}
+
+static int aml_nftl_thaw(struct device *dev)
+{
+	struct aml_nftl_dev *nftl_dev = dev_to_nftl_dev(dev);
+	struct ntd_info* ntd;
+
+	if (nftl_dev == NULL) {
+		printk("%s : get nftl_dev failed\n", __func__);
+		return 0;
+	}
+	ntd = nftl_dev->ntd;
+
+	mutex_lock(nftl_dev->aml_nftl_lock);
+
+	if (!strncmp(ntd->name, "nfdata", strlen(ntd->name))) {
+		nftl_dev->thread_stop_flag = 0;
+		ntd->thread_stop_flag = 0;
+	}
+
+	//printk("thaw nftl_thread %p \n", nftl_dev->nftl_thread);
+	mutex_unlock(nftl_dev->aml_nftl_lock);
+
+	//printk("%s() %s\n", __FUNCTION__, nftl_dev->ntd->name);
+
+	return 0;
+}
+
+
+static int aml_nftl_restore(struct device *dev)
+{
+	struct aml_nftl_dev *nftl_dev = dev_to_nftl_dev(dev);
+	//struct aml_nftl_blk *b;
+	struct ntd_info* ntd;
+
+	if (nftl_dev == NULL) {
+		printk("%s : get nftl_dev failed\n", __func__);
+		return 0;
+	}
+	ntd = nftl_dev->ntd;
+
+	mutex_lock(nftl_dev->aml_nftl_lock);
+
+	nftl_dev->rebuild_tbls(nftl_dev);
+
+	if (!strncmp(ntd->name, "nfdata", strlen(ntd->name))) {
+		nftl_dev->thread_stop_flag = 0;
+		ntd->thread_stop_flag = 0;
+	}
+
+	mutex_unlock(nftl_dev->aml_nftl_lock);
+
+
+	//printk("%s() %s\n", __FUNCTION__, nftl_dev->ntd->name);
+
+	return 0;
+}
+
+static struct dev_pm_ops nftl_pm_ops = {
+	//.suspend = aml_nftl_suspend,
+	//.resume  = aml_nftl_resume,
+	.freeze  = aml_nftl_freeze,
+	.thaw    = aml_nftl_thaw,
+	.restore = aml_nftl_restore,
+};
+
+
+static struct class aml_nftl_class = {
+	.name = "nftl_cls",
+	.owner = THIS_MODULE,
+	.pm = &nftl_pm_ops,
+};
+#endif
 
 /*****************************************************************************
 *Name         :
@@ -577,7 +742,7 @@ static int aml_nftl_wipe_part(struct ntd_blktrans_dev *dev)
 *****************************************************************************/
 static void aml_nftl_add_ntd(struct ntd_blktrans_ops *tr, struct ntd_info *ntd)
 {
-    int    i;
+    int i;
     struct aml_nftl_dev *nftl_dev;
     struct aml_nftl_blk *nftl_blk;
     uint64_t cur_offset = 0;
@@ -590,12 +755,13 @@ static void aml_nftl_add_ntd(struct ntd_blktrans_ops *tr, struct ntd_info *ntd)
     if (!nftl_dev)
         return;
 
+    nftl_dev->thread_stop_flag = 0;
 	nftl_dev->aml_nftl_lock = aml_nftl_malloc(sizeof(struct mutex));
 	if (!nftl_dev->aml_nftl_lock)
 	       return;
 
 	mutex_init(nftl_dev->aml_nftl_lock);
-
+    
     nftl_dev->init_flag = 0;
     nftl_dev->ntd = ntd;
     nftl_dev->nb.notifier_call = aml_nftl_reboot_notifier;
@@ -609,7 +775,7 @@ static void aml_nftl_add_ntd(struct ntd_blktrans_ops *tr, struct ntd_info *ntd)
     nftl_dev->reboot_flag = 0;
     ntd->nftl_priv = (void*)nftl_dev;
 
-    nftl_dev->nftl_thread = kthread_run(aml_nftl_thread, nftl_dev, "%sd", "aml_nftl");
+    nftl_dev->nftl_thread = kthread_run(aml_nftl_thread, nftl_dev, "%s_%s", "aml_nftl", ntd->name);
     if (IS_ERR(nftl_dev->nftl_thread))
         return;
 
@@ -621,8 +787,8 @@ static void aml_nftl_add_ntd(struct ntd_blktrans_ops *tr, struct ntd_info *ntd)
         if (!nftl_blk)
             return;
 
-//        nftl_blk->nbd.ntd = ntd;
-//        nftl_blk->nbd.devnum = (ntd->index<<2)+i;
+		//nftl_blk->nbd.ntd = ntd;
+		//nftl_blk->nbd.devnum = (ntd->index<<2)+i;
 
         nftl_blk->nbd.devnum = dev_num;
         dev_num++;
@@ -636,9 +802,9 @@ static void aml_nftl_add_ntd(struct ntd_blktrans_ops *tr, struct ntd_info *ntd)
             return;
         }
 
-     //   printk("nftl_blk->name %s \n",nftl_blk->name);
-    //    printk("nftl_blk->offset 0x%llx \n",nftl_blk->offset);
-    //    printk("nftl_blk->size 0x%llx \n",nftl_blk->size);
+		//printk("nftl_blk->name %s \n",nftl_blk->name);
+		//printk("nftl_blk->offset 0x%llx \n",nftl_blk->offset);
+		//printk("nftl_blk->size 0x%llx \n",nftl_blk->size);
 
         nftl_blk->nbd.size = (unsigned long)nftl_blk->size;
         nftl_blk->nbd.priv = (void*)nftl_blk;
@@ -657,10 +823,20 @@ static void aml_nftl_add_ntd(struct ntd_blktrans_ops *tr, struct ntd_info *ntd)
         cur_offset += part->size;
     }
 
-    nftl_num++;
-    aml_nftl_dbg("aml_nftl_add_ntd ok\n");
+#ifdef CONFIG_HIBERNATION
+	if (nftl_num == 0)
+		blk_class_register(&aml_nftl_class);
+    
+	//nftl_dev->dev.devt = NTD_DEVT(i);
+	nftl_dev->dev.class = &aml_nftl_class;
+	dev_set_drvdata(&nftl_dev->dev, nftl_dev);
+	blk_device_register(&nftl_dev->dev, nftl_num);
+#endif
 
-    return;
+	nftl_num++;
+	aml_nftl_dbg("aml_nftl_add_ntd ok\n");
+
+	return;
 }
 
 /*****************************************************************************

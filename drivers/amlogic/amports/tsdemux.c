@@ -325,8 +325,15 @@ static irqreturn_t tsdemux_isr(int irq, void *dev_id)
 #ifndef ENABLE_DEMUX_DRIVER
     u32 int_status = READ_MPEG_REG(STB_INT_STATUS);
 #else
+    u32 int_status = 0;
+
     int id = (int)dev_id;
-    u32 int_status = id ? READ_MPEG_REG(STB_INT_STATUS_2) : READ_MPEG_REG(STB_INT_STATUS);
+    if (id == 0)
+        int_status = READ_MPEG_REG(STB_INT_STATUS);
+    else if (id == 1)
+        int_status = READ_MPEG_REG(STB_INT_STATUS_2);
+    else if (id == 2)
+         int_status = READ_MPEG_REG(STB_INT_STATUS_3);
 #endif
 
     if (int_status & (1 << NEW_PDTS_READY)) {
@@ -347,7 +354,7 @@ static irqreturn_t tsdemux_isr(int irq, void *dev_id)
 #else
 #define DMX_READ_REG(i,r)\
 	((i)?((i==1)?READ_MPEG_REG(r##_2):READ_MPEG_REG(r##_3)):READ_MPEG_REG(r))
-
+	
         u32 pdts_status = DMX_READ_REG(id, STB_PTS_DTS_STATUS);
 
         if (pdts_status & (1 << VIDEO_PTS_READY))
@@ -454,7 +461,7 @@ static int reset_pcr_regs(void)
     if (curr_pcr_id >= 0x1FFF)
         return 0;
 
-    /* set paramater to fetch pcr */
+    /* set paramater to fetch pcr */  
     pcr_num=0;
     if(curr_pcr_id == curr_vid_id)
         pcr_num=0;
@@ -480,12 +487,12 @@ static int reset_pcr_regs(void)
 
         printk("[%s:%d] clk_81 = %x clk_unit =%x \n",__FUNCTION__,__LINE__,clk_81,clk_unit);
 
-        if (READ_MPEG_REG(TS_HIU_CTL_2) & 0x40) {
+        if (READ_MPEG_REG(TS_HIU_CTL_2) & 0x80) {
             WRITE_MPEG_REG(PCR90K_CTL_2, (12 << 1)|clk_unit);
             WRITE_MPEG_REG(ASSIGN_PID_NUMBER_2, pcr_num);
             printk("[tsdemux_init] To use device 2,pcr_num=%d \n",pcr_num);
         }
-        else if (READ_MPEG_REG(TS_HIU_CTL_3) & 0x40) {
+        else if (READ_MPEG_REG(TS_HIU_CTL_3) & 0x80) {
             WRITE_MPEG_REG(PCR90K_CTL_3, (12 << 1)|clk_unit);
             WRITE_MPEG_REG(ASSIGN_PID_NUMBER_3, pcr_num);
             printk("[tsdemux_init] To use device 3,pcr_num=%d \n",pcr_num);
@@ -634,7 +641,7 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid, u32 pcrid, bool is_hevc)
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     if (HAS_HEVC_VDEC)
         r = pts_start((is_hevc) ? PTS_TYPE_HEVC : PTS_TYPE_VIDEO);
-    else
+    else 
 #endif
         r = pts_start(PTS_TYPE_VIDEO);
 
@@ -1077,15 +1084,16 @@ u32 tsdemux_pcrscr_get(void)
     if(pcrscr_valid==0)
         return 0;
 
-    if(READ_MPEG_REG(TS_HIU_CTL_2) & 0x40){
+    if (READ_MPEG_REG(TS_HIU_CTL_2) & 0x80) {
         pcr = READ_MPEG_REG(PCR_DEMUX_2);
     }
-    else if(READ_MPEG_REG(TS_HIU_CTL_3) & 0x40){
+    else if (READ_MPEG_REG(TS_HIU_CTL_3) & 0x80) {
         pcr = READ_MPEG_REG(PCR_DEMUX_3);
     }
-    else{
+    else {
         pcr = READ_MPEG_REG(PCR_DEMUX);
-   }
+    }
+
     if(first_pcr == 0)
         first_pcr = pcr;
     return pcr;
@@ -1098,10 +1106,10 @@ u32 tsdemux_pcrscr_get(void)
 
     if (first_pcr == 0) {
         u32 pcr;
-        if (READ_MPEG_REG(TS_HIU_CTL_2) & 0x40) {
+        if (READ_MPEG_REG(TS_HIU_CTL_2) & 0x80) {
             pcr = READ_MPEG_REG(PCR_DEMUX_2);
         }
-        else if (READ_MPEG_REG(TS_HIU_CTL_3) & 0x40) {
+        else if (READ_MPEG_REG(TS_HIU_CTL_3) & 0x80) {
             pcr = READ_MPEG_REG(PCR_DEMUX_3);
         }
         else{

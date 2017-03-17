@@ -17,6 +17,9 @@
 #include <linux/device.h>
 #include <linux/err.h>
 #include <linux/hardirq.h>
+#ifdef CONFIG_HIBERNATION
+#include <linux/syscore_ops.h>
+#endif
 #include <linux/spinlock_types.h>
 #include <linux/spinlock.h>
 
@@ -576,6 +579,42 @@ void switch_lcd_mod_gate(int flag)
 }
 EXPORT_SYMBOL(switch_lcd_mod_gate);
 
+#ifdef CONFIG_HIBERNATION
+static unsigned long gates_reg0, gates_reg1, gates_reg2;
+static unsigned long gates_reg_other, gates_reg_ao;
+static int gates_suspend(void)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&gate_lock, flags);
+	gates_reg0 = READ_CBUS_REG(HHI_GCLK_MPEG0);
+	gates_reg1 = READ_CBUS_REG(HHI_GCLK_MPEG1);
+	gates_reg2 = READ_CBUS_REG(HHI_GCLK_MPEG2);
+	gates_reg_other = READ_CBUS_REG(HHI_GCLK_OTHER);
+	gates_reg_ao = READ_CBUS_REG(HHI_GCLK_AO);
+	spin_unlock_irqrestore(&gate_lock, flags);
+
+	return 0;
+}
+
+static void gates_resume(void)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&gate_lock, flags);
+	WRITE_CBUS_REG(HHI_GCLK_MPEG0, gates_reg0);
+	WRITE_CBUS_REG(HHI_GCLK_MPEG1, gates_reg1);
+	WRITE_CBUS_REG(HHI_GCLK_MPEG2, gates_reg2);
+	WRITE_CBUS_REG(HHI_GCLK_OTHER, gates_reg_other);
+	WRITE_CBUS_REG(HHI_GCLK_AO, gates_reg_ao);
+	spin_unlock_irqrestore(&gate_lock, flags);
+}
+
+static struct syscore_ops gates_ops = {
+	.suspend = gates_suspend,
+	.resume = gates_resume,
+	.shutdown = NULL,
+};
+#endif
+
 void power_gate_init(void)
 {
 	GATE_INIT(DDR);
@@ -665,6 +704,10 @@ void power_gate_init(void)
 
 static int __init meson_mode_gate_init(void)
 {
+#ifdef CONFIG_HIBERNATION
+	INIT_LIST_HEAD(&gates_ops.node);
+	register_syscore_ops(&gates_ops);
+#endif
 	power_gate_init();
 	return 0;
 }

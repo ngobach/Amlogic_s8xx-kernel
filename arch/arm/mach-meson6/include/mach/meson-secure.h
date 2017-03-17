@@ -103,7 +103,7 @@ struct efuse_hal_api_arg{
 	unsigned int offset;
 	unsigned int size;
 	unsigned int buffer_phy;
-	unsigned int retcnt_phy;
+	unsigned int retcnt_phy;	
 };
 #define EFUSE_HAL_API_READ	0
 #define EFUSE_HAL_API_WRITE 1

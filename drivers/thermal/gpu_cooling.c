@@ -145,15 +145,15 @@ static int gpufreq_set_cur_state(struct thermal_cooling_device *cdev,
 	gpufreq_device->gpufreq_state = state;
 	ret=gpufreq_get_max_state(cdev,&max_state);
 	state=max_state-1-state;
-
+	
 	pr_debug( "state=%ld,gpufreq_device->gpufreq_state=%d\n",state,gpufreq_device->gpufreq_state);
 	if(state>=0 && state<=max_state){
 		if (gpufreq_device->set_gpu_freq_idx)
 			gpufreq_device->set_gpu_freq_idx((unsigned int)state);
 	}
 	return 0;
-
-
+	
+	
 }
 
 /* Bind gpufreq callbacks to thermal cooling device ops */
@@ -235,7 +235,6 @@ void gpufreq_cooling_unregister(struct thermal_cooling_device *cdev)
 }
 EXPORT_SYMBOL_GPL(gpufreq_cooling_unregister);
 
-#if defined(CONFIG_AML_VIRTUAL_THERMAL) && !defined(CONFIG_AML_PLATFORM_THERMAL)
 unsigned int (*gpu_freq_callback)(void) = NULL;
 int register_gpu_freq_info(unsigned int (*fun)(void))
 {
@@ -246,4 +245,3 @@ int register_gpu_freq_info(unsigned int (*fun)(void))
 }
 EXPORT_SYMBOL(register_gpu_freq_info);
 EXPORT_SYMBOL(gpu_freq_callback);
-#endif

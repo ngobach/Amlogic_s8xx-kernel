@@ -88,6 +88,7 @@ static const struct snd_kcontrol_new tas5707_snd_controls[] = {
 	SOC_SINGLE_TLV("Ch2 Volume", DDX_CHANNEL2_VOL, 0, 0xff, 1, chvol_tlv),
 	SOC_SINGLE("Ch1 Switch", DDX_SOFT_MUTE, 0, 1, 1),
 	SOC_SINGLE("Ch2 Switch", DDX_SOFT_MUTE, 1, 1, 1),
+	SOC_SINGLE_RANGE("Fine Master Volume", DDX_CHANNEL3_VOL, 0, 0x80, 0x83, 0),
 };
 
 static int tas5707_set_dai_sysclk(struct snd_soc_dai *codec_dai,
@@ -356,7 +357,7 @@ static int tas5707_set_eq(struct snd_soc_codec *codec)
 	if(!pdata)
 		return -ENOENT;
 
-	if(pdata->num_eq_cfgs){
+	if (pdata->num_eq_cfgs && (tas5707->eq_conf_texts == NULL)) {
 		struct snd_kcontrol_new control =
 			SOC_ENUM_EXT("EQ Mode", tas5707->eq_conf_enum, tas5707_get_eq_enum, tas5707_put_eq_enum);
 
@@ -480,6 +481,7 @@ static int tas5707_init(struct snd_soc_codec *codec)
 	snd_soc_write(codec, DDX_CHANNEL1_VOL, tas5707->Ch1_vol);
 	snd_soc_write(codec, DDX_CHANNEL2_VOL, tas5707->Ch2_vol);
 	snd_soc_write(codec, DDX_SOFT_MUTE, 0x00);
+	snd_soc_write(codec, DDX_CHANNEL3_VOL, 0x80);
 
 	return ret;
 }

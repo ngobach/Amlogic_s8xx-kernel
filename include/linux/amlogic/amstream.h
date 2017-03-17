@@ -289,3 +289,4 @@ typedef struct tcon_rgb_ogo_s {
 } tcon_rgb_ogo_t;
 
 #endif /* AMSTREAM_H */
+

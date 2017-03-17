@@ -90,6 +90,7 @@ extern void power_on_receiver(void);
 extern void atv_dmd_misc(void);
 extern void configure_receiver(int Broadcast_Standard, unsigned int Tuner_IF_Frequency, int Tuner_Input_IF_inverted, int GDE_Curve, int sound_format);
 extern int atvdemod_init(void);
+extern void atvdemod_uninit(void);
 extern void atv_dmd_set_std(void);
 extern void retrieve_vpll_carrier_lock(int *lock);
 extern void retrieve_video_lock(int *lock);
@@ -159,6 +160,11 @@ extern int retrieve_vpll_carrier_afc(void);
 #define AML_ATV_DEMOD_VIDEO_MODE_PROP_SECAM_L	9
 #define AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_I	10
 #define AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_DK1	11
+//new add @20150813 begin
+#define AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC_DK		12
+#define AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC_BG	13
+#define AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC_I	14
+//new add @20150813 end
 
 //GDE_Curve
 //			0: CURVE-M
@@ -184,11 +190,18 @@ vs_freq==60,freq_hz=15734,freq_hz_cvrt=0x101c9
 #define AML_ATV_DEMOD_FREQ_50HZ_VERT	0xffff//65535
 #define AML_ATV_DEMOD_FREQ_60HZ_VERT	0x101c9//65993
 
+typedef enum amlatvdemod_snr_level_e{
+	very_low = 1,
+	low,
+	ok_minus,
+	ok_plus,
+	high,
+}amlatvdemod_snr_level_t;
 
 typedef struct amlatvdemod_device_s{
-    struct class *clsp;
-    struct analog_parameters parm;
-    int fre_offset;
+	struct class 	*clsp;
+	struct analog_parameters parm;
+	int fre_offset;
 }amlatvdemod_device_t;
 
 #endif /* __ATVDEMOD_FUN_H */

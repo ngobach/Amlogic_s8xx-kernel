@@ -152,7 +152,7 @@ static void videoc_omx_compute_pts(struct ionvideo_dev *dev, struct vframe_s* vf
     if (dev->is_omx_video_started) {    
         dev->is_omx_video_started = 0;
     }
-    last_pts_us64 = dev->pts;
+    last_pts_us64 = dev->pts;  
 }
 
 static int ionvideo_fillbuff(struct ionvideo_dev *dev, struct ionvideo_buffer *buf) {
@@ -165,13 +165,17 @@ static int ionvideo_fillbuff(struct ionvideo_dev *dev, struct ionvideo_buffer *b
     if (!vf) {
         return -EAGAIN;
     }
+    if (vf->flag & VFRAME_FLAG_SWITCHING_FENSE) {
+        vf_put(vf, RECEIVER_NAME);
+        return -EAGAIN;
+    }
     if (vf && dev->once_record == 1) {
-	dev->once_record = 0;
-	if ((vf->type & VIDTYPE_INTERLACE_BOTTOM) == 0x3) {
-		dev->ppmgr2_dev.bottom_first = 1;
-	} else {
-		dev->ppmgr2_dev.bottom_first = 0;
-	}
+    	dev->once_record = 0;
+    	if ((vf->type & VIDTYPE_INTERLACE_BOTTOM) == 0x3) {
+    		dev->ppmgr2_dev.bottom_first = 1;
+    	} else {
+    		dev->ppmgr2_dev.bottom_first = 0;
+    	}
     }
     if (freerun_mode == 0) {
         if ((vf->type & 0x1) == VIDTYPE_INTERLACE) {
@@ -200,11 +204,12 @@ static int ionvideo_fillbuff(struct ionvideo_dev *dev, struct ionvideo_buffer *b
             dev->ppmgr2_dev.dst_width = vf->width;
         if (vf->height <= dev->height)
             dev->ppmgr2_dev.dst_height = vf->height;
-            
-        if((dev->ppmgr2_dev.dst_width >= 1920) &&(dev->ppmgr2_dev.dst_height >= 1080)&&(vf->type & VIDTYPE_INTERLACE)){
-			dev->ppmgr2_dev.dst_width = dev->ppmgr2_dev.dst_width*scaling_rate/100;
-			dev->ppmgr2_dev.dst_height = dev->ppmgr2_dev.dst_height*scaling_rate/100 ;
-		}
+        if ((vf->type & VIDTYPE_INTERLACE) && (vf->type & VIDTYPE_VIU_FIELD)) {
+            dev->ppmgr2_dev.dst_height = vf->height;
+            if (dev->ppmgr2_dev.dst_height > dev->height)
+                dev->ppmgr2_dev.dst_height = dev->height;
+        }
+
         ret = ppmgr2_process(vf, &dev->ppmgr2_dev, vb->v4l2_buf.index);
         if (ret) {
             vf_put(vf, RECEIVER_NAME);
@@ -252,15 +257,13 @@ static void ionvideo_thread_tick(struct ionvideo_dev *dev) {
         msleep(5);
         return;
     }
-    if ((vf->width >= 1920) && (vf->height >= 1080) && (vf->type & VIDTYPE_INTERLACE)) {
-		dev->ppmgr2_dev.dst_width = vf->width*scaling_rate/100;
-		dev->ppmgr2_dev.dst_height = vf->height*scaling_rate/100;
-		w = dev->ppmgr2_dev.dst_width;
-		h = dev->ppmgr2_dev.dst_height;
-	}else{
-		w = vf->width;
-		h = vf->height;
-	}
+
+    w = vf->width;
+    h = vf->height;
+    if ((vf->type & VIDTYPE_INTERLACE) && (vf->type & VIDTYPE_VIU_FIELD)) {
+        h = vf->height;
+    }
+
     if (freerun_mode == 0 && ionvideo_size_changed(dev, w , h)) {
         msleep(10);
         return;
@@ -689,46 +692,46 @@ static int vidioc_synchronization_dqbuf(struct file *file, void *priv, struct v4
     unsigned long flags;
 
     q = dev->vdev.queue;
-    if (dev->receiver_register) {
-	// clear the frame buffer queue
-	while(!list_empty(&q->done_list)) {
+    if (dev->receiver_register) {  	 
+    	// clear the frame buffer queue  
+    	while(!list_empty(&q->done_list)) {
 		ret = vb2_ioctl_dqbuf(file, priv, p);
 		if (ret) { return ret;}
 		ret = vb2_ioctl_qbuf(file, priv, p);
 		if (ret) { return ret;}
-	}
-	printk("init to clear the done list buffer.done\n");
-	dev->receiver_register = 0;
-	dev->is_video_started = 0;
+ 	}
+    	printk("init to clear the done list buffer.done\n");
+    	dev->receiver_register = 0;
+    	dev->is_video_started = 0;
 	return -EAGAIN;
     } else{
-	spin_lock_irqsave(&q->done_lock, flags);
-	if (list_empty(&q->done_list)) {
-	spin_unlock_irqrestore(&q->done_lock, flags);
-		return -EAGAIN;
-	}
-	vb = list_first_entry(&q->done_list, struct vb2_buffer, done_entry);
-	spin_unlock_irqrestore(&q->done_lock, flags);
+    	spin_lock_irqsave(&q->done_lock, flags);
+    	if (list_empty(&q->done_list)) {
+       	spin_unlock_irqrestore(&q->done_lock, flags);
+        	return -EAGAIN;
+    	}
+    	vb = list_first_entry(&q->done_list, struct vb2_buffer, done_entry);
+    	spin_unlock_irqrestore(&q->done_lock, flags);
 
-	buf = container_of(vb, struct ionvideo_buffer, vb);
-	if(dev->is_video_started == 0){
+    	buf = container_of(vb, struct ionvideo_buffer, vb);
+    	if(dev->is_video_started == 0){
 		printk("Execute the VIDEO_START cmd. pts=%llx\n", buf->pts);
-		tsync_avevent_locked(VIDEO_START, buf->pts ? buf->pts : timestamp_vpts_get());
-		d = 0;
-		dev->is_video_started=1;
-	}else{
-		if (buf->pts  == 0) {
-		buf->pts = timestamp_vpts_get() + DUR2PTS(buf->duration);
-		}
+        	tsync_avevent_locked(VIDEO_START, buf->pts ? buf->pts : timestamp_vpts_get());        
+        	d = 0;
+        	dev->is_video_started=1;
+    	}else{ 
+	    	if (buf->pts  == 0) {
+	       	buf->pts = timestamp_vpts_get() + DUR2PTS(buf->duration);
+	    	}      
 
 		if (abs(timestamp_pcrscr_get() - buf->pts ) > tsync_vpts_discontinuity_margin()) {
-			tsync_avevent_locked(VIDEO_TSTAMP_DISCONTINUITY, buf->pts );
-		}
+	        	tsync_avevent_locked(VIDEO_TSTAMP_DISCONTINUITY, buf->pts );
+	    	} 
 		else{
 			timestamp_vpts_set(buf->pts);
 		}
-		d = (buf->pts - timestamp_pcrscr_get());
-	}
+	    	d = (buf->pts - timestamp_pcrscr_get());
+    	}
     }
 
     if (d > 450) {
@@ -741,15 +744,15 @@ static int vidioc_synchronization_dqbuf(struct file *file, void *priv, struct v4
 
 	     if (buf->pts  == 0) {
 		buf->pts = timestamp_vpts_get() + DUR2PTS(buf->duration);
-	     }
+	     }      
 
 	     if (abs(timestamp_pcrscr_get() - buf->pts ) > tsync_vpts_discontinuity_margin()) {
 		tsync_avevent_locked(VIDEO_TSTAMP_DISCONTINUITY, buf->pts );
-	     }
+	     } 
 	     else{
 		timestamp_vpts_set(buf->pts);
 	     }
-
+            
             if(list_empty(&q->done_list)) {
                 break;
             } else {
@@ -759,7 +762,7 @@ static int vidioc_synchronization_dqbuf(struct file *file, void *priv, struct v4
             }
         }
         dprintk(dev, 1, "s:%u\n", skip_frames);
-    } else {
+    } else {	 
         ret = vb2_ioctl_dqbuf(file, priv, p);
         if (ret) {
             return ret;
@@ -1082,7 +1085,7 @@ static int __init ionvideo_init(void)
 
     /* n_devs will reflect the actual number of allocated devices */
     n_devs = i;
-
+    
     return ret;
 }
 

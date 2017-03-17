@@ -44,19 +44,21 @@
 typedef struct stream_buf_s {
     s32   flag;
     u32   type;
-    u32   buf_start;
-    u32   buf_size;
-    u32   default_buf_size;
-    u32   canusebuf_size;
-    u32   first_tstamp;
-    const ulong reg_base;
-    wait_queue_head_t   wq;
-    struct timer_list timer;
-    u32   wcnt;
-	u32	buf_wp;
-	u32	buf_rp;
-    u32 max_buffer_delay_ms;
-    u64 last_write_jiffies64;
+	unsigned long buf_start;
+	struct page *buf_pages;
+	int buf_page_num;
+	u32 buf_size;
+	u32 default_buf_size;
+	u32 canusebuf_size;
+	u32 first_tstamp;
+	const ulong reg_base;
+	wait_queue_head_t wq;
+	struct timer_list timer;
+	u32 wcnt;
+	u32 buf_wp;
+	u32 buf_rp;
+	u32 max_buffer_delay_ms;
+	u64 last_write_jiffies64;
 } stream_buf_t;
 
 typedef struct stream_port_s {
@@ -134,3 +136,4 @@ extern void stbuf_vdec2_init(struct stream_buf_s *buf);
 #endif
 
 #endif /* STREAMBUF_H */
+

@@ -16,6 +16,18 @@
             i2c_bus = "i2c_bus_b";
         };
 
+//$$ DEVICE="stk8baxx"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_U32 = "address"
+//$$ L2 PROP_STR = "i2c_bus"
+        stk8baxx{
+            dev_name = "stk8baxx";
+            status = "okay";
+            address = <0x18>;
+            i2c_bus = "i2c_bus_b";
+            acc_dir = <0x0000>;
+        };
+
 //$$ DEVICE="mma7660"
 //$$ L2 PROP_STR = "status"
 //$$ L2 PROP_U32 = "address"

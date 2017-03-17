@@ -28,14 +28,13 @@
 #include "osd.h"
 #include <linux/amlogic/vout/vinfo.h>
 #include <linux/amlogic/logo/logo.h>
-#include "../../../../drivers/amlogic/gpu/ump/include/ump/ump_kernel_interface.h"
+
 #define  OSD_COUNT 	2 /* we have two osd layer on hardware*/
 
 #define KEYCOLOR_FLAG_TARGET  1
 #define KEYCOLOR_FLAG_ONHOLD  2
 #define KEYCOLOR_FLAG_CURRENT 4
 
-#define OSD_MAX_FB 2
 typedef struct myfb_dev {
     struct mutex lock;
 
@@ -46,18 +45,15 @@ typedef struct myfb_dev {
 	void __iomem *fb_mem_vaddr;
 	u32 fb_len;
 	const color_bit_define_t  *color;
-	 vmode_t vmode;
-
-	struct osd_ctl_s osd_ctl;
-	u32  order;
-	u32  scale;
+   	 vmode_t vmode;
+    	
+    	struct osd_ctl_s osd_ctl;
+	u32  order;	
+	u32  scale;	
 	u32  enable_3d;
 	u32  preblend_enable;
 	u32  enable_key_flag;
-	u32  color_key;
-#ifdef CONFIG_FB_AMLOGIC_UMP
-       ump_dd_handle ump_wrapped_buffer[OSD_MAX_FB][2];
-#endif
+	u32  color_key;	
 } myfb_dev_t;
 typedef  struct list_head   list_head_t ;
 
@@ -123,7 +119,7 @@ extern void osddev_set(struct myfb_dev *fbdev);
 extern void osddev_update_disp_axis(struct myfb_dev *fbdev,int  mode_change) ;
 extern int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
         u16 transp, struct myfb_dev *fbdev);
-extern void osddev_init(void) ;
+extern void osddev_init(void) ;        
 extern void osddev_enable(int enable,int index);
 extern int osddev_sync_request( struct fb_info * info,u32 xoffset, u32 yoffset,s32 in_fence_fd);
 extern int osddev_wait_for_vsync(void);
@@ -133,7 +129,7 @@ extern void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi
 #if defined (CONFIG_FB_OSD2_CURSOR)
 extern void osddev_cursor(struct myfb_dev *fbdev, s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h);
 #endif
-extern  int osddev_copy_data_tocursor(myfb_dev_t *g_fbi, aml_hwc_addr_t *cursor_mem);
+
 extern  void  osddev_set_colorkey(u32 index,u32 bpp,u32 colorkey );
 extern  void  osddev_srckey_enable(u32  index,u8 enable);
 extern void  osddev_set_gbl_alpha(u32 index,u32 gbl_alpha) ;
@@ -141,3 +137,4 @@ extern u32  osddev_get_gbl_alpha(u32  index);
 extern  void  osddev_suspend(void);
 extern  void  osddev_resume(void);
 #endif /* OSDFBDEV_H */
+

@@ -1,4 +1,4 @@
-/*
+/* 
  *Copyright (c) AMLOGIC CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -25,15 +25,14 @@
 #include <asm/proc-fns.h>
 #include <mach/system.h>
 #include <linux/slab.h>
-#include "../mach-meson8/include/mach/pm.h"
 /*
  * These are system power hooks to implement power down policy
- * pls add rule and policy notes
+ * pls add rule and policy notes 
  *
  * pm_power_off_prepare will be called before system actually power off
  * pm_power_off will be called after system power off
  *
- *
+ * 
  * now the policy is:
  *     1 poweroff, reboot system go into uboot, and shutdown, this is typical requirement for tablet production
  *
@@ -80,8 +79,7 @@ void meson_power_off(void)
 	if(reboot_flag)
 		meson_common_restart('h',"uboot_suspend");
 	else
-//		meson_common_restart('h',"charging_reboot");
-                meson_pm_poweroff();
+		meson_common_restart('h',"charging_reboot");
 }
 
 void meson_power_idle(void)

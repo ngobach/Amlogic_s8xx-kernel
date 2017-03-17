@@ -103,6 +103,24 @@
 			reg = <0 0x01200000>;
 			linux,contiguous-region;
 		};
+
+		cma_vdin0: region@2 {
+			region_name = "cma_vdin0";
+			linux,contiguous-region;
+			reg = <0x00000000 0x02100000>;
+		};
+
+		cma_vdin1: region@3 {
+			region_name = "cma_vdin1";
+			linux,contiguous-region;
+			reg = <0x00000000 0x01000000>;
+		};
+
+		cma_tvafe: region@4 {
+			region_name = "cma_tvafe";
+			linux,contiguous-region;
+			reg = <0x00000000 0x00500000>;
+		};
 	};
 
 
@@ -407,7 +425,7 @@
 ///	-	WATCHDOG
 	amlogic-watchdog {
 		compatible = "amlogic,aml-wdt";
-		status = "okay";
+		status = "disable";
 		default_timeout=<8>;
 		reset_watchdog_method=<1>;//0:sysfs,1:kernel
 		reset_watchdog_time=<2>;
@@ -729,37 +747,50 @@
 
 
 
-/// ****************************************************************************
+
+/// ***************************************************************************************
+///     -       DISP&MM-A/V stream
+//$$ MODULE = "DISP&MM-A/V video dec"
+/// ***************************************************************************************
 ///	-	DISP&MM-A/V stream
 //$$ MODULE = "DISP&MM-A/V stream"
 //$$ DEVICE="mesonstream"
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 4 ="reg"
-	mesonstream {
+	mesonstream{
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
 		status = "okay";
-		reserve-memory = <0x02000000>; // 32M
-		reserve-iomap = "true";
+		//reserve-memory = <0x02000000>; // 32M
+		//reserve-iomap = "true";
 	};
 
+/// ***************************************************************************************
+///     -       DISP&MM-A/V stream
+//$$ MODULE = "DISP&MM-A/V video dec"
+//$$ DEVICE="vdec"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 4 ="reg"
+        vdec{
+                compatible = "amlogic,vdec";
+                dev_name = "vdec.0";
+                status = "okay";
+///				reserve-memory = <0x04000000>; // 64M
+//				reserve-iomap = "true";
+//				linux,contiguous-region = <&mem_4k2k_decoder>;
+        };
 
 
-
-/// ****************************************************************************
-///	-	DISP&MM-A/V video dec
-// MODULE = "DISP&MM-A/V video dec"
-// DEVICE = "vdec"
-// L2 PROP_STR = "status"
-// L3 PROP_U32 4 ="reg"
-	vdec {
-		compatible = "amlogic,vdec";
-		dev_name = "vdec.0";
+	codec_mm{
+		compatible = "amlogic, codec, mm";
+		dev_name = "codec_mm";
 		status = "okay";
-		reserve-memory = <0x10000000>; // 256M
-		reserve-iomap = "true";
-		linux,contiguous-region = <&mem_4k2k_decoder>;
+		reserve-memory = <0x04100000>; // 65M
+		//reserve-iomap = "true";
+		//linux,contiguous-region = <&mem_4k2k_decoder>;
 	};
+
+
 
 
 
@@ -837,11 +868,12 @@
 		compatible = "amlogic,vdin";
 		dev_name = "vdin0";
 		status = "ok";
-		reserve-memory = <0x01000000>;
-		reserve-iomap = "true";
-		max_size = <1920 1080>;//1920x1080x2x4=17M
+		//reserve-memory = <0x02100000>;
+		//max_size = <1920 1080>;//1920x(1080x2)x2x4=33M
 		irq = <115>;
 		vdin_id = <0>;
+		max_size = <33>;//33M
+		linux,contiguous-region = <&cma_vdin0>;
 	};
 
 // DEVICE="vdin1"
@@ -853,11 +885,12 @@
 		compatible = "amlogic,vdin";
 		dev_name = "vdin1";
 		status = "ok";
-		reserve-memory = <0x01000000>;
-		reserve-iomap = "true";
-		miracast_size = <1920 1080>;//1920x1080x2x4=17M
+		//reserve-memory = <0x01000000>;
+		//miracast_size = <1920 1080>;//1920x1080x2x4=17M
 		irq = <117>;
 		vdin_id = <1>;
+		max_size = <16>;//16M
+		linux,contiguous-region = <&cma_vdin1>;
 	};
 
 
@@ -865,8 +898,8 @@
 		compatible = "amlogic,tvafe";
 		dev_name = "tvafe";
 		status = "ok";
-		reserve-memory = <0x500000>;
-		reserve-iomap = "true";
+		//reserve-memory = <0x500000>;
+		//reserve-iomap = "true";
 		tvafe_id = <0>;
 		pinctrl-names = "default";
 		tvafe_pin_mux = < /*!!particular sequence, no more and no less!!!*/
@@ -875,6 +908,17 @@
 			2	/*// TVAFE_CVBS_IN1,  //CVBS_IN2*/
 			4	/*// TVAFE_CVBS_IN3,    //CVBS_IN3,*/
 		>;
+		max_size = <5>;//5M
+		linux,contiguous-region = <&cma_tvafe>;
+	};
+
+	amlvecm {
+		compatible = "amlogic,vecm";
+		dev_name = "aml_vecm";
+		status = "okay";
+		gamma_en = <0>;/*  1:enabel ;0:disable*/
+		wb_en = <0>;/*  1:enabel ;0:disable*/
+		cm_en = <1>;/*  1:enabel ;0:disable*/
 	};
 
 
@@ -904,7 +948,11 @@
 		status = "okay";
 	};
 
-
+	tvout {
+		compatible = "amlogic,tvout";
+		dev_name = "tvout";
+		status = "okay";
+	};
 
 ///*****************************************************************************
 ///	-	AMLOGIC-PMU
@@ -1483,6 +1531,13 @@
 		fe0_atv_demod = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&dvb_fe_pins>;
+	};
+
+	aml_atv_demod {
+		compatible = "amlogic,aml_atv_demod";
+		dev_name = "aml_atv_demod";
+		status = "okay";
+		reg_23cf = <0x88188832>;/*default:0x88188832;r840 on haier:0x48188832*/
 	};
 
 	/*smartcard {

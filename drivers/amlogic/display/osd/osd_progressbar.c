@@ -12,6 +12,7 @@
 #include <linux/amlogic/logo/logo_dev_osd.h>
 #include <linux/amlogic/logo/dev_ge2d.h>
 #include <mach/mod_gate.h>
+#include <linux/amlogic/aml_wdt.h>
 
 extern myfb_dev_t  *gp_fbdev_list[OSD_COUNT];
 extern int osd_blank(int blank_mode, struct fb_info *info);
@@ -89,6 +90,8 @@ int osd_show_progress_bar(u32 percent) {
 	ge2d_context_t  *context = progress_bar.ge2d_context;
 	src_dst_info_t  *op_info = &progress_bar.op_info;
 
+	/* reset watchdog */
+	reset_watchdog();
 	if (NULL == context) {
 		//osd_init_progress_bar();
 		printk("context is NULL\n");

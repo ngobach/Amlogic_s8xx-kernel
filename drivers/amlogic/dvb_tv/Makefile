@@ -58,4 +58,8 @@ ifneq ($(wildcard $(srctree)/../hardware/dvb/silabs/drivers/si2151),)
 	obj-$(CONFIG_AM_SI2151) += ../../../../hardware/dvb/silabs/drivers/si2151/
 endif
 
+ifneq ($(wildcard $(srctree)/../hardware/dvb/maxlinear/drivers/mxl661),)
+	obj-$(CONFIG_AM_MXL661) += ../../../../hardware/dvb/maxlinear/drivers/mxl661/
+endif
+
 EXTRA_CFLAGS += -I.

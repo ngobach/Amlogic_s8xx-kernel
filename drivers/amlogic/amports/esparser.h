@@ -25,7 +25,7 @@
 
 
 extern s32 esparser_init(struct stream_buf_s *buf);
-
+ 
 extern void esparser_release(struct stream_buf_s *buf);
 
 extern ssize_t drm_write(struct file *file,
@@ -157,3 +157,4 @@ extern void esparser_sub_reset(void);
 #endif
 
 #endif /* ESPARSER_H */
+

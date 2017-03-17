@@ -29,6 +29,7 @@
 #include <linux/ctype.h>
 #include <linux/genhd.h>
 #include <linux/amlogic/instaboot/instaboot.h>
+#include <linux/amlogic/aml_wdt.h>
 
 #include "power.h"
 
@@ -41,16 +42,12 @@ static char resume_file[256] = CONFIG_PM_STD_PARTITION;
 dev_t swsusp_resume_device;
 sector_t swsusp_resume_block;
 int in_suspend __nosavedata;
-
-#ifndef CONFIG_MK_SNAPSHOT_ONLY
-extern int osd_show_progress_bar(u32 percent);
-extern int osd_init_progress_bar(void);
-#endif
-
 extern void l2x0_resume(void);
 
 #define BOOT_TYPE_NORMAL	0
 #define BOOT_TYPE_FAST		1
+#define BOOT_TYPE_SNAPSHOTTED	2
+#define BOOT_TYPE_BOOTING	3
 
 static int boot_type __nosavedata;
 
@@ -512,14 +509,8 @@ int hibernation_restore(int platform_mode)
 	error = dpm_suspend_start(PMSG_QUIESCE);
 	if (!error) {
 		error = resume_target_kernel(platform_mode);
-		/*
-		 * The above should either succeed and jump to the new kernel,
-		 * or return with an error. Otherwise things are just
-		 * undefined, so let's be paranoid.
-		 */
-		BUG_ON(!error);
+		dpm_resume_end(PMSG_RECOVER);
 	}
-	dpm_resume_end(PMSG_RECOVER);
 	pm_restore_gfp_mask();
 	ftrace_start();
 	resume_console();
@@ -693,10 +684,8 @@ int hibernate(void)
 	if (in_suspend) {
 		unsigned int flags = 0;
 
-#ifndef CONFIG_MK_SNAPSHOT_ONLY
 		osd_init_progress_bar();
 		osd_show_progress_bar(1);
-#endif
 
 		if (hibernation_mode == HIBERNATION_PLATFORM)
 			flags |= SF_PLATFORM_MODE;
@@ -709,9 +698,7 @@ int hibernate(void)
 			swsusp_resume_device = name_to_dev_t(resume_file);
 
 		pr_debug("PM: writing image.\n");
-#ifndef CONFIG_MK_SNAPSHOT_ONLY
 		osd_show_progress_bar(5);
-#endif
 		error = swsusp_write(flags);
 		swsusp_free();
 #ifndef CONFIG_MK_SNAPSHOT_ONLY
@@ -719,8 +706,11 @@ int hibernate(void)
 			power_down();
 #endif
 		in_suspend = 0;
+		boot_type = BOOT_TYPE_SNAPSHOTTED;
 		pm_restore_gfp_mask();
 	} else {
+		/* reset watchdog */
+		reset_watchdog();
 		pr_debug("PM: Image restored successfully.\n");
 	}
 
@@ -760,9 +750,6 @@ int software_resume(void)
 {
 	int error;
 	unsigned int flags;
-
-	boot_type = BOOT_TYPE_NORMAL;
-
 	/*
 	 * If the user said "noresume".. bail out early.
 	 */
@@ -866,8 +853,15 @@ int software_resume(void)
 
 	pr_debug("PM: Loading hibernation image.\n");
 
+	/* reset watchdog */
+	reset_watchdog();
+
 	error = swsusp_read(&flags);
 	swsusp_close(FMODE_READ);
+
+	/* reset watchdog */
+	reset_watchdog();
+
 	if (!error) {
 		boot_type = BOOT_TYPE_FAST;
 		hibernation_restore(flags & SF_PLATFORM_MODE);
@@ -1090,7 +1084,25 @@ power_attr(reserved_size);
 static ssize_t boot_type_show(struct kobject *kobj,
 				  struct kobj_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%s\n", boot_type ? "fast" : "normal");
+	char* type_str;
+	switch (boot_type) {
+	case BOOT_TYPE_NORMAL:
+		type_str = "normal";
+		break;
+	case BOOT_TYPE_FAST:
+		type_str = "fast";
+		break;
+	case BOOT_TYPE_SNAPSHOTTED:
+		type_str = "snapshotted";
+		break;
+	case BOOT_TYPE_BOOTING:
+		type_str = "instabooting";
+		break;
+	default:
+		type_str = "normal";
+		break;
+	}
+	return sprintf(buf, "%s\n", type_str);
 }
 
 static struct kobj_attribute boot_type_attr = {
@@ -1116,8 +1128,18 @@ static struct attribute_group attr_group = {
 	.attrs = g,
 };
 
+extern unsigned int is_instabooting;
+
+static int normal_boot_flag __nosavedata;
 static int __init pm_disk_init(void)
 {
+	if (!normal_boot_flag) {
+		pr_info("instabooting: %d\n", is_instabooting);
+		if (is_instabooting)
+			boot_type = BOOT_TYPE_BOOTING;
+		else
+			boot_type = BOOT_TYPE_NORMAL;
+	}
 	return sysfs_create_group(power_kobj, &attr_group);
 }
 
@@ -1142,6 +1164,13 @@ static int __init resume_offset_setup(char *str)
 	if (sscanf(str, "%llu", &offset) == 1)
 		swsusp_resume_block = offset;
 
+	return 1;
+}
+
+static int __init normalboot_setup(char *str)
+{
+	boot_type = BOOT_TYPE_FAST;
+	normal_boot_flag = 1;
 	return 1;
 }
 
@@ -1180,6 +1209,7 @@ static int __init resumedelay_setup(char *str)
 
 __setup("wipeinstaboot", wipeinstaboot_setup);
 __setup("noresume", noresume_setup);
+__setup("normalboot", normalboot_setup);
 __setup("resume_offset=", resume_offset_setup);
 __setup("resume=", resume_setup);
 __setup("hibernate=", hibernate_setup);

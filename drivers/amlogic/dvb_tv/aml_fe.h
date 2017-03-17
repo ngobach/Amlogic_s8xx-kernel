@@ -31,6 +31,11 @@
 #include "aml_dvb.h"
 #include "linux/videodev2.h"
 
+#include <linux/dma-contiguous.h>
+#include <linux/dma-mapping.h>
+#include <linux/sizes.h>
+
+
 #include <linux/amlogic/aml_gpio_consumer.h>
 
 
@@ -62,7 +67,8 @@ typedef enum{
 	AM_TUNER_SI2177 = 6,
 	AM_TUNER_R840 = 7,
 	AM_TUNER_SI2157 = 8,
-	AM_TUNER_SI2151 = 9
+	AM_TUNER_SI2151 = 9,
+	AM_TUNER_MXL661 = 10
 }aml_tuner_type_t;
 
 typedef enum{

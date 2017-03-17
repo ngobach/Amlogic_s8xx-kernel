@@ -17,7 +17,7 @@
 
 #ifndef _TV_CEC_H_
 #define _TV_CEC_H_
-#include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
+#include <linux/amlogic/hdmi_tx/hdmi_tx_module.h> 
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8) && (MESON_CPU_TYPE < MESON_CPU_TYPE_MESONG9TV)
 #include <mach/hdmi_parameter.h>
 #endif
@@ -390,7 +390,6 @@ typedef unsigned long cec_info_mask;
 #define ONE_TOUCH_PLAY_MASK                  1
 #define ONE_TOUCH_STANDBY_MASK               2
 #define AUTO_POWER_ON_MASK                   3
-#define SYSTEM_AUDIO_MASK                    6
 
 
 typedef struct {
@@ -439,7 +438,7 @@ typedef struct {
             } audio_status;
         } audio;
     }specific_info;
-
+    
 } cec_node_info_t;
 
 typedef struct {
@@ -465,7 +464,6 @@ typedef struct {
     cec_node_info_t cec_node_info[MAX_NUM_OF_DEV];
     cec_rx_msg_buf_t cec_rx_msg_buf;
     hdmitx_dev_t* hdmitx_device;
-    cec_power_status_e tv_power_status;
 } cec_global_info_t;
 
 typedef struct {
@@ -502,7 +500,6 @@ typedef enum {
     SET_TEXT_VIEW_ON,
     POLLING_ONLINE_DEV, //0x19
     PING_TV,
-    DEVICE_MENU_CONTROL, //0x1b
     USR_CMD_MAX,
 } usr_cmd_type_e;
 
@@ -518,7 +515,7 @@ typedef enum {
 
 typedef enum {
     DEVICE_MENU_ACTIVE = 0,
-    DEVICE_MENU_INACTIVE,
+    DEVICE_MENU_INACTIVE,    
 } cec_device_menu_state_e;
 
 void cec_enable_irq(void);
@@ -531,8 +528,9 @@ int cec_ll_rx( unsigned char *msg, unsigned char *len);
 int cec_rx_irq_handle(unsigned char *msg, unsigned char *len);
 unsigned int cec_intr_stat(void);
 
+void cec_logicaddr_set(int logicaddr);
 void cec_test_function(unsigned char* arg, unsigned char arg_cnt);
-void cec_node_init(hdmitx_dev_t* hdmitx_device);
+int  cec_node_init(hdmitx_dev_t* hdmitx_device);
 void cec_node_uninit(hdmitx_dev_t* hdmitx_device);
 void dumpaocecreg(void);
 void raocec(unsigned int addr);
@@ -579,7 +577,6 @@ void cec_usrcmd_set_deactive_source(unsigned char log_addr);
 void cec_usrcmd_clear_node_dev_real_info_mask(unsigned char log_addr, cec_info_mask mask);
 void cec_usrcmd_set_report_physical_address(void);
 void cec_usrcmd_text_view_on(unsigned char log_addr);
-void cec_usrcmd_device_menu_control(unsigned char log_addr, unsigned char button);
 void cec_polling_online_dev(int log_addr, int *bool);
 void cec_device_vendor_id(cec_rx_message_t* pcec_message);
 void cec_report_power_status(cec_rx_message_t* pcec_message);
@@ -602,14 +599,10 @@ void cec_imageview_on_smp(void);
 void cec_active_source_smp(void);
 void cec_active_source_rx(cec_rx_message_t* pcec_message);
 
-void cec_system_audio_mode_request_smp(void);
-void cec_system_audio_mode_release_smp(void);
-void cec_inactive_source_smp(void);
-
 size_t cec_usrcmd_get_global_info(char * buf);
 void cec_usrcmd_set_dispatch(const char * buf, size_t count);
 void cec_usrcmd_set_config(const char * buf, size_t count);
-void cec_usrcmd_set_lang_config(const char * buf, size_t count);
+void cec_usrcmd_set_lang_config(const char * buf, size_t count); 
 void cec_input_handle_message(void);
 void cec_send_event_irq(void);
 void cec_standby_irq(void);
@@ -620,6 +613,8 @@ void cec_set_standby(void);
 void cec_isr_post_process(void);
 void cec_clear_buf(unsigned int flag);
 void cec_keep_reset(void);
+void cec_wake_lock(void);
+void cec_wake_unlock(void);
 
 void cec_tx_irq_handle(void);
 
@@ -639,13 +634,12 @@ void cec_gpi_init(void);
 unsigned char check_cec_msg_valid(const cec_rx_message_t* pcec_message);
 void cec_send_event(cec_rx_message_t* pcec_message);
 void cec_user_control_pressed(cec_rx_message_t* pcec_message);
-void cec_user_control_released(cec_rx_message_t* pcec_message);
+void cec_user_control_released(cec_rx_message_t* pcec_message);  
 void cec_standby(cec_rx_message_t* pcec_message);
-void cec_send_simplink_alive(cec_rx_message_t *pcec_message);
-void cec_send_simplink_ack(cec_rx_message_t *pcec_message);
 extern void cec_key_init(void);
 
 extern __u16 cec_key_map[];
 extern cec_global_info_t cec_global_info;
 
 #endif
+

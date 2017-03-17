@@ -52,6 +52,7 @@ ROM const videoMode_t VideoModeTable[NMB_OF_VIDEO_MODES + 1] =
 	{29,30, 0, {1440, 576 }, {1728, 625 }, {288, 49}, {24 ,  5}, {128, 5}, 31 , 50 , 54 ,  5400, PROG, NEG,  POS,  PAL , RP1|RP2                     ,  96}, // H-neg, V-pos
 	// 24, 1080p50
 	{0,31,  0, {1920, 1080}, {2640, 1125}, {720, 45}, {528,  4}, {44 , 5}, 56 , 50 , 148, 14850, PROG, POS,  POS,  0   , RP1                         , 192},
+	// 25, 1080p24
 	{0,32,  0, {1920, 1080}, {2750, 1125}, {830, 45}, {638,  4}, {44 , 5}, 27 , 24 , 74 ,  7425, PROG, POS,  POS,  0   , RP1                         , 192},
 	{0,33,  0, {1920, 1080}, {2640, 1125}, {720, 45}, {528,  4}, {44 , 5}, 28 , 25 , 74 ,  7425, PROG, POS,  POS,  0   , RP1                         , 192},
 	// 27, 1080p30
@@ -174,3 +175,282 @@ ROM const uint8_t  hdmiVicToVideoTableIndex[LAST_KNOWN_HDMI_VIC + 1] =
     NMB_OF_CEA861_VIDEO_MODES + 2,  // HDMI VIC=3
     NMB_OF_CEA861_VIDEO_MODES + 3,  // HDMI VIC=4
 };
+
+ROM const videoMode_t VideoModeTableOther[NMB_OF_VIDEO_OTHER_MODES+1] =
+{
+//{VIC, HVIC {H/V active}, {H/V  total},{H/V blank),{HVSyncO}, {HVSyncW},Fh , Fv , Fpix, Pclk, I/P , HPol, VPol, syst, repetition                  ,audio},
+// CEA-861D video modes
+{
+// 640*480 P 60hz
+.Vic4x3 = 0,
+.Vic16x9 = 0,
+.HdmiVic = 0,
+.Active.H = 640,
+.Active.V = 480,
+.Total.H = 800,
+.Total.V = 525,
+.Blank.H = 160, // right_border=8, front_porch=8, sync=96,back_porch=40,left_border=8
+.Blank.V = 45, // bottom_border=8, front_porch = 2, sync=2, back_porch=25, top_border=8
+.SyncOffset.H = 16,
+.SyncOffset.V = 10,
+.SyncWidth.H = 96,
+.SyncWidth.V = 2,
+.HFreq = 31, // 31.469 kHz
+.VFreq = 60, // 59.940 Hz
+.PixFreq = 25, // 25.175 MHz
+.PixClk = 2517, // 2517.5 10kHz
+.Interlaced = PROG,
+.HPol = NEG,
+.VPol = NEG,
+.NtscPal = NTSC,
+.Repetition = RP1,
+.MaxAudioSR8Ch = 0
+},
+
+{
+// 800*600 P 60hz
+.Vic4x3 = 0,
+.Vic16x9 = 0,
+.HdmiVic = 0,
+.Active.H = 800,
+.Active.V = 600,
+.Total.H = 1056,
+.Total.V = 628,
+.Blank.H = 256, // right_border=0, front_porch=40, sync=128,back_porch=88,left_border=0
+.Blank.V = 28, // bottom_border=0, front_porch = 1, sync=4, back_porch=23, top_border=0
+.SyncOffset.H = 40,
+.SyncOffset.V = 1,
+.SyncWidth.H = 128,
+.SyncWidth.V = 4,
+.HFreq = 38, // 37.879 kHz
+.VFreq = 60, // 60.317 Hz
+.PixFreq = 40, // 40.000 MHz
+.PixClk = 4000, // 4000 10kHz
+.Interlaced = PROG,
+.HPol = POS,
+.VPol = POS,
+.NtscPal = NTSC,
+.Repetition = RP1,
+.MaxAudioSR8Ch = 0
+},
+
+{
+// 1024*768 P 60hz
+.Vic4x3 = 0,
+.Vic16x9 = 0,
+.HdmiVic = 0,
+.Active.H = 1024,
+.Active.V = 768,
+.Total.H = 1344,
+.Total.V = 806,
+.Blank.H = 320, // right_border=0, front_porch=24, sync=136,back_porch=160,left_border=0
+.Blank.V = 38, // bottom_border=0, front_porch = 3, sync=6, back_porch=29, top_border=0
+.SyncOffset.H = 24,
+.SyncOffset.V = 3,
+.SyncWidth.H = 136,
+.SyncWidth.V = 6,
+.HFreq = 48, // 48.363 kHz
+.VFreq = 60, // 60.004 Hz
+.PixFreq = 65, // 65.000 MHz
+.PixClk = 6500, // 6500 10kHz
+.Interlaced = PROG,
+.HPol = NEG,
+.VPol = NEG,
+.NtscPal = NTSC,
+.Repetition = RP1,
+.MaxAudioSR8Ch = 0
+},
+
+{
+// 1152*864 P 60hz
+.Vic4x3 = 0,
+.Vic16x9 = 0,
+.HdmiVic = 0,
+.Active.H = 1152,
+.Active.V = 864,
+.Total.H = 1600,
+.Total.V = 900,
+.Blank.H = 448, // right_border=0, front_porch=64, sync=128,back_porch=256,left_border=0
+.Blank.V = 36, // bottom_border=0, front_porch = 1, sync=3, back_porch=32, top_border=0
+.SyncOffset.H = 64,
+.SyncOffset.V = 1,
+.SyncWidth.H = 128,
+.SyncWidth.V = 3,
+.HFreq = 54, // 54.000 kHz = 900*60
+.VFreq = 60, // 60.000 Hz
+.PixFreq = 86, // 86.400 MHz = 1600*900*60
+.PixClk = 8640, // 8640 10kHz
+.Interlaced = PROG,
+.HPol = NEG,
+.VPol = NEG,
+.NtscPal = NTSC,
+.Repetition = RP1,
+.MaxAudioSR8Ch = 0
+},
+
+{
+// 1280*768 P 60hz
+.Vic4x3 = 0,
+.Vic16x9 = 0,
+.HdmiVic = 0,
+.Active.H = 1280,
+.Active.V = 768,
+.Total.H = 1664,
+.Total.V = 798,
+.Blank.H = 384, // right_border=0, front_porch=64, sync=128,back_porch=192,left_border=0
+.Blank.V = 30, // bottom_border=0, front_porch = 3, sync=7, back_porch=20, top_border=0
+.SyncOffset.H = 64,
+.SyncOffset.V = 3,
+.SyncWidth.H = 128,
+.SyncWidth.V = 7,
+.HFreq = 48, // 47.776 kHz
+.VFreq = 60, // 59.870 Hz
+.PixFreq = 79, // 79.500 MHz
+.PixClk = 7950, // 7950 10kHz
+.Interlaced = PROG,
+.HPol = NEG,
+.VPol = POS,
+.NtscPal = NTSC,
+.Repetition = RP1,
+.MaxAudioSR8Ch = 0
+},
+
+{
+// 1280*800 P 60hz
+.Vic4x3 = 0,
+.Vic16x9 = 0,
+.HdmiVic = 0,
+.Active.H = 1280,
+.Active.V = 800,
+.Total.H = 1680,
+.Total.V = 831,
+.Blank.H = 400, // right_border=0, front_porch=72, sync=128,back_porch=200,left_border=0
+.Blank.V = 31, // bottom_border=0, front_porch = 3, sync=6, back_porch=22, top_border=0
+.SyncOffset.H = 72,
+.SyncOffset.V = 3,
+.SyncWidth.H = 128,
+.SyncWidth.V = 6,
+.HFreq = 50, // 49.702 kHz
+.VFreq = 60, // 59.810 Hz
+.PixFreq = 83, // 83.500 MHz
+.PixClk = 8350, // 8350 10kHz
+.Interlaced = PROG,
+.HPol = NEG,
+.VPol = POS,
+.NtscPal = NTSC,
+.Repetition = RP1,
+.MaxAudioSR8Ch = 0
+},
+
+{
+// 1280*960 P 60hz
+.Vic4x3 = 0,
+.Vic16x9 = 0,
+.HdmiVic = 0,
+.Active.H = 1280,
+.Active.V = 960,
+.Total.H = 1800,
+.Total.V = 1000,
+.Blank.H = 520, // right_border=0, front_porch=96, sync=112,back_porch=312,left_border=0
+.Blank.V = 40, // bottom_border=0, front_porch = 1, sync=3, back_porch=36, top_border=0
+.SyncOffset.H = 96,
+.SyncOffset.V = 1,
+.SyncWidth.H = 112,
+.SyncWidth.V = 3,
+.HFreq = 60, // 60.000 kHz
+.VFreq = 60, // 60.000 Hz
+.PixFreq = 108, // 108.000 MHz
+.PixClk = 10800, // 10800 10kHz
+.Interlaced = PROG,
+.HPol = POS,
+.VPol = POS,
+.NtscPal = NTSC,
+.Repetition = RP1,
+.MaxAudioSR8Ch = 0
+},
+
+{
+// 1280*1024 P 60hz
+.Vic4x3 = 0,
+.Vic16x9 = 0,
+.HdmiVic = 0,
+.Active.H = 1280,
+.Active.V = 1024,
+.Total.H = 1688,
+.Total.V = 1066,
+.Blank.H = 408, // right_border=0, front_porch=48, sync=112,back_porch=248,left_border=0
+.Blank.V = 42, // bottom_border=0, front_porch = 1, sync=3, back_porch=38, top_border=0
+.SyncOffset.H = 48,
+.SyncOffset.V = 1,
+.SyncWidth.H = 112,
+.SyncWidth.V = 3,
+.HFreq = 64, // 63.981 kHz
+.VFreq = 60, // 60.020 Hz
+.PixFreq = 108, // 108.00 MHz
+.PixClk = 10800, // 10800 10kHz
+.Interlaced = PROG,
+.HPol = POS,
+.VPol = POS,
+.NtscPal = NTSC,
+.Repetition = RP1,
+.MaxAudioSR8Ch = 0
+},
+
+{
+// 1366*768 P 60hz
+.Vic4x3 = 0,
+.Vic16x9 = 0,
+.HdmiVic = 0,
+.Active.H = 1366,
+.Active.V = 768,
+.Total.H = 1792,
+.Total.V = 798,
+.Blank.H = 426, // right_border=0, front_porch=70, sync=143,back_porch=213,left_border=0
+.Blank.V = 30, // bottom_border=0, front_porch = 3, sync=3, back_porch=24, top_border=0
+.SyncOffset.H = 70,
+.SyncOffset.V = 3,
+.SyncWidth.H = 143,
+.SyncWidth.V = 3,
+.HFreq = 48, // 47.712 kHz
+.VFreq = 60, // 59.790 Hz
+.PixFreq = 85, // 85.500 MHz
+.PixClk = 8550, // 8550 10kHz
+.Interlaced = PROG,
+.HPol = POS,
+.VPol = POS,
+.NtscPal = NTSC,
+.Repetition = RP1,
+.MaxAudioSR8Ch = 0
+},
+
+{
+// 1600*1200 P 60hz
+.Vic4x3 = 0,
+.Vic16x9 = 0,
+.HdmiVic = 0,
+.Active.H = 1600,
+.Active.V = 1200,
+.Total.H = 2160,
+.Total.V = 1250,
+.Blank.H = 560, // right_border=0, front_porch=64, sync=192,back_porch=304,left_border=0
+.Blank.V = 50, // bottom_border=0, front_porch = 1, sync=3, back_porch=46, top_border=0
+.SyncOffset.H = 64,
+.SyncOffset.V = 1,
+.SyncWidth.H = 192,
+.SyncWidth.V = 3,
+.HFreq = 75, // 75.000 kHz
+.VFreq = 60, // 60.000 Hz
+.PixFreq = 162, // 162.000 MHz
+.PixClk = 16200, // 16200 10kHz
+.Interlaced = PROG,
+.HPol = POS,
+.VPol = POS,
+.NtscPal = NTSC,
+.Repetition = RP1,
+.MaxAudioSR8Ch = 0
+},
+
+{0,0  , 0, {0   , 0   }, {0   , 0   }, {0  , 0 }, {0  ,  0}, {0  , 0}, 0  , 0  , 0  ,     0, 0   , 0  ,  0  ,  0   , 0  ,   0}
+};
+
+

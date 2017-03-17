@@ -223,11 +223,11 @@ vpp2_process_speed_check(u32 width_in,
     height_out / height_screen / 0.90 *
     1920 * 1080 / width_in * height_in
 #endif
-
+   
    if((height_in > 1080)&&(next_frame_par->vscale_skip_count== 0 )){
-		return 1;
+   		return 1;
    }
-
+   
     if (1800 * 1400 * height_out > height_screen * width_in * height_in) {
         return 0;
     }
@@ -291,6 +291,14 @@ RESTART:
             aspect_factor = 0x90;
         wide_mode = VIDEO_WIDEOPTION_NORMAL;
     }
+    else if (wide_mode == VIDEO_WIDEOPTION_16_10) {
+        if (vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+             aspect_factor = 0x199;
+        else
+             aspect_factor = 0xA0;
+        wide_mode = VIDEO_WIDEOPTION_NORMAL;
+    }
+
 
     if ((aspect_factor == 0) || (wide_mode == VIDEO_WIDEOPTION_FULL_STRETCH)) {
         aspect_factor = 0x100;

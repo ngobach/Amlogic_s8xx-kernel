@@ -571,3 +571,10 @@ bool dma_release_from_contiguous(struct device *dev, struct page *pages,
 
 	return true;
 }
+
+int dma_get_cma_size(struct device *dev)
+{
+	struct cma *cma = dev_get_cma_area(dev);
+	return cma->count * PAGE_SIZE;
+}
+

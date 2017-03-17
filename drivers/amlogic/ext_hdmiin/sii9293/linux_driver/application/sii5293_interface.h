@@ -36,4 +36,31 @@ int sii_get_interlaced(void);
 int sii_get_pwr5v_status(void);
 int sii_get_audio_sampling_freq(void);
 
+int sii_get_hs_polar(void);
+int sii_get_vs_polar(void);
+
+#if 0
+typedef struct
+{
+	unsigned int h_active;
+	unsigned int h_total;
+	unsigned int hs_fp; // hsync frontporch
+	unsigned int hs_width;
+	unsigned int hs_bp; // hsync backporch
+
+	unsigned int v_active;
+	unsigned int v_total;
+	unsigned int vs_fp; // vsync frontporch
+	unsigned int vs_to_de; // from vsync to the first active line
+
+	unsigned int pixelfreq;
+	unsigned int intelaced;
+	unsigned int hs_pol;
+	unsigned int vs_pol;
+}sii_video_timming_t;
+
+int sii_get_video_timming(sii_video_timming_t *timming);
 #endif
+
+#endif
+

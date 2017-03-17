@@ -154,7 +154,7 @@ static ssize_t dvbc_reg_store(struct class *cls, struct class_attribute *attr, c
     ps = buf_orig;
 	printk("write dvbc_reg\n");
 	mutex_lock(&aml_lock);
-	while (1) {
+ 	while (1) {
             token = strsep(&ps, "\b");
             if (token == NULL)
                     break;
@@ -194,7 +194,7 @@ static ssize_t dvbc_reg_store(struct class *cls, struct class_attribute *attr, c
 	    cap.cap_addr=0x94400000;
 		cap.cap_size=4*1024*1024;
 		cap.cap_afifo=0x60;
-		cap_adc_data(&cap);
+	  	cap_adc_data(&cap);
 		printk("[capture]now begin to capture data[%x][%x]\n",cap.cap_addr,cap.cap_size);
 	}else if(!strncmp(parm[0],"t",strlen("t")))   //set tuner
     {
@@ -524,12 +524,12 @@ static int M6_Demod_Dvbc_Init(struct aml_fe_dev *dev,int mode)
 	demod_status.dvb_mode = M6_Dvbc;
 
 	if(mode==Adc_mode){
-	sys.adc_clk=35000;
-	sys.demod_clk=100000;
+    	sys.adc_clk=35000;
+    	sys.demod_clk=100000;
 		demod_status.tmp=Adc_mode;
 	}else{
 		sys.adc_clk=Adc_Clk_24M;
-	sys.demod_clk=Demod_Clk_72M;
+    	sys.demod_clk=Demod_Clk_72M;
 		demod_status.tmp=Cry_mode;
 	}
 	demod_status.ch_if=Si2176_6M_If*1000;
@@ -839,7 +839,7 @@ static int m6_demod_atsc_set_frontend(struct dvb_frontend *fe)
 	//p->u.vsb.modulation=QAM_64;
 	atsc_mode=c->modulation;
    // param.mode = amdemod_qam(p->u.vsb.modulation);
-	param.mode=c->modulation;
+   	param.mode=c->modulation;
 
 retry:
 	aml_dmx_before_retune(AM_TS_SRC_TS2, fe);
@@ -1023,13 +1023,23 @@ static int m6_demod_dtmb_set_frontend(struct dvb_frontend *fe)
 	memset(&param, 0, sizeof(param));
 	param.ch_freq = c->frequency/1000;
 	last_lock = -1;
-	dtmb_thread = 0;
-//	demod_power_switch(PWR_OFF);
-	aml_fe_analog_set_frontend(fe);
-	msleep(100);
-	dtmb_thread = 1;
+	 #if (defined CONFIG_AM_R840)
+		dtmb_set_ch(&demod_status,&demod_i2c,&param);	//need do it before setting tuner 20150826
+		dtmb_thread = 0;
+	// 	demod_power_switch(PWR_OFF);
+		aml_fe_analog_set_frontend(fe);
+		msleep(100);
+		dtmb_thread = 1;
+	#else
+		dtmb_thread = 0;
+	// 	demod_power_switch(PWR_OFF);
+		aml_fe_analog_set_frontend(fe);
+		msleep(100);
+		dtmb_thread = 1;
+		dtmb_set_ch(&demod_status,&demod_i2c,&param);	//need do it after setting tuner 20150910 for mxl661
+	#endif
 //	demod_power_switch(PWR_ON);
-	dtmb_set_ch(&demod_status,&demod_i2c,&param);
+//	dtmb_set_ch(&demod_status,&demod_i2c,&param);
 	afe->params = *c;
 	return  0;
 
@@ -1180,7 +1190,7 @@ static int m6_demod_fe_get_ops(struct aml_fe_dev *dev, int mode, void *ops)
 	fe_ops->read_signal_strength = m6_demod_dtmb_read_signal_strength;
 	fe_ops->read_snr = m6_demod_dtmb_read_snr;
 	fe_ops->read_ucblocks = m6_demod_dtmb_read_ucblocks;
-	M6_Demod_Dtmb_Init(dev);
+//	M6_Demod_Dtmb_Init(dev);
 	}
 	return 0;
 }

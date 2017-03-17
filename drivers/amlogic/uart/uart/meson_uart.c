@@ -353,7 +353,7 @@ static void meson_uart_change_speed(struct meson_uart_port *mup, unsigned long n
 	if (!newbaud || newbaud == mup->baud)
 		return;
 
-	if (IS_MESON_M8M2_CPU) {
+	if ((IS_MESON_M8B_CPU || IS_MESON_M8M2_CPU) && (0 == mup->line)) {
 		msleep(1);
 		xtal = clk_get_sys("xtal", NULL);
 		value = (clk_get_rate(xtal) / 3) / newbaud - 1;
@@ -382,7 +382,7 @@ static void meson_uart_change_speed(struct meson_uart_port *mup, unsigned long n
 	value |= 0x800000;
 
 	//Set USE_XTAL_CLK bit
-	if(IS_MESON_M8M2_CPU)
+	if ((IS_MESON_M8B_CPU || IS_MESON_M8M2_CPU) && (0 == mup->line))
 		value  |= 1<<24;
 
 	writel(value, &uart->reg5);
@@ -403,20 +403,25 @@ am_uart_set_termios(struct uart_port *port, struct ktermios *termios,
     tmp = readl(&uart->mode);
     switch (termios->c_cflag & CSIZE) {
     case CS8:
+        printk(KERN_DEBUG "config %s: Character length 8bits/char\n", mup->name);
         tmp &= ~(0x3 << 20);
         break;
     case CS7:
+        printk(KERN_DEBUG "config %s: Character length 7bits/char\n", mup->name);
         tmp &= ~(0x1 << 21);
         tmp |= (0x1 << 20);
         break;
     case CS6:
+        printk(KERN_DEBUG "config %s: Character length 6bits/char\n", mup->name);
         tmp |= 0x1 << 21;
         tmp &= ~(0x1 << 20);
         break;
     case CS5:
+        printk(KERN_DEBUG "config %s: Character length 5bits/char\n", mup->name);
         tmp |= 0x3 << 20;
         break;
     default:
+        printk(KERN_DEBUG "default config %s: Character length 8bits/char\n", mup->name);
         tmp &= ~(0x3 << 20);
         break;
     }
@@ -1050,7 +1055,7 @@ static void meson_serial_console_write(struct console *co, const char *s, u_int 
 				need_default = 1;
 			}
 		}
-
+	
 		if(need_default==0){
 			co_struct = (struct meson_uart_struct *)cur_s;
 			co_struct->s = cur_s + struct_size;
@@ -1426,3 +1431,6 @@ module_exit(meson_uart_exit);
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("Amlogic Meson Uart driver");
+
+
+

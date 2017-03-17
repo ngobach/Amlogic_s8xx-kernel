@@ -172,6 +172,12 @@ void root_func(){
 		status = "okay";
 	};
 
+	tvout {
+		compatible = "amlogic,tvout";
+		dev_name = "tvout";
+		status = "okay";
+	};
+
 /// ***************************************************************************************
 ///	-	vdac hardware switch
 //$$ MODULE = "vdac hardware switch"
@@ -327,7 +333,7 @@ void root_func(){
 //$$ L2 PROP_U32 = "irq_out"
 //$$ L2 PROP_U32 = "card_type"
 	    sd{
-		status = "okay";
+	    	status = "okay";
 	        port = <1>;          /**0:sdio_a, 1:sdio_b, 2:sdio_c, 3:sdhc_a, 4:sdhc_b, 5:sdhc_c */
 	        pinname = "sd";
 	        ocr_avail = <0x200000>;          /**VDD voltage 3.3 ~ 3.4 */
@@ -503,7 +509,7 @@ void root_func(){
                 1080000             1249000     1249000
                 1200000             1266000     1266000
                 1320000             1334000     1334000
-                1512000             1334000     1334000
+                1500000             1334000     1334000
             >;
 	};
     };
@@ -762,6 +768,7 @@ void root_func(){
 
 /// ***************************************************************************************
 ///	-	Nand
+//$$ MODULE="Nand"
 //$$ DEVICE="aml_nand"
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 2 ="reg"
@@ -771,7 +778,7 @@ void root_func(){
 //$$ L3 PROP_STR 2 ="plat-names"
 //$$ L2 PROP_U32 = "plat-num"
 //$$ L2 PROP_CHOICE "plat-part-0_match" = "plat-part-0"
-//$$ L2 PROP_CHOICE "plat-part-1_match" = "plat-part-1"
+// L2 PROP_CHOICE "plat-part-1_match" = "plat-part-1"
 	nand{
 		compatible = "amlogic,aml_nand";
 		dev_name = "nand";
@@ -785,34 +792,11 @@ void root_func(){
 									&nand_ce0 &nand_ce1
 									&nand_ce2 &nand_ce3>;
 		device_id = <0>;
-		plat-names = "bootloader","nandnormal";
-		plat-num = <2>;
-		plat-part-0 = <&bootload>;
-		plat-part-1 = <&normal>;
+		plat-names = "nandnormal";
+		plat-num = <1>;
+		plat-part-0 = <&normal>;
 
-//$$ MATCH "plat-part-0_match" = <&bootload>
-//$$ L2 PROP_STR = "enable_pad"
-//$$ L2 PROP_STR = "busy_pad"
-//$$ L2 PROP_STR = "timming_mode"
-//$$ L2 PROP_STR = "bch_mode"
-//$$ L2 PROP_U32 = "t_rea"
-//$$ L2 PROP_U32 = "t_rhoh"
-//$$ L2 PROP_U32 = "chip_num"
-//$$ L2 PROP_U32 = "part_num"
-//$$ L2 PROP_U32 = "rb_detect"
-		bootload: bootload{
-			enable_pad ="ce0";
-			busy_pad = "rb0";
-			timming_mode = "mode5";
-			bch_mode = "bch60_1k";
-			t_rea = <20>;
-			t_rhoh = <15>;
-			chip_num = <1>;
-			part_num = <0>;
-			rb_detect = <1>;
-		};
-
-//$$ MATCH "plat-part-1_match" = <&normal>
+//$$ MATCH "plat-part-0_match" = <&normal>
 //$$ L2 PROP_STR 2 = "enable_pad"
 //$$ L2 PROP_STR 2 = "busy_pad"
 //$$ L2 PROP_STR = "timming_mode"
@@ -832,7 +816,7 @@ void root_func(){
 			t_rea = <20>;
 			t_rhoh = <15>;
 			chip_num = <2>;
-			part_num = <7>;
+			part_num = <8>;
 			partition = <&nand_partitions>;
 			rb_detect = <1>;
 		};
@@ -861,10 +845,6 @@ void root_func(){
 			cache{
 				offset=<0x0 0x4a800000>;
 				size=<0x0 0x20000000>;
-			};
-			backup{
-				offset=<0x0 0x6a800000>;
-				size=<0x0 0x10000000>;
 			};
 			userdata{
 				offset=<0xffffffff 0xffffffff>;
@@ -927,7 +907,7 @@ void root_func(){
 			key-dataformat = "allascii";
 			key-permit = "read","write","del";
 		};
-		
+
 //$$ MATCH "Unifykey_1_match" = <&keysn_1>
 //$$ L2 PROP_STR = "key-name"
 //$$ L2 PROP_STR = "key-device"
@@ -939,7 +919,7 @@ void root_func(){
 			key-dataformat = "hexdata";
 			key-permit = "read","write","del";
 		};
-		
+
 //$$ MATCH "Unifykey_2_match" = <&keysn_2>
 //$$ L2 PROP_STR = "key-name"
 //$$ L2 PROP_STR = "key-device"
@@ -963,7 +943,7 @@ void root_func(){
 			key-dataformat = "hexdata";
 			key-permit = "read","write";
 		};
-		
+
 //$$ MATCH "Unifykey_4_match" = <&keysn_4>
 //$$ L2 PROP_STR = "key-name"
 //$$ L2 PROP_STR = "key-device"
@@ -975,7 +955,7 @@ void root_func(){
 			key-dataformat = "hexdata";
 			key-permit = "read","write","del";
 		};
-		
+
 //$$ MATCH "Unifykey_5_match" = <&keysn_5>
 //$$ L2 PROP_STR = "key-name"
 //$$ L2 PROP_STR = "key-device"
@@ -988,7 +968,7 @@ void root_func(){
 			key-permit = "read","write","del";
 		};
 	};
-	
+
 /// ***************************************************************************************
 ///	-	HDMI
 //$$ MODULE="HDMI"
@@ -1128,7 +1108,7 @@ void root_func(){
 //$$ L2 PROP_U32 2 = "amlogic,clrmask"
 //$$ L2 PROP_STR = "amlogic,pins"
 		aml_pwm_pins:aml_pwm{
-			amlogic,setmask=<2 0x4>;
+		    	amlogic,setmask=<2 0x4>;
 			amlogic,clrmask=<1 0x20000000>;
 			amlogic,pins="GPIOD_0";
 		};
@@ -1501,18 +1481,5 @@ void root_func(){
 		fe0_dev = <0>;
 
 	};
-
-/// ***************************************************************************************
-/// - DISP&MM-A/V Amvideocap
-//$$ MODULE = "DISP&MM-Amvideocap"
-//$$ DEVICE="amvideocap"
-//$$ L2 PROP_STR = "status"
-//$$ L3 PROP_U32 4 ="reg"
- amvideocap{
- compatible = "amlogic,amvideocap";
- dev_name = "amvideocap.0";
- status = "okay";
- reserve-memory = <0x00a00000>; // 1920 * 1088 * 4 = 8,355,840
- reserve-iomap = "true";
- };
 }; /* end of / */
+

@@ -216,6 +216,8 @@ struct aml_dvb {
 	struct timer_list    watchdog_timer;
 	int                  dmx_watchdog_disable[DMX_DEV_COUNT];
 	struct aml_swfilter  swfilter;
+	struct work_struct aml_fe_wq;
+	struct dvb_frontend *fe;
 };
 
 
@@ -282,3 +284,4 @@ void dmx_reset_dmx_hw_ex(struct aml_dvb *dvb, struct aml_dmx *dmx, int reset_irq
 void dmx_reset_dmx_hw_ex_unlock(struct aml_dvb *dvb, struct aml_dmx *dmx, int reset_irq);
 
 #endif
+

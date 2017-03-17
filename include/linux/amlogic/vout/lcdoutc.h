@@ -24,6 +24,7 @@
 #ifndef LCDOUTC_H
 #define LCDOUTC_H
 #include <linux/types.h>
+#include <plat/platform_data.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
 #include <linux/pinctrl/consumer.h>
 
@@ -38,7 +39,7 @@ extern void lcd_print(const char *fmt, ...);
 //global define
 //***********************************************
 	#define FIN_FREQ                 (24 * 1000)
-
+	
 	//clk_ctrl
 	#define CLK_CTRL_AUTO             31
 	//#define CLK_CTRL_VCLK_SEL         30
@@ -53,7 +54,7 @@ extern void lcd_print(const char *fmt, ...);
 	#define POL_CTRL_DE               2
 	#define POL_CTRL_VS               1
 	#define POL_CTRL_HS               0
-
+	
 	//gamma_ctrl
 	#define GAMMA_CTRL_REVERSE        4
 	#define GAMMA_CTRL_EN             0
@@ -101,8 +102,8 @@ typedef struct {
 	u16 v_active;		// Vertical display area
 	u16 h_period;		// Horizontal total period time
 	u16 v_period;		// Vertical total period time
-	u32 screen_ratio_width;			// screen aspect ratio width
-	u32 screen_ratio_height;		// screen aspect ratio height
+	u32 screen_ratio_width;			// screen aspect ratio width 
+	u32 screen_ratio_height;		// screen aspect ratio height 
 	u32 h_active_area;				/* screen physical width in "mm" unit */
 	u32 v_active_area;				/* screen physical height in "mm" unit */
 
@@ -118,14 +119,14 @@ typedef struct {
 	u32 lcd_clk;		/* lcd clock*/
 	u16 sync_duration_num;
 	u16 sync_duration_den;
-
+	
 	u16 pol_ctrl;
 	//u16 inv_cnt_addr;
 	//u16 tcon_misc_sel_addr;
-
+	
 	u16 video_on_pixel;
 	u16 video_on_line;
-
+	
 	u16 hsync_width;
 	u16 hsync_bp;
 	u16 vsync_width;
@@ -152,7 +153,7 @@ typedef struct {
 	u16 vs_he_addr;
 	u16 vs_vs_addr;
 	u16 vs_ve_addr;
-
+	
 	u16 vso_hstart;
 	u16 vso_vstart;
 	u16 vso_user;
@@ -168,7 +169,7 @@ typedef struct {
 	u32 vadj_brightness;
 	u32 vadj_contrast;
 	u32 vadj_saturation;
-
+	
 	unsigned char gamma_ctrl;
 	u16 gamma_r_coeff;
 	u16 gamma_g_coeff;
@@ -206,7 +207,7 @@ typedef struct DSI_Config_s{
 
     unsigned char *dsi_init_on;
     unsigned char *dsi_init_off;
-    unsigned char lcd_extern_init;
+    //unsigned char lcd_extern_init;
 }DSI_Config_t;
 
 typedef struct {
@@ -223,10 +224,13 @@ typedef struct {
 } EDP_Config_t;
 
 typedef struct {
-	unsigned lvds_vswing;
-	unsigned lvds_repack_user;
-	unsigned lvds_repack;
-	unsigned pn_swap;
+	unsigned int lvds_vswing;
+	unsigned int lvds_repack_user;
+	unsigned int lvds_repack;
+	unsigned int dual_port;
+	unsigned int port_sel; /* select port A/B for single port */
+	unsigned int pn_swap;
+	unsigned int port_swap; /* even, odd */
 } LVDS_Config_t;
 
 typedef struct {
@@ -258,6 +262,7 @@ typedef struct {
 } MLVDS_Config_t;
 
 typedef struct {
+	int extern_index;
 	DSI_Config_t *mipi_config;
 	EDP_Config_t *edp_config;
 	LVDS_Config_t *lvds_config;
@@ -310,6 +315,13 @@ typedef struct {
     Lcd_Power_Ctrl_t lcd_power_ctrl;
     Lcd_Misc_Ctrl_t lcd_misc_ctrl;
 } Lcd_Config_t;
+
+struct aml_lcd_platform {
+	plat_data_public_t public;
+	Lcd_Config_t *lcd_conf;
+	/* local settings */
+	int lcd_status;
+};
 
 extern Lcd_Config_t* get_lcd_config(void);
 extern void lcd_config_init(Lcd_Config_t *pConf);

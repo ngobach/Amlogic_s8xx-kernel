@@ -39,8 +39,8 @@
 #include "power.h"
 
 static int swsusp_page_is_free(struct page *);
-void swsusp_set_page_forbidden(struct page *);
-void swsusp_unset_page_forbidden(struct page *);
+static void swsusp_set_page_forbidden(struct page *);
+static void swsusp_unset_page_forbidden(struct page *);
 
 /*
  * Number of bytes to reserve for memory allocations made by device drivers
@@ -121,7 +121,13 @@ unsigned long get_safe_page(gfp_t gfp_mask)
 #ifdef CONFIG_INSTABOOT_MEM_MG
 static inline struct page* alloc_image_page(gfp_t gfp_mask)
 {
-	return istbt_alloc_image_page(gfp_mask);
+	struct page *page;
+	page = istbt_alloc_image_page(gfp_mask);
+	if (page) {
+		swsusp_set_page_forbidden(page);
+		swsusp_set_page_free(page);
+	}
+	return page;
 }
 #else
 static struct page *alloc_image_page(gfp_t gfp_mask)
@@ -144,7 +150,17 @@ static struct page *alloc_image_page(gfp_t gfp_mask)
 #ifdef CONFIG_INSTABOOT_MEM_MG
 static inline void free_image_page(void *addr, int clear_nosave_free)
 {
+	struct page *page;
+
+	BUG_ON(!virt_addr_valid(addr));
+
+	page = virt_to_page(addr);
+
 	istbt_free_image_page(addr, clear_nosave_free);
+
+	swsusp_unset_page_forbidden(page);
+	if (clear_nosave_free)
+		swsusp_unset_page_free(page);
 }
 #else
 static inline void free_image_page(void *addr, int clear_nosave_free)
@@ -665,10 +681,10 @@ __register_nosave_region(unsigned long start_pfn, unsigned long end_pfn,
  * Set bits in this map correspond to the page frames the contents of which
  * should not be saved during the suspend.
  */
-struct memory_bitmap *forbidden_pages_map;
+static struct memory_bitmap *forbidden_pages_map;
 
 /* Set bits in this map correspond to free page frames. */
-struct memory_bitmap *free_pages_map;
+static struct memory_bitmap *free_pages_map;
 
 /*
  * Each page frame allocated for creating the image is marked by setting the
@@ -707,7 +723,7 @@ void swsusp_unset_page_free(struct page *page)
 }
 EXPORT_SYMBOL(swsusp_unset_page_free);
 
-void swsusp_set_page_forbidden(struct page *page)
+static void swsusp_set_page_forbidden(struct page *page)
 {
 	if (forbidden_pages_map)
 		memory_bm_set_bit(forbidden_pages_map, page_to_pfn(page));
@@ -720,7 +736,7 @@ int swsusp_page_is_forbidden(struct page *page)
 		memory_bm_test_bit(forbidden_pages_map, page_to_pfn(page)) : 0;
 }
 
-void swsusp_unset_page_forbidden(struct page *page)
+static void swsusp_unset_page_forbidden(struct page *page)
 {
 	if (forbidden_pages_map)
 		memory_bm_clear_bit(forbidden_pages_map, page_to_pfn(page));
@@ -1422,6 +1438,8 @@ int hibernate_preallocate_memory(void)
 	 * the image and we're done.
 	 */
 	if (size >= saveable) {
+		pages = minimum_image_size(saveable);
+		shrink_all_memory((saveable - pages) >> 1);
 		pages = preallocate_image_highmem(save_highmem);
 		pages += preallocate_image_memory(saveable - pages, avail_normal);
 		goto out;

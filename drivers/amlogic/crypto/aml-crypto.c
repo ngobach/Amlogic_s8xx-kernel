@@ -238,3 +238,4 @@ void ndma_wait_for_completion(unsigned long thread_num)
 	while ((cbus_rd_reg(NDMA_TABLE_ADD_REG) & (0xF << (thread_num*8))))
 		;
 }
+

@@ -11,3 +11,4 @@ di-objs = deinterlace.o \
 
 
 obj-$(CONFIG_DEINTERLACE) += di.o
+

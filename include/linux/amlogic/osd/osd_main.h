@@ -26,7 +26,6 @@
 #define OSD_MAIN_H
 #include  <linux/list.h>
 #include  <linux/amlogic/vout/vout_notify.h>
-#include  <linux/amlogic/osd/osd_dev.h>
 #include  <linux/fb.h>
 
 static __u32 var_screeninfo[5];
@@ -60,7 +59,7 @@ static struct fb_var_screeninfo mydef_var[] = {
 	.sync            = 0,
 	.vmode           = FB_VMODE_NONINTERLACED,
 	.rotate          = 0,
-
+	
 }
 
 #ifdef  CONFIG_FB_OSD2_ENABLE
@@ -114,7 +113,7 @@ static struct fb_var_screeninfo mydef_var[] = {
 	.vmode           = FB_VMODE_NONINTERLACED,
 	.rotate          = 0,
 }
-#endif
+#endif 
 };
 
 
@@ -162,11 +161,6 @@ typedef  struct {
 #define  FBIOPUT_OSD_ROTATE_ON   	0x4516
 #define  FBIOPUT_OSD_ROTATE_ANGLE	0x4517
 #define  FBIOPUT_OSD_SYNC_ADD	0x4518
-
-#define GET_UMP_SECURE_ID_BUF1 _IOWR('m', 311, unsigned int)
-#define GET_UMP_SECURE_ID_BUF2 _IOWR('m', 312, unsigned int)
-#define FBIOPUT_OSD2_CURSOR_DATA _IOWR('m', 313, unsigned int)
-
 #define  OSD_INVALID_INFO   		0xffffffff
 
 #define  OSD_FIRST_GROUP_START   	1
@@ -199,10 +193,5 @@ typedef enum{
 	REVERSE_TRUE,
 	REVERSE_MAX
 }reverse_info_t;
-
-#ifdef CONFIG_FB_AMLOGIC_UMP
-extern int (*disp_get_ump_secure_id) (struct fb_info *info, myfb_dev_t *g_fbi,
-                                       unsigned long arg, int buf);
-#endif
 
 #endif /* OSD_MAIN_H */

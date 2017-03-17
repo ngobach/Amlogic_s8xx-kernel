@@ -93,13 +93,13 @@
 	#define LCD_PACK_RVS             1
 	#define LCD_PACK_LITTLE          0
 
- /* for LVDS_BLANK_DATA */
+ /* for LVDS_BLANK_DATA */  
 	#define LVDS_blank_data_reserved    30  // 31:30
 	#define LVDS_blank_data_r           20  // 29:20
 	#define LVDS_blank_data_g           10  // 19:10
 	#define LVDS_blank_data_b           0  //  9:0
-
-/* for LVDS_PACK_CNTL_ADDR */
+	
+/* for LVDS_PACK_CNTL_ADDR */  
 	#define LVDS_USE_TCON               7
 	#define LVDS_DUAL                   6
 	#define PN_SWP                      5
@@ -142,7 +142,7 @@ static const unsigned gamma_sel_table[3] = {
 	//clk_ctrl
 	#define CLK_CTRL_FRAC			16	//[27:16]
 	#define CLK_CTRL_LEVEL			12	//[14:12]
-
+	
 	#define PLL_WAIT_LOCK_CNT		200
 
 /**** clk frequency limit ***/

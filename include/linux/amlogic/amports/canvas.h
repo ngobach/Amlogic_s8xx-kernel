@@ -41,7 +41,16 @@ typedef struct {
 #define AMVDEC_ALL_CANVAS_RANGE_1 0x25 //mjpeg
 
 #define PPMGR2_MAX_CANVAS 8
+
+#ifndef MESON_CPU_TYPE_MESON8
 #define PPMGR2_CANVAS_INDEX 0x70    // 0x70-0x7f for PPMGR2 (IONVIDEO)
+#else
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+#define PPMGR2_CANVAS_INDEX 0xf0    // 0x70-0x7f for PPMGR2 (IONVIDEO)
+#else
+#define PPMGR2_CANVAS_INDEX 0x70    // 0x70-0x7f for PPMGR2 (IONVIDEO)
+#endif
+#endif
 
 #define AMVDEC_H264MVC_CANVAS_INDEX 0x78
 #define AMVDEC_H264MVC_CANVAS_MAX 0xbf

@@ -36,11 +36,15 @@
 #include <linux/fd.h>
 #include <linux/param.h>
 
-#include <mtd/mtd-abi.h>
+#include <mtd/mtd-abi.h> 
 #include "aml_ntd.h"
 
 LIST_HEAD(ntd_blktrans_majors);
 static DEFINE_MUTEX(blktrans_ref_mutex);
+
+int blk_class_register(struct class *cls);
+int blk_device_register(struct device *dev, int num);
+
 
 /*****************************************************************************
 *Name         :
@@ -115,67 +119,80 @@ static void blktrans_dev_put(struct ntd_blktrans_dev *dev)
 #define blk_queue_plugged(q)    test_bit(18, &(q)->queue_flags)
 static int ntd_blktrans_thread(void *arg)
 {
-    struct ntd_blktrans_dev *dev = arg;
-    struct ntd_blktrans_ops *tr = dev->tr;
-    struct request_queue *rq = dev->rq;
-    struct request *req = NULL;
-    int res;
-    int background_done = 0;
+	struct ntd_blktrans_dev *dev = arg;
+	struct ntd_blktrans_ops *tr = dev->tr;
+	struct request_queue *rq = dev->rq;
+	struct request *req = NULL;
+	struct ntd_info *ntd;
+	int res;
+	int background_done = 0;
 
-    spin_lock_irq(rq->queue_lock);
+	ntd = dev->ntd;
 
-    while (!kthread_should_stop()) {
+	//set_freezable();
 
-        dev->bg_stop = false;
-        if (!blk_queue_plugged(rq))
-            req = blk_fetch_request(rq);
-        if (!req) {
-            if (tr->background && !background_done) {
-                spin_unlock_irq(rq->queue_lock);
-                mutex_lock(&dev->lock);
-                tr->background(dev);
-                mutex_unlock(&dev->lock);
-                spin_lock_irq(rq->queue_lock);
-                /*
-                 * Do background processing just once per idle
-                 * period.
-                 */
-                background_done = !dev->bg_stop;
-                continue;
-            }
-            set_current_state(TASK_INTERRUPTIBLE);
+	spin_lock_irq(rq->queue_lock);
 
-            if (kthread_should_stop())
-                set_current_state(TASK_RUNNING);
+	while (!kthread_should_stop()) {
 
-            spin_unlock_irq(rq->queue_lock);
-            schedule();
-            spin_lock_irq(rq->queue_lock);
-            continue;
-        }
+		//try_to_freeze();
+		if (ntd->thread_stop_flag) {
+			spin_unlock_irq(rq->queue_lock);
+			schedule();
+			spin_lock_irq(rq->queue_lock);
+			continue;
+		}
 
-        spin_unlock_irq(rq->queue_lock);
+		dev->bg_stop = false;
+		if (!blk_queue_plugged(rq))
+			req = blk_fetch_request(rq);
+		if (!req) {
+			if (tr->background && !background_done) {
+				spin_unlock_irq(rq->queue_lock);
+				mutex_lock(&dev->lock);
+				tr->background(dev);
+				mutex_unlock(&dev->lock);
+				spin_lock_irq(rq->queue_lock);
+				/*
+				* Do background processing just once per idle
+				* period.
+				*/
+				background_done = !dev->bg_stop;
+				continue;
+			}
+			set_current_state(TASK_INTERRUPTIBLE);
 
-        mutex_lock(&dev->lock);
-        res = tr->do_blktrans_request(tr, dev, req);
-        mutex_unlock(&dev->lock);
+			if (kthread_should_stop())
+				set_current_state(TASK_RUNNING);
 
-        spin_lock_irq(rq->queue_lock);
+			spin_unlock_irq(rq->queue_lock);
+			schedule();
+			spin_lock_irq(rq->queue_lock);
+			continue;
+		}
 
-        if (blk_rq_sectors(req) > 0) {
-            __blk_end_request(req, res, 512*blk_rq_sectors(req));
-            req = NULL;
-        }
+		spin_unlock_irq(rq->queue_lock);
 
-        background_done = 0;
-    }
+		mutex_lock(&dev->lock);
+		res = tr->do_blktrans_request(tr, dev, req);
+		mutex_unlock(&dev->lock);
 
-    if (req)
-        __blk_end_request_all(req, -EIO);
+		spin_lock_irq(rq->queue_lock);
 
-    spin_unlock_irq(rq->queue_lock);
+		if (blk_rq_sectors(req) > 0) {
+			__blk_end_request(req, res, 512*blk_rq_sectors(req));
+			req = NULL;
+		}
 
-    return 0;
+		background_done = 0;
+	}
+
+	if (req)
+		__blk_end_request_all(req, -EIO);
+
+	spin_unlock_irq(rq->queue_lock);
+
+	return 0;
 }
 
 /*****************************************************************************
@@ -341,12 +358,12 @@ int blktrans_ioctl(struct block_device *bdev, fmode_t mode,unsigned int cmd, uns
             printk("blktrans_ioctl nftl_flush\n");
         break;
 	case BLKWIPEPART:
-
+		
 		//printk("blktrans_ioctl BLKWIPEPART \n");
 		if(tr->wipe_part){
-		 printk("blktrans_ioctl tr->wipe_part : \n");
+           		 printk("blktrans_ioctl tr->wipe_part : \n");
 			ret = tr->wipe_part(dev);
-		}
+		}		
 		break;
   //  case BLKGETSECTS:
   //  case BLKFREESECTS:
@@ -378,6 +395,33 @@ static const struct block_device_operations _ntd_blktrans_ops = {
     .ioctl      = blktrans_ioctl,
     .getgeo     = blktrans_getgeo,
 };
+
+/*****************************************************************************
+*Name         :
+*Description  :
+*Parameter    :
+*Return       :
+*Note         :
+*****************************************************************************/
+int blk_class_register(struct class *cls)
+{
+     return class_register(cls);
+}
+
+/*****************************************************************************
+*Name         :
+*Description  :
+*Parameter    :
+*Return       :
+*Note         :
+*****************************************************************************/
+int blk_device_register(struct device *dev, int num)
+{
+     dev->parent = &platform_bus;
+     dev_set_name(dev, "aml_nftl_dev%d", num);
+
+     return device_register(dev);
+}
 
 /*****************************************************************************
 *Name         :
@@ -459,9 +503,7 @@ int add_ntd_blktrans_dev(struct ntd_blktrans_dev *new)
     //if (tr->discard) {
 		printk("Enable QUEUE_FLAG_DISCARD for NFTL\n");
         queue_flag_set_unlocked(QUEUE_FLAG_DISCARD, new->rq);
-        //Hard code discard granularity and max for Vero 2 nand
-        new->rq->limits.max_discard_sectors = 4194240;
-        new->rq->limits.discard_granularity = 32768;
+        new->rq->limits.max_discard_sectors = UINT_MAX;
     //}
 
     gd->queue = new->rq;
@@ -641,6 +683,8 @@ static void __exit ntd_blktrans_exit(void)
        we're screwed anyway. */
 }
 
+EXPORT_SYMBOL(blk_class_register);
+EXPORT_SYMBOL(blk_device_register);
 EXPORT_SYMBOL(register_ntd_blktrans);
 EXPORT_SYMBOL(deregister_ntd_blktrans);
 EXPORT_SYMBOL(add_ntd_blktrans_dev);

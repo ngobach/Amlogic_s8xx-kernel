@@ -4,7 +4,7 @@
 config AML_VIRTUAL_THERMAL
     bool "Amlogic virtual thermal interface"
     default y
-    help
+    help 
         Say Y if you want use amlogic virtual thermal interface
 config AML_PLATFORM_THERMAL 
     bool "Amlogic platform thermal interface"

@@ -72,6 +72,7 @@
 #endif
 
 
+
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 #define Wr(adr, val) WRITE_VCBUS_REG(adr, val)
 #define Rd(adr) READ_VCBUS_REG(adr)
@@ -282,6 +283,7 @@ extern void di_hw_init(void);
 extern void di_hw_uninit(void);
 
 extern int di_vscale_skip_count;
+extern unsigned short mcen_mode;
 /*
 di hardware internal
 */
@@ -356,20 +358,19 @@ void enable_di_mode_check_2 (
 	);
 
 void enable_di_pre_aml (
-		DI_MIF_t        *di_inp_mif,
-		DI_MIF_t        *di_mem_mif,
-		DI_MIF_t        *di_chan2_mif,
-		DI_SIM_MIF_t    *di_nrwr_mif,
-		DI_SIM_MIF_t    *di_mtnwr_mif,
+   		DI_MIF_t        *di_inp_mif,
+   		DI_MIF_t        *di_mem_mif,
+   		DI_MIF_t        *di_chan2_mif,
+   		DI_SIM_MIF_t    *di_nrwr_mif,
+   		DI_SIM_MIF_t    *di_mtnwr_mif,
 #ifdef NEW_DI_V1
    DI_SIM_MIF_t    *di_contp2rd_mif,
    DI_SIM_MIF_t    *di_contprd_mif,
    DI_SIM_MIF_t    *di_contwr_mif,
 #endif
-		int nr_en, int mtn_en, int pd32_check_en, int pd22_check_en, int hist_check_en,
+   		int nr_en, int mtn_en, int pd32_check_en, int pd22_check_en, int hist_check_en,
    		int pre_field_num, int pre_vdin_link, int hold_line, int urgent
-	);
-
+   	);
 #ifdef NEW_DI_V3
 void enable_mc_di_pre(DI_MC_MIF_t *di_mcinford_mif,DI_MC_MIF_t *di_mcinfowr_mif,DI_MC_MIF_t *di_mcvecwr_mif,int urgent);
 void enable_mc_di_post(DI_MC_MIF_t *di_mcvecrd_mif,int urgent,bool reverse);
@@ -421,7 +422,7 @@ void di_post_switch_buffer (
    int ei_en, int blend_en, int blend_mtn_en, int blend_mode, int di_vpp_en, int di_ddr_en,
    int post_field_num, int hold_line, int urgent
    #ifndef NEW_DI_V1
-   , unsigned long * reg_mtn_info 
+   , unsigned long * reg_mtn_info
    #endif
 );
 #if 0
@@ -510,7 +511,9 @@ typedef struct reg_cfg_{
 int get_current_vscale_skip_count(vframe_t* vf);
 
 void di_set_power_control(unsigned char type, unsigned char enable);
-
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+void diwr_set_power_control(unsigned char enable);
+#endif
 unsigned char di_get_power_control(unsigned char type);
 
 #endif

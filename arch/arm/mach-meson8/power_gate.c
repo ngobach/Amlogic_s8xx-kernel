@@ -18,7 +18,7 @@ EXPORT_SYMBOL(GCLK_ref);
 #ifdef PRINT_DEBUG_INFO
 #define PRINT_INFO(...)		printk(__VA_ARGS__)
 #else
-#define PRINT_INFO(...)
+#define PRINT_INFO(...)	
 #endif
 
 typedef struct{
@@ -31,8 +31,6 @@ typedef struct{
 }mod_record_t;
 
 DEFINE_SPINLOCK(gate_lock);
-EXPORT_SYMBOL(gate_lock);
-
 
 static mod_record_t mod_records[MOD_MAX_NUM + 1] = {
 	{
@@ -215,7 +213,7 @@ static int _switch_gate(mod_type_t type, int flag)
 	switch(type) {
 	case MOD_VDEC:
 		PRINT_INFO("turn %s vdec module\n", flag?"on":"off");
-		if (flag) {
+		if (flag) {			   
 			__CLK_GATE_ON(DOS);
 		} else {
 			__CLK_GATE_OFF(DOS);
@@ -237,7 +235,7 @@ static int _switch_gate(mod_type_t type, int flag)
 			__CLK_GATE_ON(AIU_AOCLK);
 			__CLK_GATE_ON(AIU_ICE958_AMCLK);
 			__CLK_GATE_ON(AUD_IN);
-		} else {
+		} else { 
 			__CLK_GATE_OFF(AIU_AI_TOP_GLUE);
 			__CLK_GATE_OFF(AIU_IEC958);
 			__CLK_GATE_OFF(AIU_I2S_OUT);
@@ -264,7 +262,7 @@ static int _switch_gate(mod_type_t type, int flag)
 			__CLK_GATE_OFF(HDMI_INTR_SYNC);
 			__CLK_GATE_OFF(HDMI_RX);
 			__CLK_GATE_OFF(HDMI_PCLK);
-		}
+		}			
 		break;
 	case MOD_VENC:
 		PRINT_INFO("turn %s venc module\n", flag?"on":"off");
@@ -288,10 +286,10 @@ static int _switch_gate(mod_type_t type, int flag)
 			__CLK_GATE_OFF(VCLK2_VENCP);
 		#ifndef CONFIG_MACH_MESON6_G02_DONGLE
 			__CLK_GATE_OFF(VCLK2_VENCP1);
-		#endif
-
+		#endif	 
+		
 			__CLK_GATE_OFF(VCLK2_ENCI);
-		#ifndef CONFIG_MACH_MESON6_G02_DONGLE
+		#ifndef CONFIG_MACH_MESON6_G02_DONGLE	  
 			__CLK_GATE_OFF(VCLK2_ENCP);
 		#endif
 			__CLK_GATE_OFF(VCLK2_VENCT);
@@ -534,7 +532,7 @@ static int put_mod(mod_record_t* mod_record)
 	unsigned long flags;
 	PRINT_INFO("put mod  %s\n", mod_record->name);
 	spin_lock_irqsave(&gate_lock, flags);
-	ret = _switch_gate(mod_record->type, 0);
+	ret = _switch_gate(mod_record->type, 0); 
 	spin_unlock_irqrestore(&gate_lock, flags);
 	return ret;
 }
@@ -569,7 +567,7 @@ EXPORT_SYMBOL(switch_mod_gate_by_name);
 void switch_lcd_mod_gate(int flag)
 {
 	unsigned long flags;
-
+	
 	spin_lock_irqsave(&gate_lock, flags);
 	PRINT_INFO("turn %s lcd module\n", flag?"on":"off");
 	if (flag) {
@@ -773,8 +771,8 @@ err:
 	for(i=0; aml_mod_attrs[i].attr.name; i++){
 		class_remove_file(mod_gate_clsp, &aml_mod_attrs[i]);
 	}
-	class_destroy(mod_gate_clsp);
-	return -1;
+	class_destroy(mod_gate_clsp); 
+	return -1;  
 }
 arch_initcall(mode_gate_mgr_init);
 #endif
@@ -791,7 +789,9 @@ int  video_dac_disable()
 {
     //SET_CBUS_REG_MASK(VENC_VDAC_SETTING, 0x1f);
     //switch_mod_gate_by_name("venc", 0);
-
+  
     return 0;
 }
 EXPORT_SYMBOL(video_dac_disable);
+
+

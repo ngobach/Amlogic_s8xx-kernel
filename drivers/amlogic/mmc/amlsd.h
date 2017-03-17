@@ -157,3 +157,4 @@ int aml_dbg_verify_pinmux (struct amlsd_platform * pdata);
 #endif
 
 #endif
+

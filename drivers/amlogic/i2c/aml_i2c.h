@@ -27,9 +27,9 @@
 #define AML_I2C_PRINT_DATA(name) do{  \
      if(i2c->i2c_debug) {\
             printk("[%s]:%s", name, p->flags & I2C_M_RD? "read" : "write");\
-		for(i=0;i<p->len;i++)   \
-			printk("%x-",*(p->buf)++);  \
-		printk("\n");\
+        	for(i=0;i<p->len;i++)   \
+        		printk("%x-",*(p->buf)++);  \
+        	printk("\n");\
      }\
 }while(0)
 
@@ -254,6 +254,7 @@ struct aml_i2c {
 	struct device *dev;
 	struct pinctrl *p;
 	const char *master_state_name;
+	int i2c_bus_status;
 };
 
 struct aml_i2c_ops {
@@ -265,3 +266,4 @@ struct aml_i2c_ops {
 };
 
 #endif
+

@@ -10,8 +10,8 @@
 #include <linux/of.h>
 #include <mach/am_regs.h>
 #include <mach/gpio.h>
+#include <linux/amlogic/aml_lcd_bl.h>
 #include <linux/amlogic/aml_bl_extern.h>
-#include <linux/amlogic/vout/lcdoutc.h>
 
 //#define BL_EXT_DEBUG_INFO
 #ifdef BL_EXT_DEBUG_INFO
@@ -48,7 +48,7 @@ int bl_extern_driver_check(void)
     else {
         printk("get bl_extern_driver failed\n");
     }
-
+    
     return 0;
 }
 
@@ -95,11 +95,11 @@ int get_bl_extern_dt_data(struct device_node* of_node, struct bl_extern_config_t
     }
     else {
         if (strncmp(str, "2", 1) == 0)
-            pdata->gpio_on = LCD_POWER_GPIO_INPUT;
+            pdata->gpio_on = BL_GPIO_INPUT;
         else if (strncmp(str, "0", 1) == 0)
-            pdata->gpio_on = LCD_POWER_GPIO_OUTPUT_LOW;
+            pdata->gpio_on = BL_GPIO_OUTPUT_LOW;
         else
-            pdata->gpio_on = LCD_POWER_GPIO_OUTPUT_HIGH;
+            pdata->gpio_on = BL_GPIO_OUTPUT_HIGH;
     }
     ret = of_property_read_string_index(of_node, "gpio_enable_on_off", 2, &str);
     if (ret) {
@@ -107,11 +107,11 @@ int get_bl_extern_dt_data(struct device_node* of_node, struct bl_extern_config_t
     }
     else {
         if (strncmp(str, "2", 1) == 0)
-            pdata->gpio_off = LCD_POWER_GPIO_INPUT;
+            pdata->gpio_off = BL_GPIO_INPUT;
         else if (strncmp(str, "1", 1) == 0)
-            pdata->gpio_off = LCD_POWER_GPIO_OUTPUT_HIGH;
+            pdata->gpio_off = BL_GPIO_OUTPUT_HIGH;
         else
-            pdata->gpio_off = LCD_POWER_GPIO_OUTPUT_LOW;
+            pdata->gpio_off = BL_GPIO_OUTPUT_LOW;
     }
     DBG_PRINT("%s: gpio_on = %d, gpio_off = %d \n", pdata->name, pdata->gpio_on, pdata->gpio_off);
     switch (pdata->type) {
@@ -122,7 +122,7 @@ int get_bl_extern_dt_data(struct device_node* of_node, struct bl_extern_config_t
                 pdata->i2c_addr = 0;
             }
             DBG_PRINT("%s: i2c_address=0x%02x\n", pdata->name, pdata->i2c_addr);
-
+          
             ret = of_property_read_string(of_node, "i2c_bus", &str);
             if (ret) {
                 printk("%s warning: get i2c_bus failed, use default i2c bus\n", pdata->name);
@@ -140,7 +140,7 @@ int get_bl_extern_dt_data(struct device_node* of_node, struct bl_extern_config_t
                 else if (strncmp(str, "i2c_bus_ao", 10) == 0)
                     pdata->i2c_bus = AML_I2C_MASTER_AO;
                 else
-                    pdata->i2c_bus = AML_I2C_MASTER_A;
+                    pdata->i2c_bus = AML_I2C_MASTER_A; 
             }
             DBG_PRINT("%s: i2c_bus=%s[%d]\n", pdata->name, str, pdata->i2c_bus);
             break;

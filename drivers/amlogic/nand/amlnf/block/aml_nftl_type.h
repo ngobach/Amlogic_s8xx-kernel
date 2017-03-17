@@ -78,6 +78,7 @@ typedef struct{
     uint16        page_bitmap;
     uchar*        main_data_addr;
     uchar*        spare_data_addr;
+    int		op_ret_sta;
 }_physic_op_par;
 
 

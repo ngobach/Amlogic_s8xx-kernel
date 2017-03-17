@@ -10,8 +10,8 @@
 #define 	AML_NAND_CE3         				0x7
 
 #define 	CE_PAD_DEFAULT				((AML_NAND_CE0) | (AML_NAND_CE1 << 4) | (AML_NAND_CE2 << 8) | (AML_NAND_CE3 << 12))
-//#define 	RB_PAD_DEFAULT				((AML_NAND_CE0) | (AML_NAND_CE1 << 4))
-#define 	RB_PAD_DEFAULT				(AML_NAND_CE0)
+//#define 	RB_PAD_DEFAULT				((AML_NAND_CE0) | (AML_NAND_CE1 << 4))	
+#define 	RB_PAD_DEFAULT				(AML_NAND_CE0)	
 #define 	MAX_CHIP_NUM							4
 
 #define 	PER_INFO_BYTE 						8
@@ -76,8 +76,8 @@ static void inline  nand_get_chip(void )
 	SET_CBUS_REG_MASK(PAD_PULL_UP_REG3, (0xff | (1<<16)));
 	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, ((1<<7) | (1 << 8) | (1 << 9)));
 	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, ((0xf<<18) | (1 << 17) | (0x3 << 25)));
-#endif
-
+#endif	
+	
 }
 static void inline nand_release_chip(void)
 {

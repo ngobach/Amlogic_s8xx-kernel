@@ -41,6 +41,7 @@
 #include <linux/amlogic/vout/enc_clk_config.h>
 #include <mach/io.h>
 #include <mach/register.h>
+#include <linux/amlogic/aml_gpio_consumer.h>
 
 #include <linux/amlogic/hdmi_tx/hdmi_info_global.h>
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
@@ -1966,7 +1967,6 @@ static void hdmitx_setaudioinfoframe(unsigned char* AUD_DB, unsigned char* CHAN_
 void set_hdmi_audio_source(unsigned int src)
 {
     unsigned long data32;
-    unsigned int i;
 
     // Disable HDMI audio clock input and its I2S input
     data32  = 0;
@@ -1974,30 +1974,11 @@ void set_hdmi_audio_source(unsigned int src)
     data32 |= (0    << 0);  // [1:0]    hdmi_clk_sel: 00=Disable hdmi audio clock input; 01=Select pcm clock; 10=Select AIU aoclk; 11=Not allowed.
     aml_write_reg32(P_AIU_HDMI_CLK_DATA_CTRL, data32);
 
-    // Enable HDMI audio clock from the selected source
-    data32  = 0;
-    data32 |= (0    << 4);  // [5:4]    hdmi_data_sel: 00=disable hdmi i2s input; 01=Select pcm data; 10=Select AIU I2S data; 11=Not allowed.
-    data32 |= (src  << 0);  // [1:0]    hdmi_clk_sel: 00=Disable hdmi audio clock input; 01=Select pcm clock; 10=Select AIU aoclk; 11=Not allowed.
-    aml_write_reg32(P_AIU_HDMI_CLK_DATA_CTRL, data32);
-
-    // Wait until clock change is settled
-    i = 0;
-    msleep_interruptible(1000);
-    data32 = aml_read_reg32(P_AIU_HDMI_CLK_DATA_CTRL);
-    if (((data32 >> 8) & 0x3) != src)
-        printk("audio clock wait time out\n");
-
     // Enable HDMI I2S input from the selected source
     data32  = 0;
     data32 |= (src  << 4);  // [5:4]    hdmi_data_sel: 00=disable hdmi i2s input; 01=Select pcm data; 10=Select AIU I2S data; 11=Not allowed.
     data32 |= (src  << 0);  // [1:0]    hdmi_clk_sel: 00=Disable hdmi audio clock input; 01=Select pcm clock; 10=Select AIU aoclk; 11=Not allowed.
     aml_write_reg32(P_AIU_HDMI_CLK_DATA_CTRL, data32);
-
-    // Wait until data change is settled
-    msleep_interruptible(1000);
-    data32 = aml_read_reg32(P_AIU_HDMI_CLK_DATA_CTRL);
-    if (((data32 >> 12) & 0x3) != src)
-        printk("audio data wait time out\n");
 } /* set_hdmi_audio_source */
 
 static void hdmitx_set_aud_pkt_type(audio_type_t type)
@@ -2240,13 +2221,47 @@ static int hdmitx_set_audmode(struct hdmi_tx_dev_s* hdev, Hdmi_tx_audio_para_t* 
     return 1;
 }
 
+static irqreturn_t intr_gpio_hpd_handler(int irq, void *dev)
+{
+    unsigned int data32 = 0;
+    hdmitx_dev_t *hdev = (hdmitx_dev_t *)dev;
+    /* get GPIO status */
+    data32 = amlogic_get_value(hdev->gpio_hpd_int, "hdmitx_gpio_hpd");
+    hdmi_print(IMP, SYS "gpio hpd irq %x\n", data32);
+    if (hdev->hpd_lock == 1) {
+        hdmi_print(IMP, HPD "HDMI hpd locked\n");
+        return IRQ_HANDLED;
+    }
+    /* HPD rising */
+    if (data32 == 1) {
+        hdev->hdmitx_event |= HDMI_TX_HPD_PLUGIN;
+        hdev->hdmitx_event &= ~HDMI_TX_HPD_PLUGOUT;
+        PREPARE_DELAYED_WORK(&hdev->work_hpd_plugin,
+            hdmitx_hpd_plugin_handler);
+        queue_delayed_work(hdev->hdmi_wq, &hdev->work_hpd_plugin, HZ / 3);
+    } else {    /* HPD falling */
+        hdev->hdmitx_event |= HDMI_TX_HPD_PLUGOUT;
+        hdev->hdmitx_event &= ~HDMI_TX_HPD_PLUGIN;
+        PREPARE_DELAYED_WORK(&hdev->work_hpd_plugout,
+            hdmitx_hpd_plugout_handler);
+        queue_delayed_work(hdev->hdmi_wq, &hdev->work_hpd_plugout, HZ / 3);
+    }
+    return IRQ_HANDLED;
+}
+
 static void hdmitx_setupirq(hdmitx_dev_t* hdmitx_device)
 {
     int r;
     hdmitx_wr_reg(HDMITX_TOP_INTR_STAT_CLR, 0x7);
-    r = request_irq(INT_HDMI_TX, &intr_handler,
-                    IRQF_SHARED, "hdmitx",
-                    (void *)hdmitx_device);
+    if (hdmitx_device->gpio_hpd_int == -1)
+        r = request_irq(INT_HDMI_TX, &intr_handler,
+            IRQF_SHARED, "hdmitx", (void *)hdmitx_device);
+    else {
+        r = request_irq(INT_GPIO_0, &intr_gpio_hpd_handler,
+            IRQF_SHARED, "hdmitx_gpio_hpd", (void *)hdmitx_device);
+        r = request_irq(INT_GPIO_1, &intr_gpio_hpd_handler,
+        IRQF_SHARED, "hdmitx_gpio_hpd", (void *)hdmitx_device);
+    }
 }
 
 static void hdmitx_uninit(hdmitx_dev_t* hdmitx_device)

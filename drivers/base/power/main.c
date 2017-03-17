@@ -700,8 +700,8 @@ static int device_resume(struct device *dev, pm_message_t state, bool async)
 	}
 
  End:
-	if(callback)
-	pr_info("resume %s+ @ %i, parent: %s\n",
+ 	if(callback)
+ 	pr_info("resume %s+ @ %i, parent: %s\n",
 			dev_name(dev), task_pid_nr(current),
 			dev->parent ? dev_name(dev->parent) : "none");
 	error = dpm_run_callback(callback, dev, state, info);
@@ -1150,7 +1150,7 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 
 	if (dev->power.syscore)
 		goto Complete;
-
+	
 	dpm_wd_set(&wd, dev);
 
 	device_lock(dev);

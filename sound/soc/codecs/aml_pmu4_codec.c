@@ -39,7 +39,7 @@ struct pmu4_audio_init_reg {
 static struct pmu4_audio_init_reg init_list[] = {
     {PMU4_BLOCK_ENABLE    , 0xBc06}, // 
     {PMU4_AUDIO_CONFIG    , 0x3400}, //
-    {PMU4_PGA_IN_CONFIG   , 0x2525}, // ALI1,0dB;AR1,0dB
+    {PMU4_PGA_IN_CONFIG   , 0x2929}, // ALI1,0dB;AR1,0dB
     {PMU4_ADC_VOL_CTR     , 0x5050}, // 0dB
     {PMU4_DAC_SOFT_MUTE   , 0x0000}, //
     {PMU4_DAC_VOL_CTR     , 0xFFFF}, // 0dB
@@ -414,6 +414,7 @@ static int aml_pmu4_codec_mute_stream(struct snd_soc_dai *dai, int mute, int str
 
         snd_soc_write(codec, PMU4_DAC_SOFT_MUTE, reg);
     }
+#if 0
     if(stream == SNDRV_PCM_STREAM_CAPTURE){
         if (mute){
             snd_soc_write(codec, PMU4_ADC_VOL_CTR, 0);
@@ -422,6 +423,7 @@ static int aml_pmu4_codec_mute_stream(struct snd_soc_dai *dai, int mute, int str
             snd_soc_write(codec, PMU4_ADC_VOL_CTR, 0x5050);
         }
     }
+#endif
     return 0;
 
 
@@ -478,6 +480,12 @@ static int aml_pmu4_audio_suspend(struct snd_soc_codec *codec)
 
 static int aml_pmu4_audio_resume(struct snd_soc_codec *codec)
 {
+    printk("enter %s\n",__func__);
+    aml_pmu4_audio_power_init();
+    aml_pmu4_audio_reset(codec);
+    aml_pmu4_audio_start_up(codec);
+    aml_pmu4_audio_reg_init(codec);
+    codec->dapm.bias_level = SND_SOC_BIAS_STANDBY;
     aml_pmu4_audio_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
     return 0;
 }

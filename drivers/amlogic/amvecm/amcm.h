@@ -37,6 +37,7 @@ typedef struct cm_regs_s {
 // *** IOCTL-oriented functions *********************************************
 // ***************************************************************************
 void am_set_regmap(struct am_regs_s *p);
+extern void amcm_disable(void);
 extern void amcm_enable(void);
 extern void amcm_level_sel(unsigned int cm_level);
 extern void cm2_frame_size_patch(unsigned int width,unsigned int height);
@@ -57,3 +58,4 @@ extern int cm_load_reg(am_regs_t *arg);
 #endif
 
 #endif
+

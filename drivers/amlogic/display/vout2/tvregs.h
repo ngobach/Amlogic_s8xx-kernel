@@ -49,7 +49,7 @@ static const  reg_t tvreg_vclk_hd[]={
 
 static const  reg_t tvregs_720p[] = {
     {P_VENC_VDAC_SETTING,          0xff,  },
-#ifndef CONFIG_AM_TV_OUTPUT2
+#ifndef CONFIG_AMLOGIC_VOUT2
     {P_HHI_VID_CLK_CNTL,           0x0,},
 #endif
     {P_HHI_VID_PLL_CNTL2,          0x00040003},
@@ -57,7 +57,7 @@ static const  reg_t tvregs_720p[] = {
     {P_HHI_HDMI_AFC_CNTL,          0x8c0000c3},
     {P_HHI_VID_PLL_CNTL,           0x0001043e,},
     {P_HHI_VID_DIVIDER_CNTL,       0x00010843,},
-#ifndef CONFIG_AM_TV_OUTPUT2
+#ifndef CONFIG_AMLOGIC_VOUT2
     {P_HHI_VID_CLK_DIV,            0x100},
     {P_HHI_VID_CLK_CNTL,           0x80000,},
     {P_HHI_VID_CLK_CNTL,           0x88001,},
@@ -106,7 +106,7 @@ static const  reg_t tvregs_720p[] = {
     {P_VENC_VDAC_DACSEL3,          0x0001,},
     {P_VENC_VDAC_DACSEL4,          0x0001,},
     {P_VENC_VDAC_DACSEL5,          0x0001,},
-#ifndef CONFIG_AM_TV_OUTPUT2
+#ifndef CONFIG_AMLOGIC_VOUT2
     {P_VPU_VIU_VENC_MUX_CTRL,      0x000a,},
 #endif
     {P_VENC_VDAC_FIFO_CTRL,        0x1000,},
@@ -286,7 +286,7 @@ static const reg_t tvregs_480cvbs[] = {
 
 static const reg_t tvregs_480p[] = {
     {P_VENC_VDAC_SETTING,          0xff,  },
-#ifndef CONFIG_AM_TV_OUTPUT2
+#ifndef CONFIG_AMLOGIC_VOUT2
     {P_HHI_VID_CLK_CNTL,           0x0,       },
 #endif
     {P_HHI_VID_PLL_CNTL2,          0x00040003},
@@ -294,7 +294,7 @@ static const reg_t tvregs_480p[] = {
     {P_HHI_HDMI_AFC_CNTL,          0x8c0000c3},
     {P_HHI_VID_PLL_CNTL,           0x0001042d,},
     {P_HHI_VID_DIVIDER_CNTL,       0x00010843,},
-#ifndef CONFIG_AM_TV_OUTPUT2
+#ifndef CONFIG_AMLOGIC_VOUT2
     {P_HHI_VID_CLK_DIV,            0x100},
 
     {P_HHI_VID_CLK_CNTL,           0x88001,},
@@ -343,7 +343,7 @@ static const reg_t tvregs_480p[] = {
     {P_VENC_VDAC_DACSEL3,          0xf003,},
     {P_VENC_VDAC_DACSEL4,          0xf003,},
     {P_VENC_VDAC_DACSEL5,          0xf003,},
-#ifndef CONFIG_AM_TV_OUTPUT2
+#ifndef CONFIG_AMLOGIC_VOUT2
     {P_VPU_VIU_VENC_MUX_CTRL,      0x000a,},
 #endif
     {P_VENC_VDAC_FIFO_CTRL,        0x1fc0,},
@@ -609,7 +609,7 @@ static const reg_t tvregs_1080i_50hz[] = {
 static const reg_t tvregs_1080p[] = {
     {P_VENC_VDAC_SETTING,          0xff,  },
 //	{VCLK_HD},
-#ifndef CONFIG_AM_TV_OUTPUT2
+#ifndef CONFIG_AMLOGIC_VOUT2
     {P_HHI_VID_CLK_DIV,			 1		},
     {P_HHI_VID_CLK_CNTL,        	 0x0421,},
 #endif
@@ -638,7 +638,7 @@ static const reg_t tvregs_1080p[] = {
     {P_ENCP_VIDEO_VSO_BLINE,       0,     },
     {P_ENCP_VIDEO_VSO_ELINE,       5,     },
     {P_ENCP_VIDEO_MAX_LNCNT,       1124,  },
-#ifndef CONFIG_AM_TV_OUTPUT2
+#ifndef CONFIG_AMLOGIC_VOUT2
     {P_VPU_VIU_VENC_MUX_CTRL,      0x000a,},      //New Add. If not set, when system boots up, switch panel to HDMI 1080P, nothing on TV.
 #endif
     {P_VENC_VIDEO_PROG_MODE,       0x100, },
@@ -831,11 +831,12 @@ static const tvinfo_t tvinfoTab2[] = {
 static inline void setreg(const reg_t *r)
 {
     aml_write_reg32(r->reg, r->val);
-
-// For debug only.
-#if 0
+    
+// For debug only. 
+#if 0 
     printk("[0x%x] = 0x%x\n", r->reg, r->val);
 #endif
 }
 
 #endif /* TVREGS_H */
+

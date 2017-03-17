@@ -38,7 +38,7 @@ typedef struct vdec_dev_reg_s {
 extern void vdec_set_decinfo(struct dec_sysinfo *p);
 extern int vdec_set_resource(unsigned long start, unsigned long end, struct device *p);
 
-extern s32 vdec_init(vformat_t vf);
+extern s32 vdec_init(vformat_t vf, int is_4k);
 extern s32 vdec_release(vformat_t vf);
 
 s32 vdec_dev_register(void);

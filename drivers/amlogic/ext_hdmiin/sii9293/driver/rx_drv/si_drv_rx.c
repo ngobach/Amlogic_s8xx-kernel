@@ -78,10 +78,10 @@ uint16_t SiiDrvRxGetPixelFreq(void)
 {
 	uint16_t xcnt = 0;
 	uint32_t pixel_freq = SII_SCALED_XCLK;
-
+	
 	xcnt = SiiRegReadWord(RX_A__VID_XPCNT0);
 	xcnt &=  0x0FFF;
-
+	  
 	if (0 == xcnt)
 	{
         pixel_freq = 65535;
@@ -93,7 +93,7 @@ uint16_t SiiDrvRxGetPixelFreq(void)
 
 	if(pixel_freq > 65535)
 		pixel_freq = 65535;
-
+	
 	return (uint16_t) pixel_freq;
 }
 
@@ -104,6 +104,7 @@ uint16_t SiiDrvRxGetPixelFreq(void)
  *  @param[in]		p_sync_info		pointer to return data buffer for sync information
  *
  *****************************************************************************/
+extern int debug_level;
 void SiiDrvRxGetSyncInfo(sync_info_type *p_sync_info)
 {
 	uint8_t d[4];
@@ -123,6 +124,25 @@ void SiiDrvRxGetSyncInfo(sync_info_type *p_sync_info)
 	p_sync_info->Interlaced = (vid_stat_reg & RX_M__VID_STAT__INTERLACE) ? INTL : PROG;
 	p_sync_info->HPol = (vid_stat_reg & RX_M__VID_STAT__HSYNC_POL) ? POS : NEG;
 	p_sync_info->VPol = (vid_stat_reg & RX_M__VID_STAT__VSYNC_POL) ? POS : NEG;
+
+	if (debug_level > 0)
+		printk("sii9293 GetSyncInfo:\n\
+		ClocksPerLine = %d\n\
+		TotalLines = %d\n\
+		PixelFreq = %d\n\
+		Interlaced = %s:%s\n\
+		HPol = %s:%s\n\
+		VPol = %s:%s\n",
+		p_sync_info->ClocksPerLine,
+		p_sync_info->TotalLines,
+		p_sync_info->PixelFreq,
+		(p_sync_info->Interlaced==INTL)?"1":"0",
+		(p_sync_info->Interlaced==INTL)?"INTL":"PROG",
+		(p_sync_info->HPol==POS)?"0":"1",
+		(p_sync_info->HPol==POS)?"POS":"NEG",
+		(p_sync_info->VPol==POS)?"0":"1",
+		(p_sync_info->VPol==POS)?"POS":"NEG" );
+
 }
 
 /*****************************************************************************/
@@ -205,7 +225,7 @@ bool_t SiiDrvRxInitialize(void)
 
     // set Video bus width and Video data edge
     SiiRegModify(RX_A__SYS_CTRL1, RX_M__SYS_CTRL1__EDGE,
-	 ((SI_INVERT_RX_OUT_PIX_CLOCK_BY_DEFAULT == ENABLE) ? RX_M__SYS_CTRL1__EDGE : 0) );
+    	 ((SI_INVERT_RX_OUT_PIX_CLOCK_BY_DEFAULT == ENABLE) ? RX_M__SYS_CTRL1__EDGE : 0) );
 
     // AudioVideo Mute ON
     SiiRegWrite(RX_A__AUDP_MUTE, RX_M__AUDP_MUTE__VIDEO_MUTE | RX_M__AUDP_MUTE__AUDIO_MUTE);
@@ -302,7 +322,7 @@ void SiiDrvRxVideoPathSet(void)
     if ((ColorSpace_RGB == RxAVI_GetColorSpace()) && (PATH__RGB == outVideoPath) && (SiiRegRead(RX_A__VID_BLANK1) == 0x10))
     {
         // AVC will change the Blank level automatically, we can use it to know if input is limited range or not
-        // if input is RGB and limited range, Output is YCbCr, need to convert to RGB full range, but AVC does not do this.
+        // if input is RGB and limited range, Output is YCbCr, need to convert to RGB full range, but AVC does not do this. 
         SiiRegWrite(RX_A__AVC_EN1, RX_M__AVC_EN1__YCbCr2RGB_RANGE);
         SiiRegModify(RX_A__VID_MODE2, RX_M__VID_MODE2__YCBCR_2_RGB_RANGE_EN, SET_BITS);
 
@@ -311,7 +331,7 @@ void SiiDrvRxVideoPathSet(void)
         SiiRegModify(RX_A__VID_MODE, RX_M__VID_MODE__DITHER, SET_BITS);
     }
     else if ((ColorSpace_RGB != RxAVI_GetColorSpace()) && (Range_Full == RxAVI_GetRangeQuantization()))
-    {
+    {        
         // Change the Black level, AVC setting is not correct here.
         SiiRegWrite(RX_A__AVC_EN1, CLEAR_BITS);
         SiiRegWrite(RX_A__AVC_EN2, RX_M__AVC_EN2__BLANK_DATA);
@@ -320,7 +340,7 @@ void SiiDrvRxVideoPathSet(void)
         SiiRegWrite(RX_A__VID_BLANK3, 0x80);
         if ( PATH__RGB != outVideoPath)
         {
-            // if input is YCbCr and full range, output is YCbCr, need to convert to limited range, but AVC does not do this.
+            // if input is YCbCr and full range, output is YCbCr, need to convert to limited range, but AVC does not do this. 
             SiiRegModify(RX_A__AVC_EN1, RX_M__AVC_EN1__RGB2YCbCr_RANGE, SET_BITS);
             SiiRegModify(RX_A__VID_MODE, RX_M__VID_MODE__RGB_2_YCBCR_RANGE, SET_BITS);
 
@@ -342,3 +362,5 @@ void SiiDrvRxVideoPathSet(void)
     }
 #endif
 }
+
+

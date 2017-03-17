@@ -32,3 +32,4 @@ endif
 
 EXTRA_CFLAGS += -I.
 EXTRA_CFLAGS += -Idrivers/media/dvb-core
+
