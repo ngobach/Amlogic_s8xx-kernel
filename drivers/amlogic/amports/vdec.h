@@ -28,10 +28,17 @@
 
 #include <mach/cpu.h>
 
-extern void vdec_set_decinfo(void *p);
-extern int vdec_set_resource(struct resource *s, struct device *p);
+typedef struct vdec_dev_reg_s {
+    unsigned long mem_start;
+    unsigned long mem_end;
+    struct device *cma_dev;
+    struct dec_sysinfo *sys_info;
+} vdec_dev_reg_t;
 
-extern s32 vdec_init(vformat_t vf);
+extern void vdec_set_decinfo(struct dec_sysinfo *p);
+extern int vdec_set_resource(unsigned long start, unsigned long end, struct device *p);
+
+extern s32 vdec_init(vformat_t vf, int is_4k);
 extern s32 vdec_release(vformat_t vf);
 
 s32 vdec_dev_register(void);

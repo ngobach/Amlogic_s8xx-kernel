@@ -29,9 +29,9 @@ static struct amlnand_chip *aml_chip_key = NULL;
 	int ret = 0;
 	int malloc_flag = 0;
 	char *key_buf = NULL;
-
+	
 	if(key_buf == NULL){
-
+		
 		key_buf = kzalloc(CONFIG_KEYSIZE, GFP_KERNEL);
 		malloc_flag = 1;
 		if(key_buf == NULL)
@@ -46,25 +46,25 @@ static struct amlnand_chip *aml_chip_key = NULL;
 	}else{
 		key_buf = key_ptr;
 	}
-
+	
 	aml_nand_msg("aml_chip->nand_key : arg_type%d valid %d,update_flag %d,valid_blk_addr %d,valid_page_addr %d",aml_chip->nand_key.arg_type,aml_chip->nand_key.arg_valid,\
 		aml_chip->nand_key.update_flag,aml_chip->nand_key.valid_blk_addr,aml_chip->nand_key.valid_page_addr);
-
+	
 	ret = amlnand_save_info_by_name( aml_chip,(unsigned char *)&(aml_chip->nand_key),key_buf, KEY_INFO_HEAD_MAGIC,CONFIG_KEYSIZE);
 	if(ret < 0){
 		aml_nand_msg("aml_nand_update_key : save key info failed");
 	}
-
+	
 exit:
 	if(malloc_flag &&(key_buf)){
 		kfree(key_buf);
 		key_buf = NULL;
-	}
+	}	
 	return 0;
 }
 
 /*
- * This funcion reads the u-boot keyionment variables.
+ * This funcion reads the u-boot keyionment variables. 
  * The f_pos points directly to the key location.
  */
 static int32_t nand_key_read(aml_keybox_provider_t * provider, uint8_t *buf,int len,int flags)
@@ -85,14 +85,14 @@ static int32_t nand_key_read(aml_keybox_provider_t * provider, uint8_t *buf,int 
 
 	error = amlnand_read_info_by_name(aml_chip, (unsigned char *)&(aml_chip->nand_key),(unsigned char *)key_ptr,KEY_INFO_HEAD_MAGIC, CONFIG_KEYSIZE);
 	//error = aml_nand_read_key(aml_chip, (u_char *)key_ptr);
-	if (error)
+	if (error) 
 	{
 		printk("read key error,%s\n",__func__);
 		error = -EFAULT;
 		goto exit;
 	}
 	memcpy(buf, key_ptr->data, len);
-
+	
 exit:
 	amlnand_release_device(aml_chip);
 	kfree(key_ptr);
@@ -113,13 +113,13 @@ static int32_t nand_key_write(aml_keybox_provider_t * provider, uint8_t *buf,int
 	key_ptr = kzalloc(CONFIG_KEYSIZE, GFP_KERNEL);
 	if(key_ptr == NULL)
 		return -ENOMEM;
-
+	
 	memset(key_ptr,0,CONFIG_KEYSIZE);
 	memcpy(key_ptr->data + 0, buf, len);
 	amlnand_get_device(aml_chip, CHIP_WRITING);
 
 	error = amlnand_save_info_by_name(aml_chip,(unsigned char *) &(aml_chip->nand_key),(unsigned char *)key_ptr,KEY_INFO_HEAD_MAGIC, CONFIG_KEYSIZE);
-	if (error)
+	if (error) 
 	{
 		printk("save key error,%s\n",__func__);
 		error = -EFAULT;
@@ -141,8 +141,8 @@ int aml_key_init(struct amlnand_chip *aml_chip)
 {
 	int ret = 0;
 	meson_key *key_ptr = NULL;
-	aml_keybox_provider_t *provider;
-
+	aml_keybox_provider_t *provider; 
+	
 	key_ptr = aml_nand_malloc(CONFIG_KEYSIZE);
 	if (key_ptr == NULL){
 		aml_nand_msg("nand malloc for key_ptr failed");
@@ -156,20 +156,48 @@ int aml_key_init(struct amlnand_chip *aml_chip)
 	if(ret < 0){
 		aml_nand_msg("invalid nand key\n");
 	}
-
+	
 	aml_chip_key = aml_chip;
-	nand_provider.priv=aml_chip_key;
-
-	provider = aml_keybox_provider_get(nand_provider.name);
-	if(provider){
-		return ret;
+	nand_provider.priv=aml_chip_key;	
+	/* fixme, will this cause error? if not, we will not change it! */
+	provider = aml_keybox_provider_get(nand_provider.name); 
+	if(provider){ 
+		return ret; 
+	} 
+	
+	ret = aml_keybox_provider_register(&nand_provider); 
+	if(ret){ 
+		BUG(); 
+	} 
+	
+exit_error0:
+	if(key_ptr){
+		aml_nand_free(key_ptr);
+		key_ptr =NULL;
 	}
+	return ret;
+}
 
-	ret = aml_keybox_provider_register(&nand_provider);
-	if(ret){
-		BUG();
+
+int aml_key_reinit(struct amlnand_chip *aml_chip)
+{
+	int ret = 0;
+	meson_key *key_ptr = NULL;
+	
+	key_ptr = aml_nand_malloc(CONFIG_KEYSIZE);
+	if (key_ptr == NULL){
+		aml_nand_msg("nand malloc for key_ptr failed");
+		ret = -1;
+		goto exit_error0;
 	}
+	memset(key_ptr,0x0,CONFIG_KEYSIZE);
+	aml_nand_dbg("nand key: nand_key_probe. ");
 
+	ret = amlnand_info_init(aml_chip, (unsigned char *)&(aml_chip->nand_key),(unsigned char *)key_ptr,KEY_INFO_HEAD_MAGIC, CONFIG_KEYSIZE);
+	if(ret < 0){
+		aml_nand_msg("invalid nand key\n");
+	}
+	
 exit_error0:
 	if(key_ptr){
 		aml_nand_free(key_ptr);
@@ -181,7 +209,7 @@ exit_error0:
 int nandkey_provider_register()
 {
 	int ret = 0;
-#if 0
+#if 0 
 	ret = aml_keybox_provider_register(&nand_provider);
 	if(ret){
 		BUG();

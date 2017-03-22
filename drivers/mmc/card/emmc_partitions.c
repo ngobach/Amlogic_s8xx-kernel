@@ -89,6 +89,27 @@ unsigned int mmc_capacity (struct mmc_card *card)
         return card->csd.capacity << (card->csd.read_blkbits - 9);
 }
 
+static int mmc_send_cmd23(struct mmc_host *host,
+                unsigned int blockcount)
+{
+    int err;
+    struct mmc_command cmd = {0};
+
+    BUG_ON(!host);
+
+    cmd.opcode = MMC_SET_BLOCK_COUNT;
+    cmd.arg = blockcount;
+    cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
+
+    err = mmc_wait_for_cmd(host, &cmd, MMC_CMD_RETRIES);
+    if (err) {
+        pr_err("%s %d error\n",__func__, __LINE__);
+        return err;
+    }
+
+    return 0;
+}
+
 static int mmc_transfer (struct mmc_card *card, unsigned dev_addr,
         unsigned blocks, void *buf, int write)
 {
@@ -104,6 +125,10 @@ static int mmc_transfer (struct mmc_card *card, unsigned dev_addr,
         printk("[%s] %s range exceeds device capacity!\n", __FUNCTION__, write?"write":"read");
         ret = -1;
         goto exit_err;
+    }
+
+    if (mmc_host_cmd23(card->host)) {
+        mmc_send_cmd23(card->host, blocks);
     }
 
     size = blocks << card->csd.read_blkbits;

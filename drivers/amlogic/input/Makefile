@@ -6,6 +6,7 @@
 
 obj-y	+= saradc/
 obj-y	+= remote/
+obj-y	+= irblaster/
 obj-y	+= new_remote/
 obj-y	+= keyboard/
 obj-y	+= touchscreen/
@@ -14,3 +15,4 @@ obj-y	+= holdkey/
 obj-y   += call_key/
 obj-y   += sensor/
 obj-y   += gpio_key/
+obj-y   += avin/

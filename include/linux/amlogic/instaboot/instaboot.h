@@ -53,6 +53,7 @@ extern void aml_snapshot_write_finalize(struct snapshot_handle *handle);
 extern unsigned long aml_snapshot_get_image_size(void);
 extern int aml_snapshot_image_loaded(struct snapshot_handle *handle);
 extern dev_t aml_get_swsusp_resume_device(void);
+extern int ib_show_progress_bar(u32 percent);
 
 extern end_swap_bio_read_p_t aml_get_end_swap_bio_read(void);
 extern unsigned int aml_nr_free_highpages (void);
@@ -62,4 +63,8 @@ extern void* aml_boot_alloc_rsvmem(size_t size);
 
 extern int aml_istbt_reg_fun(aml_istbt_fun_t fun_type, void* fun_p);
 extern int aml_istbt_unreg_fun(aml_istbt_fun_t fun_type);
+
+extern int osd_show_progress_bar(u32 percent);
+extern int osd_init_progress_bar(void);
+
 #endif /* _INSTABOOT_H__ */

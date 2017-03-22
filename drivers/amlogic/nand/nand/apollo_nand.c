@@ -43,7 +43,7 @@
 static unsigned  int hardware_ecc = 1;
 static unsigned  int nand_config=0;
 static unsigned char nf_bch_inv = 0;
-static unsigned char nf_bch_mode = 0;				//NIKE  only BCH9
+static unsigned char nf_bch_mode = 0;				//NIKE  only BCH9 
 static unsigned long USER_BYTES_3_0 = 0x123456ff;
 //For MLC 4K page need more user byte
 
@@ -109,7 +109,7 @@ static struct am8218_nand_platform *to_nand_plat(struct platform_device *pdev){
  * Issue command and address cycles to the chip
  */
 static void am8218_nand_hwcontrol(struct mtd_info *mtd, int cmd,  unsigned int ctrl){
-
+	
 	if (cmd == NAND_CMD_NONE)
 		return;
 
@@ -119,24 +119,24 @@ static void am8218_nand_hwcontrol(struct mtd_info *mtd, int cmd,  unsigned int c
 	else
 		NAND_SEND_ADDR(cmd);
 
-	//tWB  note MTD also do some like  this
+	//tWB  note MTD also do some like  this 
 //	while (!NAND_CHECK_BUSY())
-//		cpu_relax();
+//		cpu_relax();																		
 
 }
 
 /*
  * am8218_nand_devready
  * returns 0 if the nand is busy, 1 if it is ready
- * note nand_erase use but
- * should set nandchip->delay for other func such as
- * nand_command_lp will latch twb
+ * note nand_erase use but 
+ * should set nandchip->delay for other func such as 
+ * nand_command_lp will latch twb 
  *
  */
 static int am8218_nand_devready(struct mtd_info *mtd){
-
+		
 	return NAND_CHECK_BUSY();
-			//?0:1;
+			//?0:1;							
 }
 
 /*
@@ -153,7 +153,7 @@ static void am8218_nand_enable_hwecc(struct mtd_info *mtd, int mode){
 
 
 static int am8218_nand_calculate_ecc(struct mtd_info *mtd,const u_char *dat, u_char *ecc_code){
-
+	
 	return 0;
 
 }
@@ -178,7 +178,7 @@ static uint8_t am8218_nand_read_byte(struct mtd_info *mtd){
 
 	uint8_t val;
 	struct nand_chip * this=mtd->priv;
-	val=IO_READ8(this->IO_ADDR_R);
+	val=IO_READ8(this->IO_ADDR_R);		
 
 	return val;
 }
@@ -186,17 +186,17 @@ static uint8_t am8218_nand_read_byte(struct mtd_info *mtd){
 static void am8218_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int len){
 
 	uint32_t * ptr=(uint32_t *)buf;
-
+	
 	for(;len>0;len-=4)
 		*ptr++=NAND_GET_DATA();
-
+	
 }
 
 
 static void am8218_nand_read_buf16(struct mtd_info *mtd, uint8_t *buf, int len){
 
 	uint32_t * ptr=(uint32_t *)buf;
-
+	
 	for(;len>0;len-=4)
 		*ptr++=NAND_GET_DATA();
 }
@@ -204,7 +204,7 @@ static void am8218_nand_read_buf16(struct mtd_info *mtd, uint8_t *buf, int len){
 static void am8218_nand_write_buf(struct mtd_info *mtd,	const uint8_t *buf, int len){
 
 	uint32_t * ptr=(uint32_t *)buf;
-
+	
 	for(;len>0;len-=4)
 		NAND_SEND_DATA(*ptr++);
 }
@@ -225,7 +225,7 @@ static int nand_id_read(unsigned char * data)
     p = (unsigned*)data;
     NAND_SEND_COMMAND(NAND_CMD_READID);
     NAND_SEND_ADDR(0x00);
-
+    
     for (i = 0; i < 8 / sizeof(unsigned); i++)
     {
         *p++ = NAND_GET_DATA();
@@ -238,8 +238,8 @@ static  int  Nand_Dma_Waiting(void){
 
 	uint32_t i=0;
 
-	while(READ_PERIPHS_REG(PNAND_DMA_CNTL) & (1 << 31) && i<0x1000000)
-		i++;
+	while(READ_PERIPHS_REG(PNAND_DMA_CNTL) & (1 << 31) && i<0x1000000) 
+		i++;																
 
 	if(i<0x1000000)
 	return 0;
@@ -250,11 +250,11 @@ static  int  Nand_Dma_Waiting(void){
 
 #ifdef CONFIG_AMLOGIC_BOARD_NIKE
 static void am8218_nand_reset(void){
-
-		NAND_RESET_FOR_WRITE();
-
+        
+		NAND_RESET_FOR_WRITE(); 
+      
 		NAND_SET_MANUAL_CONFIG(nand_config);
-
+		
 }
 #endif
 
@@ -286,12 +286,12 @@ static int Nand_Ecc_Check(void * dest,uint32_t page_size){
 	uint32_t j;
     uint32_t page;
     uint32_t err_count;
-    uint32_t bch15  = nf_bch_mode;
+    uint32_t bch15  = nf_bch_mode;  
 	uint32_t sectors = 0;
-	uint32_t byte;
+	uint32_t byte; 
 	uint32_t bit;
 	uint32_t error_cnt_reg;
-	uint32_t allff;
+	uint32_t allff;	
 
 	if(!hardware_ecc)
 		return 0;
@@ -299,77 +299,77 @@ static int Nand_Ecc_Check(void * dest,uint32_t page_size){
 	sectors	= page_size/512;
 	if(!((sectors==1)||(sectors==4)||(sectors==8)))
 		return 1;
-
+	
 	//flush_and_inv_dcache_all();																//FIXME
 	//inv_dcache_all();
 	inv_dcache_range((unsigned long)dest,((unsigned long)dest)+page_size-1);
-
+	
 
 #if (defined CONFIG_AMLOGIC_BOARD_APOLLO) || (defined CONFIG_AMLOGIC_BOARD_APOLLO_H)
 	 allff=READ_PERIPHS_REG(PNAND_CONFIG_REG);
-
+		
 	 if(allff&((1<<29)|(1<<30)) == ((1<<29)|(1<<30))){
-				return 0;
-	}
-#endif
+				return 0;	
+	}	 			
+#endif 
 
 	 error_cnt_reg = READ_PERIPHS_REG(PNAND_ERR_CNT0);
-
+	 
 	 for( page = 0; page < sectors; page++ ) {
 	    // If page transferred and has correctable errors
 	    if( !(READ_PERIPHS_REG(PNAND_ERR_UNC) & (1 << page)) ) {
-
+	        
 	        // Fix errors for 512 bytes (page)
 	        err_count = (error_cnt_reg >> ((page)*4)) & 0xf;
 	        //sdram_base  = *(volatile unsigned char*)dest ;
 	        // Point to the error list in the FIFO/memory
 
 			if(err_count){
-		if( bch15 ) { WRITE_PERIPHS_REG(PNAND_ERR_LOC, page*15); }
-			else        { WRITE_PERIPHS_REG(PNAND_ERR_LOC, page*9);  }
+	        	if( bch15 ) { WRITE_PERIPHS_REG(PNAND_ERR_LOC, page*15); }
+	       		else        { WRITE_PERIPHS_REG(PNAND_ERR_LOC, page*9);  }  	
 			}
 
 
 	        for(j = 0; j < err_count; j++ ) {
-
-		 byte    = READ_PERIPHS_REG(PNAND_ERR_LOC); // Read byte/bit location
-			 bit     = byte & 0x7;
-
+	        	
+	        	 byte    = READ_PERIPHS_REG(PNAND_ERR_LOC); // Read byte/bit location	 
+	       		 bit     = byte & 0x7;	           
+	           	 
 				//ASSERT((err_count!=0)&is_printf,err_count,nf_address,page,(byte >> 4),bit)
 	            // If the error is in the payload section
 	            if( (byte >> 4) <= 511 ) {
 	                (*(volatile unsigned char *)((volatile unsigned char *)dest + page*512 + (byte >> 4))) ^= (1 << bit);
 	            }
 
-				printk(" correct error at byte %x bit %x ",byte>>4,bit);
+				printk(" correct error at byte %x bit %x ",byte>>4,bit);	
 	        }
 	    }
 	    else {
-
+	    	
 			//MAYBE FOR BBT
 			printk(" NAND  Uncorrect error ,May be all oxff \n");
 			return 	-1;
-
-	    }
-	}
-	return 0;
+			 
+	    }	   
+	}	
+	return 0;	
 
 }
 
 
 
 static int am8218_nand_dma_rw(uint8_t * buf, int len, int isread, int eccornot){
-
+		
 	int32_t ret=0;
 	if(isread){
 			inv_dcache_range((unsigned long )buf,((unsigned long )buf)+len-1);
 	}
 	else{
-
+					
 			flush_dcache_range((unsigned long )buf, ((unsigned long )buf)+len-1);
 
 #ifdef CONFIG_AMLOGIC_BOARD_NIKE
-
+	
 			am8218_nand_reset();
 #endif
 
@@ -379,19 +379,19 @@ static int am8218_nand_dma_rw(uint8_t * buf, int len, int isread, int eccornot){
 	invalidate_ahb_cache();
 	NAND_SET_DMA_START_ADDR(buf);
 	NAND_SET_DMA_XFER_COUNT(len);
-	NAND_SET_DMA_CNTL((isread?NAND_DMA_DIRECTOR_READ:0)|
+	NAND_SET_DMA_CNTL((isread?NAND_DMA_DIRECTOR_READ:0)| 
 					 NAND_DMA_TYPE_NORMAL |
 					 (eccornot?NAND_DMA_ECC_ENABLE:0)|
 					 (nf_bch_inv<<25)|
 					 (nf_bch_mode<<26)|
-					 NAND_DMA_BURST_PARAM(10));
-
+					 NAND_DMA_BURST_PARAM(10));		
+	
 	ret=Nand_Dma_Waiting();
 
-	if(isread&&eccornot)
-				ret=Nand_Ecc_Check(buf,len);
+	if(isread&&eccornot) 
+				ret=Nand_Ecc_Check(buf,len);	
 
-
+		
 	return ret;
 
 }
@@ -414,9 +414,9 @@ static void am8218_nand_dma_read_buf(struct mtd_info *mtd,uint8_t *buf, int len)
 		am8218_nand_read_buf(mtd, buf, len);
 	}
 	else {
-		//page size or page+oob
-		if(len==(mtd->writesize+mtd->oobsize))
-			eccornot=0;
+		//page size or page+oob 
+		if(len==(mtd->writesize+mtd->oobsize)) 
+			eccornot=0;				
 		else if (page_size == 512)
 			eccornot=0;
 		else
@@ -436,21 +436,21 @@ static void am8218_nand_dma_write_buf(struct mtd_info *mtd, const uint8_t *buf, 
 	struct am8218_nand_platform *plat = info->platform;
 	unsigned short page_size = plat->page_size;						//or mtd->writesize
 	uint32_t eccornot;
-
+	
 	dev_dbg(info->device, "mtd->%p, buf->%p, int %d\n", mtd, buf, len);
 
 	memcpy(info->aml_nand_dma_buf, buf, len);
 	if (page_size == 512)
 		am8218_nand_dma_rw((uint8_t * )info->aml_nand_dma_buf,len,0,0);
 	else {
-		if (len < page_size)
-			am8218_nand_write_buf(mtd,info->aml_nand_dma_buf,len);						//with ECC OR NOT FIXME
+		if (len < page_size) 
+		  	am8218_nand_write_buf(mtd,info->aml_nand_dma_buf,len);						//with ECC OR NOT FIXME
 		else{
-			if(len!=page_size)
-					BUG();
+			if(len!=page_size) 
+					BUG();	
 
-			eccornot=1;
-			am8218_nand_dma_rw((uint8_t * )info->aml_nand_dma_buf,len,0,eccornot);
+			eccornot=1;	
+			am8218_nand_dma_rw((uint8_t * )info->aml_nand_dma_buf,len,0,eccornot); 		 
 		}
 	}
 }
@@ -459,7 +459,7 @@ static void am8218_nand_dma_write_buf(struct mtd_info *mtd, const uint8_t *buf, 
 //read+ecc correct
 static int am8218_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,uint8_t *buf){
 
-		am8218_nand_dma_read_buf(mtd,buf,chip->ecc.size);		//mtd->writesize
+		am8218_nand_dma_read_buf(mtd,buf,chip->ecc.size);		//mtd->writesize	
 
 		return 0;
 
@@ -476,56 +476,56 @@ static void am8218_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 }
 
 
-//FOr NIKE use SLC NAND, bootldr no ecc , kernel+fs use bch 9
-//FIXME  this func is used  to check a block is bad or not( by check the user buye , but the tranfer is disable bch) , so
-// the user byte maybe wrong ; if use __MLC__ NAND , this may happen , need more test
+//FOr NIKE use SLC NAND, bootldr no ecc , kernel+fs use bch 9   
+//FIXME  this func is used  to check a block is bad or not( by check the user buye , but the tranfer is disable bch) , so  
+// the user byte maybe wrong ; if use __MLC__ NAND , this may happen , need more test 
 static int am8218_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,
 			     int page, int sndcmd)
 {
-
+	
 	uint32_t pagenum=0 ;
 	uint32_t sectors=mtd->writesize/512;
-	uint8_t * ptr=NULL;
-	uint32_t checkbad;
+	uint8_t * ptr=NULL;	
+	uint32_t checkbad;	
 	//uint8_t tmp;
 	uint8_t *oobrbuf;
 	unsigned nand_page_size = mtd->writesize;
-
+	
 	if(0) {
-		memset(chip->oob_poi,0xff,mtd->oobsize);
+		memset(chip->oob_poi,0xff,mtd->oobsize);	
 	}else{
-
+	
 		chip->cmdfunc(mtd, NAND_CMD_READ0, 0, page);
 
-		am8218_nand_dma_rw(chip->buffers->databuf,mtd->writesize+mtd->oobsize,1,0);	//read with out ecc
+		am8218_nand_dma_rw(chip->buffers->databuf,mtd->writesize+mtd->oobsize,1,0);	//read with out ecc			
 
 		//oobrbuf=chip->buffers->oobrbuf;
 		if (nand_page_size >= 512) {
 			oobrbuf=&chip->buffers->databuf[nand_page_size];
 			for(pagenum=0;pagenum<sectors-1;pagenum++){
-
+				
 					ptr=chip->buffers->databuf+(pagenum+1)*528;
 					ptr=ptr-16;
-					memcpy(oobrbuf+pagenum*16,ptr,16);
-			}
-
-			if(sectors==1)
+					memcpy(oobrbuf+pagenum*16,ptr,16);		
+			}						
+		
+			if(sectors==1)	
 				checkbad=oobrbuf[0];
-			else
+			else 		    
 				checkbad=oobrbuf[0]|(oobrbuf[16]<<8)| (oobrbuf[32]<<16)|(oobrbuf[48]<<24);
-
+		
 			if(checkbad==USER_BYTES_3_0)
 					return 0;
 
-			if(checkbad==0xffffffff)
-					return 0;						//this for am_block_isbad
-
-			if(checkbad!=USER_BYTES_3_0)
-					return 1;	//-1;
-		}
-
-		//tmp=chip->buffers->oobrbuf[1]
-		//chip->buffers->oobrbuf[1]
+			if(checkbad==0xffffffff)    
+			  		return 0;						//this for am_block_isbad 	
+				
+			if(checkbad!=USER_BYTES_3_0)	
+			   		return 1;	//-1;	
+		}	
+		
+		//tmp=chip->buffers->oobrbuf[1]		
+		//chip->buffers->oobrbuf[1]	
 	}
 
 	return 0;
@@ -534,11 +534,11 @@ static int am8218_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,
 
 #define STATUS_FAILED			0x01
 #define STATUS_FAILED2			0x02
-//May be write new dat to user byte pos
+//May be write new dat to user byte pos 
 static int am8218_nand_write_oob(struct mtd_info *mtd, struct nand_chip *chip,
 			      int page)
 {
-	uint8_t status[4];
+	uint8_t status[4];	
 	uint8_t *oobrbuf;
 
 	unsigned nand_page_size = mtd->writesize;
@@ -560,11 +560,11 @@ static int am8218_nand_write_oob(struct mtd_info *mtd, struct nand_chip *chip,
 static int am8218_nand_read_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
                   uint8_t *buf)
 {
-    am8218_nand_read_oob(mtd,chip,-1,0);
+    am8218_nand_read_oob(mtd,chip,-1,0);    
+    
+    memcpy(buf,chip->buffers->databuf,mtd->writesize);      
 
-    memcpy(buf,chip->buffers->databuf,mtd->writesize);
-
-    //  am8218_nand_dma_read_buf(mtd,buf,(mtd->writesize + mtd->oobsize));
+    //  am8218_nand_dma_read_buf(mtd,buf,(mtd->writesize + mtd->oobsize));      
     return 0;
 }
 
@@ -573,13 +573,13 @@ static int am8218_nand_read_page_raw(struct mtd_info *mtd, struct nand_chip *chi
 extern int nand_dev_num;
 static int am8218_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 {
-	int32_t ret;
+	int32_t ret; 
 	struct nand_chip * chip=mtd->priv;
-	uint32_t page=ofs>>chip->page_shift;
+	uint32_t page=ofs>>chip->page_shift;	
 	struct am8218_nand_info *info = mtd_to_nand_info(mtd);
 	struct am8218_nand_platform *plat = info->platform;
 	unsigned short page_size = plat->page_size;
-
+		
 	if(getchip)
 		nand_get_chip();
 
@@ -604,17 +604,17 @@ static int am8218_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 		}
     }
 	else {
-		ret=am8218_nand_dma_rw(chip->buffers->databuf,mtd->writesize ,1,1);
-		if(ret<0){
-			ret=am8218_nand_read_oob(mtd, chip,page, 1);
-			if(ret!=0)
-				printk(" NAND detect Bad block at %x \n",(uint32_t)ofs);
-		}
+		ret=am8218_nand_dma_rw(chip->buffers->databuf,mtd->writesize ,1,1);			
+		if(ret<0){	
+			ret=am8218_nand_read_oob(mtd, chip,page, 1);	
+			if(ret!=0)		
+				printk(" NAND detect Bad block at %x \n",(uint32_t)ofs);						
+		}	
 	}
-
+		
 	if(getchip) {
-	 	nand_release_chip();
-	}
+  	 	nand_release_chip();
+  	}
 
 	return ret;
  }
@@ -631,30 +631,30 @@ static int am8218_nand_block_markbad(struct mtd_info *mtd, loff_t ofs)
 static int am8218_nand_hw_init(struct am8218_nand_info *info)
 {
 	struct am8218_nand_platform *plat = info->platform;
-
+	
 	dev_info(info->device,"page_size=%d, data_width=%d, dma_dly=%d, twb_dly=%d\n",
 		plat->page_size,plat->data_width,plat->dma_dly, plat->twb_dly);
 
-	nand_config|=(0<<1)|(1<<6)| (1 << 0); 	//|(1 << 7);
-
+	nand_config|=(0<<1)|(1<<6)| (1 << 0); 	//|(1 << 7); 			
+	
 #if  defined(ONFIG_AMLOGIC_BOARD_APOLLO) ||\
 	defined(ONFIG_AMLOGIC_BOARD_APOLLO_H)
 	nand_config|=(1<<7); 					// NAND connected to DCU1
 #endif
 
 #if defined(CONFIG_AMLOGIC_BOARD_APOLLO) ||\
-    defined(CONFIG_AMLOGIC_BOARD_APOLLO_H)
+    defined(CONFIG_AMLOGIC_BOARD_APOLLO_H)	 
 	nand_config|=1<<11;
 	nand_config|=2<<12;
 #endif
 	NAND_SET_MANUAL_CONFIG(nand_config);
 
-	if((plat->page_size==4096)||(plat->page_size==2048))
+   	if((plat->page_size==4096)||(plat->page_size==2048))
 		nand_config|=	(1<<3)|(1<< 2) ; // Large page (2k), 3 ALE
-	else
+	else 
 		nand_config|= (0<<3)|(0<< 2);	  //small 512 ,2 ALE
-
-	if(plat->data_width==16)
+	
+	if(plat->data_width==16)  
 		nand_config|=  (1 << 1);           // 16-bit strang
 	else
 		nand_config|=  (0<<1);
@@ -731,7 +731,7 @@ static int am8218_nand_probe(struct platform_device *pdev){
 	info->platform   = plat;
 
 	chip = &info->chip;
-
+	
 	if (plat->data_width==16)
 		chip->options |= NAND_BUSWIDTH_16;
 
@@ -744,7 +744,7 @@ static int am8218_nand_probe(struct platform_device *pdev){
 		goto exit_error;
 	}
 	chip->options |= NAND_OWN_BUFFERS;
-
+	
 	chip->read_buf = (plat->data_width==16) ?
 		am8218_nand_read_buf16 : am8218_nand_read_buf;
 	chip->write_buf = (plat->data_width==16) ?
@@ -763,10 +763,10 @@ static int am8218_nand_probe(struct platform_device *pdev){
 	chip->IO_ADDR_W    = (void __iomem *) (PNAND_MANUAL_DATA_REG+AHBOFFSET);
 #else//for nike,aopollo
 	chip->IO_ADDR_R    = (void __iomem *) (PNAND_MANUAL_DATA_REG+PERIPHSBASE);
-	chip->IO_ADDR_W    = (void __iomem *) (PNAND_MANUAL_DATA_REG+PERIPHSBASE);
+	chip->IO_ADDR_W    = (void __iomem *) (PNAND_MANUAL_DATA_REG+PERIPHSBASE);		
 #endif
 	chip->chip_delay   = 400;										//FIXME
-
+	
 	/* initialise mtd info data struct */
 	mtd 		= &info->mtd;
 	mtd->priv	= chip;
@@ -791,15 +791,15 @@ static int am8218_nand_probe(struct platform_device *pdev){
         }
     }
 
-	if((flash_id[1] == 0x35) || (flash_id[1] == 0x45) || (flash_id[1] == 0x55) || (flash_id[1] == 0x75)
-		|| (flash_id[1] == 0x76) || (flash_id[1] == 0x36) || (flash_id[1] == 0x46) || (flash_id[1] == 0x56)) {
-		page_shift = 9;
-		plat->page_size = (1 << page_shift);
-	}
-	else {
-	page_shift =  PageShiftTable[flash_id[3] & 0x3];
-	plat->page_size = (1 << page_shift);
-    }
+   	if((flash_id[1] == 0x35) || (flash_id[1] == 0x45) || (flash_id[1] == 0x55) || (flash_id[1] == 0x75)
+   		|| (flash_id[1] == 0x76) || (flash_id[1] == 0x36) || (flash_id[1] == 0x46) || (flash_id[1] == 0x56)) {
+   		page_shift = 9;
+   		plat->page_size = (1 << page_shift);
+   	}
+   	else {
+    	page_shift =  PageShiftTable[flash_id[3] & 0x3];    
+    	plat->page_size = (1 << page_shift);
+    } 
 
 	if (hardware_ecc) {
 		if(plat->page_size==4096){
@@ -809,18 +809,18 @@ static int am8218_nand_probe(struct platform_device *pdev){
 				chip->badblock_pattern=&slcpage_memorybased;
 		}
 		else if (plat->page_size ==2048) {
-			chip->ecc.steps=1;									//for one read per page
+			chip->ecc.steps=1;									//for one read per page	
 			chip->ecc.bytes= 64;
 			chip->ecc.size =2048;
-			chip->badblock_pattern=&slcpage_memorybased;			//not consider slc small page case, put this here , for mtd mem bbt
-		}
+			chip->badblock_pattern=&slcpage_memorybased;			//not consider slc small page case, put this here , for mtd mem bbt	
+		} 
 		else if (plat->page_size == 512) {
-			chip->ecc.steps=1;
+			chip->ecc.steps=1;	
 			chip->ecc.bytes = 16;
 			chip->ecc.size = 512;
 			nand_config &= ~(1<<6);
 		}
-		NAND_SET_MANUAL_CONFIG(nand_config);
+		NAND_SET_MANUAL_CONFIG(nand_config); 
 
 		aml_nand_dma_buf_temp = kzalloc(chip->ecc.size+chip->ecc.bytes+64, GFP_KERNEL);
 		if (aml_nand_dma_buf_temp == NULL) {
@@ -832,17 +832,17 @@ static int am8218_nand_probe(struct platform_device *pdev){
 
 		chip->read_buf      = am8218_nand_dma_read_buf;
 		chip->write_buf     = am8218_nand_dma_write_buf;
-	chip->ecc.read_page = am8218_nand_read_page;
-	 	chip->ecc.write_page = am8218_nand_write_page;
-	chip->ecc.read_oob  = am8218_nand_read_oob;
-	chip->ecc.write_oob = am8218_nand_write_oob;
-	chip->ecc.calculate = am8218_nand_calculate_ecc;
-	chip->ecc.correct   = am8218_nand_correct_data;
+    	chip->ecc.read_page = am8218_nand_read_page;
+   	 	chip->ecc.write_page = am8218_nand_write_page;
+    	chip->ecc.read_oob  = am8218_nand_read_oob;
+    	chip->ecc.write_oob = am8218_nand_write_oob;
+    	chip->ecc.calculate = am8218_nand_calculate_ecc;
+    	chip->ecc.correct   = am8218_nand_correct_data;
 		if (plat->page_size == 512) {
-		chip->ecc.mode = NAND_ECC_SOFT;
-	}
+    		chip->ecc.mode = NAND_ECC_SOFT;
+    	}
 		else {
-		chip->ecc.mode = NAND_ECC_HW;
+    		chip->ecc.mode = NAND_ECC_HW; 
 			chip->ecc.hwctl	    = am8218_nand_enable_hwecc;
 		}
 		//chip->ecc.read_page_raw=am8218_nand_read_page_raw;
@@ -859,15 +859,15 @@ static int am8218_nand_probe(struct platform_device *pdev){
 		err = -ENXIO;
 		goto exit_error;
 	}
-
+	
 	dev_dbg(&pdev->dev, "initialised ok\n");
-
+	
 
 	//nand_release_chip();
 
 	return 0;
 
-exit_error:
+exit_error:	
 //changed by zhouzhi 09-8-11
 //because we have not add the mtd device at the error occur;
 //this operate should make the system broke!!

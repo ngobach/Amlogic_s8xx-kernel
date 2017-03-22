@@ -10,6 +10,7 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
+#include <linux/mmc/sdio_func.h>
 #include <linux/platform_device.h>
 #include <linux/timer.h>
 #include <linux/clk.h>
@@ -381,7 +382,7 @@ void aml_sdio_request_done(struct mmc_host *mmc, struct mmc_request *mrq)
     // }
     //del_timer(&host->timeout_tlist);
     if(delayed_work_pending(&host->timeout))
-    		cancel_delayed_work(&host->timeout);
+    		cancel_delayed_work_sync(&host->timeout);
   //  cancel_delayed_work(&host->timeout_cmd);
 
     spin_lock_irqsave(&host->mrq_lock, flags);
@@ -674,7 +675,6 @@ void aml_sdio_request(struct mmc_host *mmc, struct mmc_request *mrq)
     sdio_dbg(AMLSD_DBG_REQ ,"%s: starting CMD%u arg %08x flags %08x\n",
         mmc_hostname(mmc), mrq->cmd->opcode,
         mrq->cmd->arg, mrq->cmd->flags);
-
     if(mrq->data) {
         /*Copy data to dma buffer for write request*/
         aml_sdio_prepare_dma(host, mrq);
@@ -1247,6 +1247,24 @@ static struct amlsd_host* aml_sdio_init_host(void)
     return host;
 }
 
+/* determine whether the funcs support sdio data irqs */
+int sdio_card_irq_get(struct mmc_card *card)
+{
+    struct sdio_func *func;
+    int i;
+    for (i = 0; i < card->sdio_funcs; i++) {
+        func = card->sdio_func[i];/*the vender is realtek */
+	if (func && func->vendor == (unsigned short) 0x024c) {
+            card->host->caps |= MMC_CAP_SDIO_IRQ;
+            SDIO_IRQ_SUPPORT = 1;
+            printk("The func support sdio data1 irq!\n");
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
 static int aml_sdio_probe(struct platform_device *pdev)
 {
     struct mmc_host *mmc = NULL;
@@ -1276,7 +1294,7 @@ static int aml_sdio_probe(struct platform_device *pdev)
             ret = -ENOMEM;
             goto probe_free_host;
         }
-
+	
         pdata = mmc_priv(mmc);
         memset(pdata, 0, sizeof(struct amlsd_platform));
         if(amlsd_get_platform_data(pdev, pdata, mmc, i)) {
@@ -1307,9 +1325,9 @@ static int aml_sdio_probe(struct platform_device *pdev)
        if (pdata->caps & MMC_PM_KEEP_POWER)
             mmc->pm_caps |= MMC_PM_KEEP_POWER;
 
-		if(pdata->caps& MMC_CAP_SDIO_IRQ){
-			SDIO_IRQ_SUPPORT = 1;
-		}
+//		if(pdata->caps& MMC_CAP_SDIO_IRQ){
+//			SDIO_IRQ_SUPPORT = 1;
+//		}
 		
         pdata->host = host;
         // host->pdata = pdata; // should not do this here, it will conflict with aml_sdio_request
@@ -1341,10 +1359,8 @@ static int aml_sdio_probe(struct platform_device *pdev)
             mmc->host_rescan_disable = false;
 			mmc->rescan_entered = 0; 
         }
-         
         if(pdata->port_init)
             pdata->port_init(pdata);
-
         aml_sduart_pre(pdata);
 
         ret = mmc_add_host(mmc);

@@ -34,6 +34,7 @@ typedef struct
 									// 4 to enable, driver will not trigger to vdin-start/vdin-stop
 									// 0xff to enable, and driver will NOT trigger no signal-lost/vdin-stop, signal-get/vdin-start
 	unsigned int 		cable_status; // 1 for cable plug in, 0 for cable plgu out
+	unsigned int		cable_status_all; // port3status*1000+port2status*100+port1status*100+port0status, 1 for cable in, 0 for cable out
 	unsigned int 		signal_status; // external hdmi cable is insert or not
 	vdin_info_t			vdin_info;
 }sii9233a_info_t;

@@ -43,7 +43,45 @@ struct meson_cpufreq {
 
 static struct meson_cpufreq cpufreq;
 #ifdef CONFIG_FIX_SYSPLL
-static int fix_syspll = 0;
+int fix_syspll = 0;
+EXPORT_SYMBOL(fix_syspll);
+unsigned int fixpll_target = 0;
+EXPORT_SYMBOL(fixpll_target);
+
+void adj_cpufreq_table(struct cpufreq_frequency_table *table, int target, int mpll)
+{
+    int i = 0;
+    while (1) {
+        if (table[i + 1].frequency == CPUFREQ_TABLE_END) {
+            break;
+        }
+        i++;
+    }
+    while (i >= 0) {
+        table[i].frequency = (target * table[i].frequency) / 32;
+        i--;
+    }
+}
+
+int fixpll_freq_verify(unsigned long rate)
+{
+    int i;
+    struct cpufreq_frequency_table *table;
+
+    table = meson_freq_table_fix_syspll;
+    rate = rate / 1000;
+
+    if (rate <= table[4].frequency ||
+        rate >= table[8].frequency) {
+        return 0;
+    }
+    for (i = 0; i < ARRAY_SIZE(meson_freq_table_fix_syspll); i++) {
+        if (rate == table[i].frequency) {
+            return 1;
+        }
+    }
+    return 0;
+}
 #endif
 
 static DEFINE_MUTEX(meson_cpufreq_mutex);
@@ -95,6 +133,7 @@ static struct early_suspend early_suspend={
 };
 
 #endif
+
 static int meson_cpufreq_target_locked(struct cpufreq_policy *policy,
                                        unsigned int target_freq,
                                        unsigned int relation)
@@ -104,7 +143,7 @@ static int meson_cpufreq_target_locked(struct cpufreq_policy *policy,
     int ret = -EINVAL;
     unsigned int freqInt = 0;
 #ifdef CONFIG_FIX_SYSPLL
-	struct cpufreq_frequency_table *freq_table = NULL;
+    struct cpufreq_frequency_table *freq_table = NULL;
     unsigned int freq_new, index;
 #endif
 
@@ -133,15 +172,15 @@ static int meson_cpufreq_target_locked(struct cpufreq_policy *policy,
 
 #ifdef CONFIG_FIX_SYSPLL
     /*
-     * CPU frequent should only select from aviliable frequent table
+     * CPU frequent should only select from aviliable frequent table 
      * if under fix syspll mode
      */
     if (fix_syspll) {
         freq_table = cpufreq_frequency_get_table(policy->cpu);
         ret        = cpufreq_frequency_table_target(policy, freq_table, target_freq,
-			                                    CPUFREQ_RELATION_H, &index);
+        		                                    CPUFREQ_RELATION_H, &index);
         if(ret >= 0) {
-		freq_new = freq_table[index].frequency;
+        	freq_new = freq_table[index].frequency;
             target_freq = freq_new;
         } else {
             printk(KERN_ERR"input frequent :%d cannot found in frequent table, ret:%d\n", target_freq, ret);
@@ -299,7 +338,7 @@ static struct freq_attr *meson_cpufreq_attr[] = {
     NULL,
 };
 
-static unsigned sleep_freq;
+static unsigned sleep_freq __nosavedata;
 static int meson_cpufreq_suspend(struct cpufreq_policy *policy)
 {
     /* Ok, this could be made a bit smarter, but let's be robust for now. We
@@ -383,11 +422,29 @@ static int __init meson_cpufreq_probe(struct platform_device *pdev)
 		const void *prop;
 #ifdef CONFIG_FIX_SYSPLL
     int err = 0;
+    int using_mpll = 0;
     if (pdev->dev.of_node) {
         err = of_property_read_bool(pdev->dev.of_node, "syspll_fixed");
         if (err) {
             printk("%s:SYSPLL request to be fixed\n", __func__);
             fix_syspll = 1;
+        }
+        err = of_property_read_bool(pdev->dev.of_node, "using_mpll");
+        if (err) {
+            printk("%s:using mpll\n", __func__);
+            using_mpll = 1;
+        }
+        err = of_property_read_u32(pdev->dev.of_node, "fixpll_target", &fixpll_target);
+        if (err) {
+            fixpll_target = 1536000;
+        } else {
+            printk("%s:SYSPLL fix to target:%u\n", __func__, fixpll_target);
+            /*
+             * update meson_freq_table_fix_syspll according fixpll_target
+             */
+            adj_cpufreq_table(meson_freq_table_fix_syspll, fixpll_target, using_mpll);
+            printk("%s, adj ok\n", __func__);
+
         }
     }
 #endif
@@ -487,9 +544,7 @@ int meson_cpufreq_boost(unsigned int freq)
     int ret = 0;
 	struct cpufreq_policy * policy = NULL;
 
-#if (defined CONFIG_HAS_EARLYSUSPEND)
     if (!early_suspend_flag) {
-#endif
         // only allow freq boost when not in early suspend
         //check last_cpu_rate. inaccurate but no lock
         //printk("%u %u\n", last_cpu_rate, freq);
@@ -505,9 +560,7 @@ int meson_cpufreq_boost(unsigned int freq)
             mutex_unlock(&meson_cpufreq_mutex);
         }
         //}
-#if (defined CONFIG_HAS_EARLYSUSPEND)
     }
-#endif
     return ret;
 }
 #endif

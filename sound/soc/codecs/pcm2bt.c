@@ -50,10 +50,10 @@ static int pcm2bt_set_sysclk(struct snd_soc_dai *dai,   int clk_id,
     return 0;
 }
 
-static int pcm2bt_shutdown(struct snd_pcm_substream *substream,
+static void pcm2bt_shutdown(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *dai)
 {
-    return 0;
+	return;
 }
 
 static int pcm2bt_set_bias_level(struct snd_soc_codec *codec,	
@@ -102,8 +102,7 @@ static int pcm2bt_remove(struct snd_soc_codec *codec)
     return 0;
 }
 
-static int pcm2bt_suspend(struct snd_soc_codec *codec,
-        pm_message_t state)
+static int pcm2bt_suspend(struct snd_soc_codec *codec)
 {
     return 0;
 }
@@ -125,16 +124,11 @@ EXPORT_SYMBOL_GPL(soc_codec_dev_pcm2bt);
 static int pcm2bt_platform_probe(struct platform_device *pdev)
 {
     int ret;
-    struct pcm2bt_priv *pcm2bt = NULL;
-   printk("*****enter pcm2bt_codec_probe\n");
-    ret = snd_soc_register_codec(&pdev->dev, 
-        &soc_codec_dev_pcm2bt, pcm2bt_dai, ARRAY_SIZE(pcm2bt_dai));    
-   
 
+    ret = snd_soc_register_codec(&pdev->dev,
+        &soc_codec_dev_pcm2bt, pcm2bt_dai, ARRAY_SIZE(pcm2bt_dai));
     printk("pcm2bt_codec_probe ok!\n");
-    
     return ret;
-    
 }
 
 static int pcm2bt_platform_remove(struct platform_device *pdev)

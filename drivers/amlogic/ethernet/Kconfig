@@ -16,7 +16,7 @@ config AM_PHY
 		Depends on NET
 
 source "drivers/amlogic/ethernet/phy/Kconfig"
-
+	
 config AM_ETHERNET_DEBUG_LEVEL
 	int "Amloigc Ethetnet support"
 	default 1
@@ -29,3 +29,4 @@ config AM_ETHERNET_DEBUG_LEVEL
 		// >3 for rx
 
 endmenu
+

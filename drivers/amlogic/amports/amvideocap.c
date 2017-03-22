@@ -47,6 +47,10 @@
 #include <linux/of.h>
 #include <linux/of_fdt.h>
 
+#include <linux/dma-contiguous.h>
+#include <linux/dma-mapping.h>
+#include <linux/sizes.h>
+
 #include "amports_priv.h"
 #include "amvideocap_priv.h"
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
@@ -87,12 +91,21 @@ struct amvideocap_global_data {
     u64 wait_max_ms;
 };
 static struct amvideocap_global_data amvideocap_gdata;
+static ge2d_context_t *ge2d_amvideocap_context = NULL;
 static inline struct amvideocap_global_data *getgctrl(void) {
     return &amvideocap_gdata;
 }
+
+static int use_cma = 0;
+#ifdef CONFIG_CMA
+static struct platform_device *amvideocap_pdev = NULL;
+static int cma_max_size = 0;
+static struct page *cma_page;
+#endif
 #define gLOCK() mutex_lock(&(getgctrl()->lock))
 #define gUNLOCK() mutex_unlock(&(getgctrl()->lock))
 #define gLOCKINIT() mutex_init(&(getgctrl()->lock))
+
 
 /*********************************************************
  * /dev/amvideo APIs
@@ -101,6 +114,14 @@ static int amvideocap_open(struct inode *inode, struct file *file)
 {
     struct amvideocap_private *priv;
     gLOCK();
+#ifdef CONFIG_CMA
+    if (use_cma && amvideocap_pdev) {
+        unsigned long phybufaddr;
+        cma_page = dma_alloc_from_contiguous(&(amvideocap_pdev->dev), (cma_max_size * SZ_1M) >> PAGE_SHIFT, 0);
+        phybufaddr = page_to_phys(cma_page);
+        amvideocap_register_memory((unsigned char *)phybufaddr, cma_max_size * SZ_1M);
+    }
+#endif
     if (!getgctrl()->phyaddr) {
         printk("Error,no memory have register for amvideocap\n");
         return -ENOMEM;
@@ -141,11 +162,38 @@ static int amvideocap_release(struct inode *inode, struct file *file)
 {
     struct amvideocap_private *priv = file->private_data;
     kfree(priv);
+#ifdef CONFIG_CMA
+    if (use_cma && amvideocap_pdev) {
+        dma_release_from_contiguous(&(amvideocap_pdev->dev), cma_page, (cma_max_size * SZ_1M)>>PAGE_SHIFT);
+    }
+#endif
     gLOCK();
     getgctrl()->opened_cnt--;
     gUNLOCK();
     return 0;
 }
+
+static int amvideocap_format_to_byte4pix(int fmt)
+{
+    switch(fmt){
+        case GE2D_FORMAT_S16_RGB_565:
+            return 2;
+        case GE2D_FORMAT_S24_BGR:
+            return 3;
+        case GE2D_FORMAT_S24_RGB:
+            return 3;
+        case GE2D_FORMAT_S32_ABGR:
+            return 4;
+        case GE2D_FORMAT_S32_RGBA:
+            return 4;
+        case GE2D_FORMAT_S32_BGRA:
+            return 4;
+        case GE2D_FORMAT_S32_ARGB:
+            return 4;
+        default:
+            return 4;
+    }
+};
 
 static int amvideocap_capture_get_frame(struct amvideocap_private *priv, vframe_t **vf, int *cur_index)
 {
@@ -185,7 +233,6 @@ static ssize_t  amvideocap_YUV_to_RGB(struct amvideocap_private *priv, u32 cur_i
     int v_index = (cur_index >> 16) & 0xff;
     int input_x, input_y, input_width, input_height, intfmt;
     unsigned long RGB_addr;
-    ge2d_context_t *context = create_ge2d_work_queue();
     memset(&ge2d_config, 0, sizeof(config_para_ex_t));
     intfmt = amvideocap_get_input_format(vf);
 
@@ -209,7 +256,7 @@ static ssize_t  amvideocap_YUV_to_RGB(struct amvideocap_private *priv, u32 cur_i
     }
 
 
-    canvas_config(canvas_idx, (unsigned long)priv->phyaddr, w * 3, h, CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+    canvas_config(canvas_idx, (unsigned long)priv->phyaddr, w * amvideocap_format_to_byte4pix(outfmt), h, CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
     if(priv->src_rect.x < 0 || priv->src_rect.x > vf->width) {
         input_x = 0;
     } else {
@@ -238,9 +285,17 @@ static ssize_t  amvideocap_YUV_to_RGB(struct amvideocap_private *priv, u32 cur_i
         input_height = priv->src_rect.height;
     }
 
-    if(intfmt == GE2D_FORMAT_S16_YUV422) {
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV
+    printk("vf->source_type : %d now:0x%x original:0x%x\n",
+        vf->source_type, vf->type, vf->type_original);
+    if (vf->type_original & VIDTYPE_INTERLACE) {
         input_height = input_height / 2;
     }
+#else
+    if (intfmt == GE2D_FORMAT_S16_YUV422) {
+        input_height = input_height / 2;
+    }
+#endif
 
     ge2d_config.alu_const_color = 0;
     ge2d_config.bitmask_en  = 0;
@@ -302,12 +357,12 @@ static ssize_t  amvideocap_YUV_to_RGB(struct amvideocap_private *priv, u32 cur_i
     ge2d_config.dst_para.width = w;
     ge2d_config.dst_para.height = h;
 
-    if (ge2d_context_config_ex(context, &ge2d_config) < 0) {
+    if (ge2d_context_config_ex(ge2d_amvideocap_context, &ge2d_config) < 0) {
         printk("++ge2d configing error.\n");
         return -1;
     }
 
-    stretchblt_noalpha(context,
+    stretchblt_noalpha(ge2d_amvideocap_context,
             0, 
             0, 
             ge2d_config.src_para.width,
@@ -316,10 +371,7 @@ static ssize_t  amvideocap_YUV_to_RGB(struct amvideocap_private *priv, u32 cur_i
             0,
             ge2d_config.dst_para.width,
             ge2d_config.dst_para.height);
-    if (context) {
-        destroy_ge2d_work_queue(context);
-        context = NULL;
-    }
+
     return 0;
     //vfs_write(video_rgb_filp,RGB_addr,size, &video_yuv_pos);
 }
@@ -332,15 +384,7 @@ static int amvideocap_capture_one_frame_l(struct amvideocap_private *priv, int c
     switch_mod_gate_by_name("ge2d", 0);
     return ret;
 }
-static int amvideocap_format_to_byte4pix(int fmt)
-{
-    switch(fmt){
-        case GE2D_FORMAT_S24_RGB:return 3;
-        case GE2D_FORMAT_S32_RGBA:return 4;
-        default:
-                                  return 4;
-    }
-};
+
 
 
 static int amvideocap_capture_one_frame(struct amvideocap_private *priv,vframe_t *vfput, int index)
@@ -725,7 +769,7 @@ static struct class amvideocap_class = {
 };
 s32 amvideocap_register_memory(unsigned char *phybufaddr, int phybufsize)
 {
-    printk("amvideocap_register_memory %p %d\n", phybufaddr, phybufsize);
+    printk("amvideocap_register_memory %p %x\n", phybufaddr, phybufsize);
     getgctrl()->phyaddr = (unsigned long)phybufaddr;
     getgctrl()->size = (unsigned long)phybufsize;
     getgctrl()->vaddr = 0;
@@ -799,17 +843,42 @@ static int amvideocap_probe(struct platform_device *pdev)
     struct resource *mem;
     int idx;
 
-    mem = &memobj;
+#ifdef CONFIG_CMA
+    char buf[32];
+    u32 value;
+    int ret;
+#endif
+
     printk("amvideocap_probe,%s\n", pdev->dev.of_node->name);
 
-    idx = find_reserve_block(pdev->dev.of_node->name,0);
-    if(idx < 0){
-	    printk("amvideocap memory resource undefined.\n");
-        return -EFAULT;
+#ifdef CONFIG_CMA
+    snprintf(buf, sizeof(buf), "max_size");
+    ret = of_property_read_u32(pdev->dev.of_node, buf, &value);
+    if (ret < 0) {
+        printk("cma size undefined.\n");
+        use_cma = 0;
+    } else {
+        printk("use cma buf.\n");
+        mem = &memobj;
+        mem->start = 0;
+        buf_size = 0;
+        cma_max_size = value;
+        amvideocap_pdev = pdev;
+        use_cma = 1;
     }
-    mem->start = (phys_addr_t)get_reserve_block_addr(idx);
-    mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(idx)-1;
-    buf_size = mem->end - mem->start + 1;
+#endif
+
+    if (!use_cma) {
+        mem = &memobj;
+        idx = find_reserve_block(pdev->dev.of_node->name,0);
+        if (idx < 0) {
+            printk("amvideocap memory resource undefined.\n");
+            return -EFAULT;
+        }
+        mem->start = (phys_addr_t)get_reserve_block_addr(idx);
+        mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(idx)-1;
+        buf_size = mem->end - mem->start + 1;
+    }
     amvideocap_dev_register((unsigned char *)mem->start,buf_size);
     return 0;
 }
@@ -849,6 +918,8 @@ amvideocap_init_module(void)
     int err;
 
     printk("amvideocap_init_module\n");
+    if (ge2d_amvideocap_context == NULL)
+        ge2d_amvideocap_context = create_ge2d_work_queue();
     if ((err = platform_driver_register(&amvideocap_drv))) {
         return err;
     }
@@ -861,6 +932,10 @@ static void __exit
 amvideocap_remove_module(void)
 {
     platform_driver_unregister(&amvideocap_drv);
+    if (ge2d_amvideocap_context) {
+        destroy_ge2d_work_queue(ge2d_amvideocap_context);
+        ge2d_amvideocap_context = NULL;
+    }
     printk("amvideocap module removed.\n");
 }
 

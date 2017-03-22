@@ -386,8 +386,8 @@ void SiiDrvDeviceManageInterrupts (void)
         if(intStatus2 & BIT_RX_INTR)
         {
             DEBUG_PRINT(MSG_DBG, ("RX Interrupt\n"));
-            SiiRxInterruptHandler();
-            SiiRxSetVideoStableTimer();
+            if (0 == SiiRxInterruptHandler())
+                SiiRxSetVideoStableTimer();
         }
         if(intStatus2 & BIT_CBUS_INTR)
         {

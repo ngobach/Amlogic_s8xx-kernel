@@ -51,6 +51,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/dma-contiguous.h>
 #include <asm/uaccess.h>
+#include <linux/clk.h>
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #include <mach/power_gate.h>
@@ -72,6 +73,7 @@
 
 #include <linux/of.h>
 #include <linux/of_fdt.h>
+#include <linux/amlogic/codec_mm/codec_mm.h>
 
 #define DEVICE_NAME "amstream-dev"
 #define DRIVER_NAME "amstream"
@@ -81,7 +83,13 @@
 u32 amstream_port_num;
 u32 amstream_buf_num;
 
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV
+#define NO_VDEC2_INIT 1
+#elif MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6TVD
+#define NO_VDEC2_INIT IS_MESON_M8M2_CPU
+#endif
 extern void set_real_audio_info(void *arg);
+
 //#define DATA_DEBUG
 static int use_bufferlevelx10000=10000;
 static int reset_canuse_buferlevel(int level);
@@ -112,9 +120,11 @@ void debug_file_write(const char __user *buf, size_t count)
 }
 #endif
 
-#define DEFAULT_VIDEO_BUFFER_SIZE       (1024*1024*3)
+#define DEFAULT_VIDEO_BUFFER_SIZE       (1024*1024*15)
+#define DEFAULT_VIDEO_BUFFER_SIZE_4K       (1024*1024*32)
+
 #define DEFAULT_AUDIO_BUFFER_SIZE       (1024*768*2)
-#define DEFAULT_SUBTITLE_BUFFER_SIZE     (1024*256)
+#define DEFAULT_SUBTITLE_BUFFER_SIZE     (1024*256*4)
 
 static int amstream_open
 (struct inode *inode, struct file *file);
@@ -243,7 +253,11 @@ static int sub_port_inited;
 /* wait queue for poll */
 static wait_queue_head_t amstream_sub_wait;
 atomic_t userdata_ready = ATOMIC_INIT(0);
+static int userdata_length = 0;
 static wait_queue_head_t amstream_userdata_wait;
+#define USERDATA_FIFO_NUM    1024
+static struct userdata_poc_info_t userdata_poc_info[USERDATA_FIFO_NUM];
+static int userdata_poc_ri=0, userdata_poc_wi=0;
 
 static stream_port_t ports[] = {
     {
@@ -299,21 +313,24 @@ static stream_buf_t bufs[BUF_MAX_NUM] = {
         .reg_base = VLD_MEM_VIFIFO_REG_BASE,
         .type = BUF_TYPE_VIDEO,
         .buf_start = 0,
-        .buf_size = 0,
+        .buf_size = DEFAULT_VIDEO_BUFFER_SIZE,
+        .default_buf_size = DEFAULT_VIDEO_BUFFER_SIZE,
         .first_tstamp = INVALID_PTS
     },
     {
         .reg_base = AIU_MEM_AIFIFO_REG_BASE,
         .type = BUF_TYPE_AUDIO,
         .buf_start = 0,
-        .buf_size = 0,
+        .buf_size = DEFAULT_AUDIO_BUFFER_SIZE,
+        .default_buf_size = DEFAULT_AUDIO_BUFFER_SIZE,
         .first_tstamp = INVALID_PTS
     },
     {
         .reg_base = 0,
         .type = BUF_TYPE_SUBTITLE,
         .buf_start = 0,
-        .buf_size = 0,
+        .buf_size = DEFAULT_SUBTITLE_BUFFER_SIZE,
+        .default_buf_size = DEFAULT_SUBTITLE_BUFFER_SIZE,
         .first_tstamp = INVALID_PTS
     },
     {
@@ -321,6 +338,7 @@ static stream_buf_t bufs[BUF_MAX_NUM] = {
         .type = BUF_TYPE_USERDATA,
         .buf_start = 0,
         .buf_size = 0,
+        .default_buf_size = 0,
         .first_tstamp = INVALID_PTS
     },
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
@@ -328,7 +346,8 @@ static stream_buf_t bufs[BUF_MAX_NUM] = {
         .reg_base = HEVC_STREAM_REG_BASE,
         .type = BUF_TYPE_HEVC,
         .buf_start = 0,
-        .buf_size = 0,
+        .buf_size = DEFAULT_VIDEO_BUFFER_SIZE_4K,
+        .default_buf_size = DEFAULT_VIDEO_BUFFER_SIZE_4K,
         .first_tstamp = INVALID_PTS
     },
 #endif
@@ -338,7 +357,7 @@ stream_buf_t *get_buf_by_type(u32  type)
 {
     if (PTS_TYPE_VIDEO == type) {
         return &bufs[BUF_TYPE_VIDEO];
-    } 
+    }
     if (PTS_TYPE_AUDIO == type) {
         return &bufs[BUF_TYPE_AUDIO];
     }
@@ -377,20 +396,39 @@ static void amstream_change_vbufsize(stream_port_t *port,struct stream_buf_s *pv
     } else {
         condition = pvbuf->type == BUF_TYPE_VIDEO;
     }
-
-    if (pvbuf->type == condition) {
-        if (port->vformat == VFORMAT_H264_4K2K){				
-            pvbuf->buf_size = pvbuf->default_buf_size;
-
-            //printk(" amstream_change_vbufsize 4k2k bufsize[0x%x] defaultsize[0x%x]\n",bufs[BUF_TYPE_VIDEO].buf_size,pvbuf->default_buf_size);
-        }else if((pvbuf->default_buf_size > MAX_STREAMBUFFER_SIZE)&& (port->vformat != VFORMAT_H264_4K2K)) {
-            pvbuf->buf_size = MAX_STREAMBUFFER_SIZE;
-
-            //printk(" amstream_change_vbufsize MAX_STREAMBUFFER_SIZE-[0x%x] defaultsize-[0x%x] vformat-[%d]\n",bufs[BUF_TYPE_VIDEO].buf_size,pvbuf->default_buf_size,port->vformat);
+    if (pvbuf->type == BUF_TYPE_VIDEO || pvbuf->type == BUF_TYPE_HEVC) {
+        if (port->vformat == VFORMAT_H264_4K2K ||
+                port->vformat == VFORMAT_HEVC) {
+            int framesize = amstream_dec_info.height *
+            amstream_dec_info.width;
+            pvbuf->buf_size = DEFAULT_VIDEO_BUFFER_SIZE_4K;
+            if ((framesize > 0) &&
+              (port->vformat == VFORMAT_HEVC) &&
+              (framesize <= 1920 * 1088)) {
+                /*if hevc not 4k used 15M streambuf.*/
+                pvbuf->buf_size = DEFAULT_VIDEO_BUFFER_SIZE;
+            }
+            if ((pvbuf->buf_size > 30 * SZ_1M) &&
+              (codec_mm_get_total_size() < 220 * SZ_1M)) {
+                /*if less than 250M, used 20M for 4K & 265*/
+                pvbuf->buf_size = pvbuf->buf_size >> 1;
+            }
+            /* pr_err(" amstream_change_vbufsize 4k2k
+            * bufsize[0x%x] defaultsize[0x%x]\n",
+            * bufs[BUF_TYPE_VIDEO].buf_size,pvbuf->default_buf_size); */
+        } else if (pvbuf->buf_size > DEFAULT_VIDEO_BUFFER_SIZE) {
+            pvbuf->buf_size = DEFAULT_VIDEO_BUFFER_SIZE;
+            /* pr_err(" amstream_change_vbufsize
+            * MAX_STREAMBUFFER_SIZE-[0x%x]
+            * defaultsize-[0x%x] vformat-[%d]\n",
+            * bufs[BUF_TYPE_VIDEO].buf_size,
+            * pvbuf->default_buf_size,port->vformat); */
         } else {
-            //printk(" amstream_change_vbufsize bufsize[0x%x] defaultbufsize [0x%x] \n",bufs[BUF_TYPE_VIDEO].buf_size,pvbuf->default_buf_size);	
+            /* pr_err(" amstream_change_vbufsize bufsize[0x%x]
+            * defaultbufsize [0x%x]\n",
+            * bufs[BUF_TYPE_VIDEO].buf_size,
+            * pvbuf->default_buf_size); */
         }
-
         reset_canuse_buferlevel(10000);
     }
 
@@ -440,7 +478,9 @@ static  int video_port_init(stream_port_t *port, struct stream_buf_s * pbuf)
         return r;
     }
 
-    r = vdec_init(port->vformat);
+    r = vdec_init(port->vformat,
+        (amstream_dec_info.height *
+        amstream_dec_info.width) > 1920*1088);
     if (r < 0) {
         printk("video_port_init %d, vdec_init failed\n", __LINE__);
         video_port_release(port, pbuf, 2);
@@ -630,7 +670,11 @@ static  int amstream_port_init(stream_port_t *port)
     stream_buf_t *pabuf = &bufs[BUF_TYPE_AUDIO];
     stream_buf_t *psbuf = &bufs[BUF_TYPE_SUBTITLE];
     stream_buf_t *pubuf = &bufs[BUF_TYPE_USERDATA];
-
+    mutex_lock(&amstream_mutex);
+    if (port->flag & PORT_FLAG_INITED) {
+        mutex_unlock(&amstream_mutex);
+        return 0;
+    }
     if ((port->type & PORT_TYPE_AUDIO) && (port->flag & PORT_FLAG_AFORMAT)) {
         r = audio_port_init(port, pabuf);
         if (r < 0) {
@@ -701,7 +745,7 @@ static  int amstream_port_init(stream_port_t *port)
     }
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6TVD
-    if (!IS_MESON_M8M2_CPU) {
+    if (!NO_VDEC2_INIT) {
         if ((port->type & PORT_TYPE_VIDEO) && (port->vformat == VFORMAT_H264_4K2K)) {
             stbuf_vdec2_init(pvbuf);
         }
@@ -709,8 +753,10 @@ static  int amstream_port_init(stream_port_t *port)
 #endif
 
     tsync_audio_break(0); // clear audio break
+	set_vsync_pts_inc_mode(0); // clear video inc
 
     port->flag |= PORT_FLAG_INITED;
+    mutex_unlock(&amstream_mutex);
     return 0;
     /*errors follow here*/
 error5:
@@ -722,7 +768,7 @@ error3:
 error2:
     audio_port_release(port, pabuf, 0);
 error1:
-
+    mutex_unlock(&amstream_mutex);
     return r;
 }
 static  int amstream_port_release(stream_port_t *port)
@@ -877,7 +923,14 @@ static ssize_t amstream_mpts_write(struct file *file, const char *buf,
 #ifdef DATA_DEBUG
     debug_file_write(buf, count);
 #endif
-    return tsdemux_write(file, pvbuf, pabuf, buf, count);
+	if (port->flag & PORT_FLAG_DRM){
+		r = drm_tswrite(file, pvbuf, pabuf, buf, count);
+	}
+	else{
+		r = tsdemux_write(file, pvbuf, pabuf, buf, count);
+	}
+
+    return r;
 }
 
 static ssize_t amstream_mpps_write(struct file *file, const char *buf,
@@ -945,7 +998,7 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
         int first_num = s_buf->buf_size - (sub_rp - sub_start);
 
         if (data_size <= first_num) {
-            res = copy_to_user((void *)buf, (void *)(phys_to_virt(sub_rp)), data_size);
+            res = copy_to_user((void *)buf, (void *)(codec_mm_phys_to_virt(sub_rp)), data_size);
             if (res >= 0) {
                 stbuf_sub_rp_set(sub_rp + data_size - res);
             }
@@ -953,7 +1006,7 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
             return data_size - res;
         } else {
             if (first_num > 0) {
-                res = copy_to_user((void *)buf, (void *)(phys_to_virt(sub_rp)), first_num);
+                res = copy_to_user((void *)buf, (void *)(codec_mm_phys_to_virt(sub_rp)), first_num);
                 if (res >= 0) {
                     stbuf_sub_rp_set(sub_rp + first_num - res);
                 }
@@ -961,7 +1014,7 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
                 return first_num - res;
             }
 
-            res = copy_to_user((void *)buf, (void *)(phys_to_virt(sub_start)), data_size - first_num);
+            res = copy_to_user((void *)buf, (void *)(codec_mm_phys_to_virt(sub_start)), data_size - first_num);
 
             if (res >= 0) {
                 stbuf_sub_rp_set(sub_start + data_size - first_num - res);
@@ -970,7 +1023,7 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
             return data_size - first_num - res;
         }
     } else {
-        res = copy_to_user((void *)buf, (void *)(phys_to_virt(sub_rp)), data_size);
+        res = copy_to_user((void *)buf, (void *)(codec_mm_phys_to_virt(sub_rp)), data_size);
 
         if (res >= 0) {
             stbuf_sub_rp_set(sub_rp + data_size - res);
@@ -993,7 +1046,6 @@ static ssize_t amstream_sub_write(struct file *file, const char *buf,
             return r;
         }
     }
-		printk("amstream_sub_write\n");
     r = esparser_write(file, pbuf, buf, count);
     if (r < 0) {
         return r;
@@ -1016,13 +1068,32 @@ static unsigned int amstream_sub_poll(struct file *file, poll_table *wait_table)
     return 0;
 }
 
-int wakeup_userdata_poll(int wp, int start_phyaddr, int buf_size)
+void set_userdata_poc(struct userdata_poc_info_t poc)
+{
+    //printk("id %d, slicetype %d\n", userdata_slicetype_wi, slicetype);
+    userdata_poc_info[userdata_poc_wi] = poc;
+    userdata_poc_wi++;
+    if (userdata_poc_wi == USERDATA_FIFO_NUM) {
+        userdata_poc_wi = 0;
+    }
+
+    return;
+}
+
+void init_userdata_fifo()
+{
+    userdata_poc_ri = 0;
+    userdata_poc_wi = 0;
+}
+
+int wakeup_userdata_poll(int wp, void *start_vaddr, int buf_size, int data_length)
 {
     stream_buf_t *userdata_buf = &bufs[BUF_TYPE_USERDATA];
-	userdata_buf->buf_start= start_phyaddr;
-	userdata_buf->buf_wp = wp;
-	userdata_buf->buf_size = buf_size;
+    userdata_buf->buf_start= (u32)start_vaddr;
+    userdata_buf->buf_wp = wp;
+    userdata_buf->buf_size = buf_size;
     atomic_set(&userdata_ready, 1);
+    userdata_length += data_length;
     wake_up_interruptible(&amstream_userdata_wait);
     return userdata_buf->buf_rp;
 }
@@ -1058,22 +1129,22 @@ static ssize_t amstream_userdata_read(struct file *file, char __user *buf, size_
     if (buf_wp < userdata_buf->buf_rp) {
         int first_num = userdata_buf->buf_size - userdata_buf->buf_rp ;
         if (data_size <= first_num) {
-            res = copy_to_user((void *)buf, (void *)(phys_to_virt(userdata_buf->buf_rp + userdata_buf->buf_start)), data_size);
+            res = copy_to_user((void *)buf, (void *)(/*phys_to_virt*/(userdata_buf->buf_rp + userdata_buf->buf_start)), data_size);
             userdata_buf->buf_rp +=  data_size - res;
             retVal =  data_size - res;
         } else {
             if (first_num > 0) {
-                res = copy_to_user((void *)buf, (void *)(phys_to_virt(userdata_buf->buf_rp + userdata_buf->buf_start)), first_num);
+                res = copy_to_user((void *)buf, (void *)(/*phys_to_virt*/(userdata_buf->buf_rp + userdata_buf->buf_start)), first_num);
                userdata_buf->buf_rp += first_num - res;
                 retVal = first_num - res;
             }	else	{
-            res = copy_to_user((void *)buf, (void *)(phys_to_virt(userdata_buf->buf_start)), data_size - first_num);
+            res = copy_to_user((void *)buf, (void *)(/*phys_to_virt*/(userdata_buf->buf_start)), data_size - first_num);
 		userdata_buf->buf_rp =  data_size - first_num - res;
             retVal =  data_size - first_num - res;
             }
         }
     } else {
-        res = copy_to_user((void *)buf, (void *)(phys_to_virt(userdata_buf->buf_rp + userdata_buf->buf_start)), data_size);
+        res = copy_to_user((void *)buf, (void *)(/*phys_to_virt*/(userdata_buf->buf_rp + userdata_buf->buf_start)), data_size);
 	userdata_buf->buf_rp +=  data_size - res;
         retVal = data_size - res;
     }
@@ -1085,12 +1156,12 @@ static int amstream_open(struct inode *inode, struct file *file)
     s32 i;
     stream_port_t *s;
     stream_port_t *this = &ports[iminor(inode)];
-
     if (iminor(inode) >= amstream_port_num) {
         return (-ENODEV);
     }
-
+    mutex_lock(&amstream_mutex);
     if (this->flag & PORT_FLAG_IN_USE) {
+        mutex_unlock(&amstream_mutex);
         return (-EBUSY);
     }
 
@@ -1098,6 +1169,7 @@ static int amstream_open(struct inode *inode, struct file *file)
     for (s = &ports[0], i = 0; i < amstream_port_num; i++, s++) {
         if ((s->flag & PORT_FLAG_IN_USE) &&
             ((this->type) & (s->type) & (PORT_TYPE_VIDEO | PORT_TYPE_AUDIO))) {
+            mutex_unlock(&amstream_mutex);
             return (-EBUSY);
         }
     }
@@ -1154,17 +1226,17 @@ static int amstream_open(struct inode *inode, struct file *file)
         debug_filp = NULL;
     }
 #endif
-
+    mutex_unlock(&amstream_mutex);
     return 0;
 }
 
 static int amstream_release(struct inode *inode, struct file *file)
 {
     stream_port_t *this = &ports[iminor(inode)];
-
     if (iminor(inode) >= amstream_port_num) {
         return (-ENODEV);
     }
+    mutex_lock(&amstream_mutex);
     if (this->flag & PORT_FLAG_INITED) {
         amstream_port_release(this);
     }
@@ -1219,7 +1291,7 @@ static int amstream_release(struct inode *inode, struct file *file)
 
     switch_mod_gate_by_name("demux", 0);
 #endif 
-
+    mutex_unlock(&amstream_mutex);
     return 0;
 }
 
@@ -1587,6 +1659,35 @@ static long amstream_ioctl(struct file *file,
         }
         break;
 
+    case AMSTREAM_IOC_UD_LENGTH:
+        if (this->type & PORT_TYPE_USERDATA) {
+            //*((u32 *)arg) = userdata_length;
+            put_user(userdata_length,(unsigned long __user *)arg);
+            userdata_length = 0;
+        } else {
+            r = -EINVAL;
+        }
+        break;
+
+    case AMSTREAM_IOC_UD_POC:
+        if (this->type & PORT_TYPE_USERDATA) {
+            //*((u32 *)arg) = userdata_length;
+            int res;
+            struct userdata_poc_info_t userdata_poc = userdata_poc_info[userdata_poc_ri];
+            //put_user(userdata_poc.poc_number, (unsigned long __user *)arg);
+            res = copy_to_user((unsigned long __user *)arg, &userdata_poc, sizeof(struct userdata_poc_info_t));
+            if (res < 0) {
+                r = -EFAULT;
+            }
+            userdata_poc_ri++;
+            if (USERDATA_FIFO_NUM == userdata_poc_ri) {
+                userdata_poc_ri = 0;
+            }
+        } else {
+            r = -EINVAL;
+        }
+        break;
+
     case AMSTREAM_IOC_SET_DEC_RESET:
         tsync_set_dec_reset();
         break;
@@ -1863,7 +1964,7 @@ static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char
         pbuf += sprintf(pbuf, ")\n");
         /*buf stats*/
 
-        pbuf += sprintf(pbuf, "\tbuf addr:%#x\n", p->buf_start);
+        pbuf += sprintf(pbuf, "\tbuf addr:%p\n", (void *)p->buf_start);
 
         if (p->type != BUF_TYPE_SUBTITLE) {
             pbuf += sprintf(pbuf, "\tbuf size:%#x\n", p->buf_size);
@@ -1882,6 +1983,11 @@ static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char
 #endif
             } else {
                 pbuf += sprintf(pbuf, "\tbuf no used.\n");
+            }
+
+            if (p->type == BUF_TYPE_USERDATA) {
+                pbuf += sprintf(pbuf, "\tbuf write pointer:%#x\n", p->buf_wp);
+                pbuf += sprintf(pbuf, "\tbuf read pointer:%#x\n", p->buf_rp);
             }
         } else {
             u32 sub_wp, sub_rp, data_size;
@@ -2063,22 +2169,22 @@ int request_video_firmware(const char * file_name,char *buf,int size)
 
 	memcpy(buf,(char*)firmware->data,firmware->size);
     mb();
-	printk("load mcode size=%d\n mcode name %s\n",firmware->size,file_name);
-	err=firmware->size;
+    printk("load mcode size=%d\n mcode name %s\n",firmware->size,file_name);
+    err=firmware->size;
 release:	
-	release_firmware(firmware);
+    release_firmware(firmware);
 error1:
-	device_destroy(&amstream_class, MKDEV(AMSTREAM_MAJOR, 100));
+    device_destroy(&amstream_class, MKDEV(AMSTREAM_MAJOR, 100));
 	return err;
 }
 
-static struct resource memobj;
+///static struct resource memobj;
 static int  amstream_probe(struct platform_device *pdev)
 {
     int i;
     int r;
     stream_port_t *st;
-    struct resource *res;
+    ///struct resource *res;
 
     printk("Amlogic A/V streaming port init\n");
 
@@ -2127,7 +2233,7 @@ static int  amstream_probe(struct platform_device *pdev)
 
 #if 0
     res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-#else
+
     res = &memobj;
     r = find_reserve_block(pdev->dev.of_node->name,0);
     if(r < 0){
@@ -2137,7 +2243,7 @@ static int  amstream_probe(struct platform_device *pdev)
     }
     res->start = (phys_addr_t)get_reserve_block_addr(r);
     res->end = res->start+ (phys_addr_t)get_reserve_block_size(r)-1;
-#endif
+
     if (!res) {
         printk("Can not obtain I/O memory, and will allocate stream buffer!\n");
 
@@ -2163,9 +2269,15 @@ static int  amstream_probe(struct platform_device *pdev)
         bufs[BUF_TYPE_AUDIO].buf_size = DEFAULT_AUDIO_BUFFER_SIZE;
         bufs[BUF_TYPE_AUDIO].flag |= BUF_FLAG_IOMEM;
 
+#if 0
         bufs[BUF_TYPE_SUBTITLE].buf_start = res->start + resource_size(res) - DEFAULT_SUBTITLE_BUFFER_SIZE;
         bufs[BUF_TYPE_SUBTITLE].buf_size = DEFAULT_SUBTITLE_BUFFER_SIZE;
         bufs[BUF_TYPE_SUBTITLE].flag = BUF_FLAG_IOMEM;
+#endif
+        if (stbuf_change_size(&bufs[BUF_TYPE_SUBTITLE], DEFAULT_SUBTITLE_BUFFER_SIZE) != 0) {
+            r = (-ENOMEM);
+            goto error4;
+        }
     }
 
     if (HAS_HEVC_VDEC) {
@@ -2178,6 +2290,7 @@ static int  amstream_probe(struct platform_device *pdev)
 
         bufs[BUF_TYPE_HEVC].default_buf_size = bufs[BUF_TYPE_VIDEO].default_buf_size;
     }
+#endif
 
     if (stbuf_fetch_init() != 0) {
         r = (-ENOMEM);
@@ -2190,6 +2303,8 @@ static int  amstream_probe(struct platform_device *pdev)
     return 0;
 
 error7:
+#if 0
+
     if (bufs[BUF_TYPE_SUBTITLE].flag & BUF_FLAG_ALLOC) {
         stbuf_change_size(&bufs[BUF_TYPE_SUBTITLE], 0);
     }
@@ -2202,6 +2317,7 @@ error5:
         stbuf_change_size(&bufs[BUF_TYPE_VIDEO], 0);
     }
 error4:
+#endif
     tsdemux_class_unregister();
 error3:
     for (st = &ports[0], i = 0; i < amstream_port_num; i++, st++) {

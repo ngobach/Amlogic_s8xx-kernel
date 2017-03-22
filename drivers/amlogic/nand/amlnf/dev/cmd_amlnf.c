@@ -1,14 +1,14 @@
 /*****************************************************************
-**
-**  Copyright (C) 2012 Amlogic,Inc.  All rights reserved
-**
-**        Filename : driver_uboot.c
-**        Revision : 1.001
+**                                                              
+**  Copyright (C) 2012 Amlogic,Inc.  All rights reserved                         
+**                                           
+**        Filename : driver_uboot.c       	
+**        Revision : 1.001	                                        
 **        Author: Benjamin Zhao
-**        Description:
+**        Description: 
 **			amlnand_init,  mainly init nand phy driver.
-**
-**
+**        		
+**            
 *****************************************************************/
 
 #include "../include/amlnf_dev.h"
@@ -24,7 +24,7 @@ static inline int isstring(char *p)
 {
 	char *endptr = p;
 	while (*endptr != '\0') {
-		if (!(((*endptr >= '0') && (*endptr <= '9'))
+		if (!(((*endptr >= '0') && (*endptr <= '9')) 
 			|| ((*endptr >= 'a') && (*endptr <= 'f'))
 			|| ((*endptr >= 'A') && (*endptr <= 'F'))
 			|| (*endptr == 'x') || (*endptr == 'X')))
@@ -44,7 +44,7 @@ static inline int str2long(char *p, ulong *num)
 static inline int str2longlong(char *p, unsigned long long *num)
 {
 	char *endptr;
-
+    
 	*num = simple_strtoull(p, &endptr, 16);
 	if(*endptr!='\0')
 	{
@@ -63,7 +63,7 @@ static inline int str2longlong(char *p, unsigned long long *num)
 	            break;
 	    }
 	}
-
+	
 	return (*p != '\0' && *endptr == '\0') ? 1 : 0;
 }
 
@@ -235,12 +235,12 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	if (argc < 1)
 		goto usage;
 
-	cmd = argv[1];
+	cmd = argv[1];	
 
 	 amlnf_get_chip_size(&chipsize);
 
 	if(strcmp(cmd, "env") == 0){
-		aml_nand_dbg("env relocate");
+		aml_nand_dbg("env relocate");	
 		env_relocate ();
 		return 0;
 	}
@@ -252,21 +252,21 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	if(strcmp(cmd, "exit") == 0){
 		amlnf_exit();
 		return 0;
-	}
+	}	
 	if (strcmp(cmd, "init") == 0) {
 
 		putc('\n');
-		int init_flag = (ulong)simple_strtoul(argv[2], NULL, 16);
+		int init_flag = (ulong)simple_strtoul(argv[2], NULL, 16); 
 		// flag = 0,indicate normal boot;
-		//flag = 1, indicate update;
-		//flag = 2, indicate need erase
-
+		//flag = 1, indicate update; 
+		//flag = 2, indicate need erase 
+		
 		ret = amlnf_init(init_flag);
 		if(ret ){
 			printk("nand_init failed ret:%x\n", ret);
 			return ret;
 		}
-
+		
 		phydev = aml_phy_get_dev(NAND_CODE_NAME);
 		if(!phydev){
 			printk("phydev be NULL\n");
@@ -329,12 +329,12 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		aml_nand_dbg("nftl_dev->nand_dev->writesize =%x",nftl_dev->nand_dev->writesize);
 		aml_nand_dbg("nftl_dev->nand_dev->erasesize =%x",nftl_dev->nand_dev->erasesize);
 		aml_nand_dbg("nftl_dev->name =%s",nftl_dev->name );
-
+		
 		addr = (ulong)simple_strtoul(argv[3], NULL, 16);
-
-		nfread_flag = strncmp(cmd, "read", 4) == 0; /* 1 = read, 0 = write */
+		
+		nfread_flag = strncmp(cmd, "read", 4) == 0; /* 1 = read, 0 = write */	
 		printf("\nNAND %s: addr:%lx \n", nfread_flag ? "read" : "write", addr);
-
+		
 		if (arg_off_size(argc - 4, argv + 4, 0x0, &off, &size) != 0)
 			goto usage;
 
@@ -345,15 +345,15 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			start_secor =(int) (off /512);
 		}
 		if(size % 512){
-			length = ((int)( (size /512))+1);
+			length = ((int)( (size /512))+1);	
 			aml_nand_dbg("length+1");
 		}else{
 			length = (int)( (size /512));
 		}
-
+		
 		aml_nand_dbg("start_secor =%d",start_secor);
 		aml_nand_dbg("length_sector =%d",length);
-
+		
 		if(nfread_flag){
 			ret = nftl_dev->read_sector(nftl_dev, start_secor, length, addr);
 			if(ret < 0){
@@ -372,10 +372,10 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 				return -1;
 			}
 		}
-
+		
 		printf(" %d sector %s : %s\n", length,
 			       nfread_flag ? "read" : "write", ret ? "ERROR" : "OK");
-
+		
 		return ret;
 	}
 
@@ -401,12 +401,12 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		aml_nand_dbg("nftl_dev->nand_dev->writesize =%x",nftl_dev->nand_dev->writesize);
 		aml_nand_dbg("nftl_dev->nand_dev->erasesize =%x",nftl_dev->nand_dev->erasesize);
 		aml_nand_dbg("nftl_dev->name =%s",nftl_dev->name );
-
+		
 		addr = (ulong)simple_strtoul(argv[3], NULL, 16);
 		* (volatile uint64_t *)addr =  nftl_dev->size_sector;
 		aml_nand_dbg("nftl_dev->size_sector =%llx",nftl_dev->size_sector);
 		aml_nand_dbg("*addr = %llx",(* (volatile uint64_t *)addr));
-
+		
 		return 0;
 	}
 	if ( strncmp(cmd, "rom_protect", 9) == 0) {
@@ -432,23 +432,23 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		nfread_flag =0;
 		if(strncmp(cmd, "rom_read", 8) == 0)
 				nfread_flag = 1;
-
+		
 		if (argc < 4)
 			goto usage;
-
+	
 		addr = (ulong)simple_strtoul(argv[2], NULL, 16);
 		printf("\nAMLNAND %s: ", nfread_flag ? "rom_read" : "rom_write");
-
+		
 		struct amlnand_phydev *tmp_phydev = phydev;
 		struct phydev_ops  *tmp_devops = devops;
-
+		
 		phydev =aml_phy_get_dev(NAND_BOOT_NAME);
 		if(!phydev){
 			aml_nand_msg("phydev be NULL");
 			return -1;
 		}
 		devops = &(phydev->ops);
-		aml_nand_dbg("phydev->name =%s",phydev->name);
+		aml_nand_dbg("phydev->name =%s",phydev->name);		
 		amldev_dumpinfo(phydev);
 
 		if (arg_off_size(argc - 3, argv + 3, phydev->size, &off, &size) != 0)
@@ -460,7 +460,7 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		devops->len = size;
 		devops->mode = NAND_HW_ECC;
 		devops->datbuf = (unsigned char *)addr;
-
+			
 		if(nfread_flag){
 			ret = roomboot_nand_read(phydev);
 			if(ret < 0){
@@ -478,14 +478,14 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 		phydev = tmp_phydev;
 		devops = tmp_devops;
-
-		return ret;
+		
+		return ret;	
 	}
 
 	if ((strcmp(cmd, "devread") == 0) || (strcmp(cmd, "devwrite") == 0)){
-
+		
 		if (argc < 6)
-			goto usage;
+			goto usage;	
 
 		dev_name = argv[2];
 		if(strcmp(dev_name, "boot") == 0){
@@ -505,12 +505,12 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		addr = (ulong)simple_strtoul(argv[3], NULL, 16);
 		aml_nand_dbg("addr = %llx",addr);
 
-		devread = strncmp(cmd, "devread", 7) == 0; /* 1 = devread, 0 = devwrite */
+		devread = strncmp(cmd, "devread", 7) == 0; /* 1 = devread, 0 = devwrite */	
 		printf("\nNAND %s: addr:%lx \n", devread ? "devread" : "devwrite", addr);
-
+		
 		if (arg_off_size(argc - 4, argv + 4, chipsize, &off, &size) != 0)
 			goto usage;
-
+		
 		phydev = aml_phy_get_dev(dev_name);
 		if(!phydev){
 			aml_nand_msg("phydev be NULL");
@@ -523,9 +523,9 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		devops->len = size;
 		devops->mode = NAND_HW_ECC;
 		devops->datbuf = (unsigned char *)addr;
-
-		if(devread){
-			ret = nand_read_ops(phydev);
+		
+		if(devread){		
+			ret = nand_read_ops(phydev);	
 			if(ret < 0){
 				aml_nand_dbg("nand read failed");
 			}
@@ -533,25 +533,25 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			ret = nand_write_ops(phydev);
 			if(ret < 0){
 				aml_nand_dbg("nand write failed");
-			}
+			}			
 		}
 
 		printf(" %llu bytes %s : %s\n", size,
 			       devread ? "devread" : "devwrite", ret ? "ERROR" : "OK");
-
+		
 		return 0;
-
+				
 	}
-
+	
 	if((strcmp(cmd, "deverase") == 0) ){
 
 		if(argc < 4){
 			goto usage;
 		}
-
+		
 		int percent=0;
 		int percent_complete = -1;
-
+		
 		dev_name = argv[2];
 		if(strcmp(dev_name, "boot") == 0){
 			dev_name = NAND_BOOT_NAME;
@@ -565,22 +565,22 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		}else{
 			aml_nand_msg("input wrong name!! %s",dev_name);
 			goto usage;
-		}
+		}		
 		phydev = aml_phy_get_dev(dev_name);
 		if(!phydev){
 			aml_nand_msg("phydev be NULL");
 			return -1;
 		}
-
+	
 		devops = &(phydev->ops);
 		if(!strcmp(argv[3], "whole"))
 		{
 			off = 0;
-			size = phydev->size;
+			size = phydev->size;	
 			erase_addr =erase_off= off;
-			erase_len = size;
+			erase_len = size;	
 			printf("whole dev.\n");
-
+			
 		}else{
 			if ((strcmp(cmd, "deverase") == 0) && (argc < 3)){
 					goto usage;
@@ -592,24 +592,24 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			erase_addr =erase_off= off;
 			erase_len = size;
 		}
-
-		aml_nand_dbg("erase_len = %llx",erase_len);
+		
+		aml_nand_dbg("erase_len = %llx",erase_len);		
 		aml_nand_dbg("erase_off = %llx",erase_off);
-
-		if (erase_len < phydev->erasesize){
+		
+		if (erase_len < phydev->erasesize){				
 			printf("Warning: Erase size 0x%08x smaller than one "	\
 				   "erase block 0x%08x\n",erase_len, phydev->erasesize);
 			printf("		 Erasing 0x%08x instead\n", phydev->erasesize);
 			erase_len = phydev->erasesize;
 		}
-
+	
 		for (; erase_addr <erase_off + erase_len; erase_addr +=  phydev->erasesize) {
-
+			
 			memset(devops, 0x0, sizeof(struct phydev_ops));
 			devops->addr = erase_addr;
-			devops->len = phydev->erasesize;
+			devops->len = phydev->erasesize;			
 			devops->mode = NAND_HW_ECC;
-
+			
 			 ret = phydev->block_isbad(phydev);
 			if (ret > 0) {
 				printf("\rSkipping bad block at 0x%08llx\n", erase_addr);
@@ -619,14 +619,14 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 				printf("\n:AMLNAND get bad block failed: ret=%d at addr=%llx\n",ret, erase_addr);
 				return -1;
 			}
-
+			
 			ret = nand_erase(phydev);
 			if (ret < 0){
 				printf("\nAMLNAND Erase failure: %d %llx\n", ret, erase_addr);
 				ret = phydev->block_markbad(phydev);
 				if (ret < 0)
-					printf("AMLNAND bad block mark failed: %llx\n", erase_addr);
-				continue;
+					printf("AMLNAND bad block mark failed: %llx\n", erase_addr);	
+				continue;			
 			}
 
 			percent = (erase_addr * 100) / (erase_off + erase_len);
@@ -656,16 +656,16 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		}
 		addr = (ulong)simple_strtoul(argv[3], NULL, 16);
 		aml_nand_dbg("addr = %llx",addr);
-
+		
 		if (arg_off_size(argc - 4, argv + 4, chipsize, &off, &size) != 0)
 			goto usage;
-
+		
 		phydev = aml_phy_get_dev(dev_name);
 		if(!phydev){
 			aml_nand_msg("phydev be NULL");
 			return -1;
 		}
-
+		
 		devops = &(phydev->ops);
 		memset(devops, 0x0, sizeof(struct phydev_ops));
 		devops->addr = off;
@@ -678,14 +678,14 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		return 0;
 	}
 	if((strcmp(cmd, "scrub") == 0) ||(strcmp(cmd, "erase") == 0) ){
-
+		
 		int scrub_flag = !strncmp(cmd, "scrub",5);
 		int percent=0;
 		int percent_complete = -1;
 		if (argc < 2){
 			goto usage;
 		}
-
+		
 		if (scrub_flag){
 			puts("Warning: "
 			     "devscrub option will erase all factory set "
@@ -717,19 +717,19 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			    scrub_flag = 1;
 			}
 		}
-
+		
 		if(!strcmp(argv[2], "whole"))
 		{
 			off = 0;
 			size = chipsize; //((uint64_t)flash->chipsize << 20);
 			erase_addr =erase_off= off;
-			erase_len = size;
+			erase_len = size;	
 			printf("whole dev.\n");
 		}else{
 
 			if ((arg_off_size(argc - 2, argv + 2, chipsize, &off, &size) != 0)){
 				goto usage;
-			}
+			}		
 			erase_addr =erase_off= off;
 			erase_len = size;
 		}
@@ -740,7 +740,7 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		if(ret < 0){
 			aml_nand_msg("nand erase failed");
 		}
-
+		
 		return ret;
 	}
 
@@ -772,7 +772,7 @@ U_BOOT_CMD(amlnf, CONFIG_SYS_MAXARGS, 1, do_amlnfphy,
 	"    read/write 'size' bytes starting at offset 'off' in device[dev]\n"
 	"    to/from memory address 'addr', skipping bad blocks.\n"
 	"deverase [whole] [off size] - erase 'size' bytes from\n"
-	"    offset 'off' (entire device if not specified) in device[dev]\n"
+	"    offset 'off' (entire device if not specified) in device[dev]\n"  
 	"markbad addr -mark block bad at addr\n"
 	"device name -get nftl device by name\n"
 );

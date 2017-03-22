@@ -40,6 +40,11 @@
 #endif
 #endif
 
+#ifdef  CONFIG_AMLOGIC_USB_3
+extern void aml_enable_scrambling(void);
+extern void aml_disable_scrambling(void);
+#endif
+
 #define USB_VENDOR_GENESYS_LOGIC		0x05e3
 #define HUB_QUIRK_CHECK_PORT_AUTOSUSPEND	0x01
 
@@ -64,6 +69,11 @@ static struct task_struct *khubd_task;
 
 /* cycle leds on hubs that aren't blinking for attention */
 static bool blinkenlights = 0;
+
+#ifdef  CONFIG_AMLOGIC_USB_3
+static int aml_flag;
+#endif
+
 module_param (blinkenlights, bool, S_IRUGO);
 MODULE_PARM_DESC (blinkenlights, "true to cycle leds on hubs");
 
@@ -2039,6 +2049,7 @@ void usb_disconnect(struct usb_device **pdev)
 	 * this device (and any of its children) will fail immediately.
 	 * this quiesces everything except pending urbs.
 	 */
+
 	usb_set_device_state(udev, USB_STATE_NOTATTACHED);
 	dev_info(&udev->dev, "USB disconnect, device number %d\n",
 			udev->devnum);
@@ -4126,6 +4137,14 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 				if (retval != -ENODEV)
 					dev_err(&udev->dev, "device not accepting address %d, error %d\n",
 							devnum, retval);
+#ifdef  CONFIG_AMLOGIC_USB_3
+				if (j >= SET_ADDRESS_TRIES) {
+					if (udev->speed == USB_SPEED_HIGH) {
+						aml_enable_scrambling();
+						aml_flag++;
+					}
+				}
+#endif
 				goto fail;
 			}
 			if (udev->speed == USB_SPEED_SUPER) {
@@ -4158,6 +4177,7 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 			break;
 		}
 	}
+
 	if (retval)
 		goto fail;
 
@@ -4372,6 +4392,12 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 				!(portstatus & USB_PORT_STAT_CONNECTION))
 			usb_phy_notify_disconnect(hcd->phy, udev->speed);
 		usb_disconnect(&hub->ports[port1 - 1]->child);
+#ifdef  CONFIG_AMLOGIC_USB_3
+		if (aml_flag) {
+			aml_disable_scrambling();
+			aml_flag = 0;
+		}
+#endif
 	}
 	clear_bit(port1, hub->change_bits);
 
@@ -4550,6 +4576,13 @@ done:
 	hub_port_disable(hub, port1, 1);
 	if (hcd->driver->relinquish_port && !hub->hdev->parent)
 		hcd->driver->relinquish_port(hcd, port1);
+
+#ifdef  CONFIG_AMLOGIC_USB_3
+	if (udev->speed == USB_SPEED_HIGH) {
+		aml_enable_scrambling();
+		aml_flag++;
+	}
+#endif
 }
 
 /* Returns 1 if there was a remote wakeup and a connect status change. */

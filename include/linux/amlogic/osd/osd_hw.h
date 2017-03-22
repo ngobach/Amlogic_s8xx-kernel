@@ -7,6 +7,7 @@
 #define HW_OSD_COUNT					2
 #define HW_OSD_BLOCK_COUNT			4
 #define HW_OSD_BLOCK_REG_COUNT		(HW_OSD_BLOCK_COUNT*2)
+#define HIBERNATE_OSD_SAVE_REG_COUNT		9
 
 typedef  enum{
 	OSD1=0,
@@ -124,7 +125,7 @@ typedef  struct {
 	u32  			color_key[HW_OSD_COUNT];
 	u32				color_key_enable[HW_OSD_COUNT];
 	u32				enable[HW_OSD_COUNT];
-	u32				reg_status_save;
+	u32				reg_status_save[HIBERNATE_OSD_SAVE_REG_COUNT];
 	bridge_item_t 		fiq_handle_item;
 	osd_scale_t		scale[HW_OSD_COUNT];
 	osd_freescale_t	free_scale[HW_OSD_COUNT];
@@ -221,6 +222,8 @@ extern void osd_set_osd_rotate_on_hw(u32 index, u32 on_off);
 extern void osd_get_osd_rotate_on_hw(u32 index, u32 *on_off);
 extern void osd_set_osd_antiflicker_hw(u32 index, u32 vmode, u32 yres);
 extern void osd_get_osd_antiflicker_hw(u32 index, u32 *on_off);
+extern void osd_set_osd_updatestate_hw(u32 index, u32 up_free);
+extern void osd_get_osd_updatestate_hw(u32 index,u32 *up_free);
 extern void osd_get_osd_angle_hw(u32 index, u32 *angle);
 extern void osd_set_osd_angle_hw(u32 index, u32 angle, u32  virtual_osd1_yres, u32 virtual_osd2_yres);
 extern void osd_get_osd_clone_hw(u32 index, u32 *clone);
@@ -238,7 +241,6 @@ extern s32  osd_wait_vsync_event(void);
 #if defined(CONFIG_FB_OSD2_CURSOR)
 extern void osd_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h, int index);
 #endif
-extern void osddev_copy_data_tocursor_hw(u32 cursor_mem_paddr, aml_hwc_addr_t *hwc_mem);
 extern void osd_suspend_hw(void);
 extern void osd_resume_hw(void);
 extern void osd_init_hw(u32  logo_loaded);

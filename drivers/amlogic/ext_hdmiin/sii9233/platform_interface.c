@@ -128,6 +128,8 @@ uint8_t I2C_WriteBlock(uint8_t deviceID, uint8_t offset, uint8_t *buffer, uint16
 
 	ret = aml_sii9233a_i2c_write(deviceID, tmp, length+1);
 
+	kfree(tmp);
+
 	return (uint8_t)ret;
 }
 

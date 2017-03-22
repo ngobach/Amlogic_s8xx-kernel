@@ -198,7 +198,9 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
             vf->canvas0Addr = vf->canvas1Addr = index2canvas0(index);
             vf->pts = (pts_valid) ? pts : 0;
             vf->pts_us64 = (pts_valid) ? pts_us64 : 0;
-			vf->orientation = 0 ;
+            vf->orientation = 0 ;
+            vf->type_original = vf->type;
+
             vfbuf_use[index]++;
 
             kfifo_put(&display_q, (const vframe_t **)&vf);
@@ -270,6 +272,7 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
                 vf->pts = 0;
                 vf->pts_us64 = 0;
             }
+            vf->type_original = vf->type;
 
             vfbuf_use[index]++;
 
@@ -278,7 +281,6 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
 		    vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);            
 #endif
         }
-
         WRITE_VREG(MREG_FROM_AMRISC, 0);
     }
 
@@ -732,23 +734,25 @@ static s32 vmjpeg_init(void)
 
 static int amvdec_mjpeg_probe(struct platform_device *pdev)
 {
-    struct resource *mem;
+    struct vdec_dev_reg_s *pdata = (struct vdec_dev_reg_s *)pdev->dev.platform_data;
 	
     mutex_lock(&vmjpeg_mutex);
 	
     amlog_level(LOG_LEVEL_INFO, "amvdec_mjpeg probe start.\n");
 
-    if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0))) {
+    if (pdata == NULL) {
         amlog_level(LOG_LEVEL_ERROR, "amvdec_mjpeg memory resource undefined.\n");
         mutex_unlock(&vmjpeg_mutex);
 		
         return -EFAULT;
     }
 
-    buf_start = mem->start;
-    buf_size  = mem->end - mem->start + 1;
+    buf_start = pdata->mem_start;
+    buf_size  = pdata->mem_end - pdata->mem_start + 1;
 
-    memcpy(&vmjpeg_amstream_dec_info, (void *)mem[1].start, sizeof(vmjpeg_amstream_dec_info));
+    if (pdata->sys_info) {
+        vmjpeg_amstream_dec_info = *pdata->sys_info;
+    }
 
     if (vmjpeg_init() < 0) {
         amlog_level(LOG_LEVEL_ERROR, "amvdec_mjpeg init failed.\n");

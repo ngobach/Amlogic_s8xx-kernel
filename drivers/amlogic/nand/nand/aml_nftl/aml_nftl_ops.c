@@ -30,7 +30,7 @@
 
 #include "aml_nftl.h"
 
-static int aml_ops_read_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr,
+static int aml_ops_read_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, 
 								unsigned char *data_buf, unsigned char *nftl_oob_buf, int oob_len)
 {
 	struct mtd_info *mtd = aml_nftl_info->mtd;
@@ -41,12 +41,12 @@ static int aml_ops_read_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t 
 
 	struct mtd_oob_ops *aml_oob_ops;
 	aml_oob_ops = aml_nftl_malloc(sizeof(struct mtd_oob_ops));
-
+	
 	if(aml_oob_ops== NULL){
 		printk("%s,%d malloc failed\n",__func__,__LINE__);
 		return -ENOMEM;;
 	}
-
+	
 	from = mtd->erasesize;
 	from *= blk_addr;
 	from += page_addr * mtd->writesize;
@@ -66,17 +66,17 @@ static int aml_ops_read_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t 
 
 	if (ret == -EUCLEAN) {
 		//if (mtd->ecc_stats.corrected >= 10)
-			//do read err
+			//do read err 
 		ret = 0;
 	}
 	if (ret)
 		aml_nftl_dbg("aml_ops_read_page failed: %llx %d %d\n", from, blk_addr, page_addr);
-
+	
 	aml_nftl_free(aml_oob_ops);
 	return ret;
 }
 
-static int aml_ops_write_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr,
+static int aml_ops_write_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, 
 								unsigned char *data_buf, unsigned char *nftl_oob_buf, int oob_len)
 {
 	struct mtd_info *mtd = aml_nftl_info->mtd;
@@ -87,12 +87,12 @@ static int aml_ops_write_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t
 
 	struct mtd_oob_ops *aml_oob_ops;
 	aml_oob_ops = aml_nftl_malloc(sizeof(struct mtd_oob_ops));
-
+	
 	if(aml_oob_ops== NULL){
 		printk("%s,%d malloc failed\n",__func__,__LINE__);
 		return -ENOMEM;;
 	}
-
+	
 	from = mtd->erasesize;
 	from *= blk_addr;
 	from += page_addr * mtd->writesize;
@@ -113,7 +113,7 @@ static int aml_ops_write_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t
 	return ret;
 }
 
-static int aml_ops_read_page_oob(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr,
+static int aml_ops_read_page_oob(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, 
 										addr_page_t page_addr, unsigned char *nftl_oob_buf, int oob_len)
 {
 	struct mtd_info *mtd = aml_nftl_info->mtd;
@@ -121,10 +121,10 @@ static int aml_ops_read_page_oob(struct aml_nftl_info_t *aml_nftl_info, addr_blk
 //	struct mtd_ecc_stats stats;
 	loff_t from;
 	int ret;
-
+	
 	struct mtd_oob_ops *aml_oob_ops;
 	aml_oob_ops = aml_nftl_malloc(sizeof(struct mtd_oob_ops));
-
+	
 	if(aml_oob_ops== NULL){
 		printk("%s,%d malloc failed\n",__func__,__LINE__);
 		return -ENOMEM;;
@@ -145,7 +145,7 @@ static int aml_ops_read_page_oob(struct aml_nftl_info_t *aml_nftl_info, addr_blk
 
 	if (ret == -EUCLEAN) {
 		//if (mtd->ecc_stats.corrected >= 10)
-			//do read err
+			//do read err 
 		ret = 0;
 	}
 	aml_nftl_free(aml_oob_ops);

@@ -27,10 +27,11 @@
 #include <linux/mali/mali_utgard.h>
 #include <common/mali_kernel_common.h>
 #include <common/mali_pmu.h>
+#include "mali_pp_scheduler.h"
 #include "meson_main.h"
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-static ssize_t domain_stat_read(struct class *class,
+static ssize_t domain_stat_read(struct class *class, 
 			struct class_attribute *attr, char *buf)
 {
 	unsigned int val;
@@ -98,7 +99,7 @@ static ssize_t mpgpu_write(struct class *class,
 	} else if (!strncmp(pstart, LIMIT_CMD, MAX_TOKEN)) {
 		if ((kstrtouint(cprt, 10, &val) <0) || pmali_plat == NULL)
 			goto quit;
-
+		
 		if (val < 2) {
 			pmali_plat->limit_on = val;
 			if (val == 0) {
@@ -139,7 +140,10 @@ static ssize_t max_pp_read(struct class *class,
 			struct class_attribute *attr, char *buf)
 {
 	mali_plat_info_t* pmali_plat = get_mali_plat_data();
-	return sprintf(buf, "%d\n", pmali_plat->scale_info.maxpp);
+	printk("maxpp:%d, maxpp_sysfs:%d, total=%d\n",
+			pmali_plat->scale_info.maxpp, pmali_plat->maxpp_sysfs,
+			mali_pp_scheduler_get_num_cores_total());
+	return sprintf(buf, "%d\n", mali_pp_scheduler_get_num_cores_total());
 }
 
 static ssize_t max_pp_write(struct class *class,
@@ -157,6 +161,7 @@ static ssize_t max_pp_write(struct class *class,
 	if ((0 != ret) || (val > pmali_plat->cfg_pp) || (val < pinfo->minpp))
 		return -EINVAL;
 
+	pmali_plat->maxpp_sysfs = val;
 	pinfo->maxpp = val;
 	revise_mali_rt();
 
@@ -195,7 +200,9 @@ static ssize_t max_freq_read(struct class *class,
 			struct class_attribute *attr, char *buf)
 {
 	mali_plat_info_t* pmali_plat = get_mali_plat_data();
-	return sprintf(buf, "%d\n", pmali_plat->scale_info.maxclk);
+	printk("maxclk:%d, maxclk_sys:%d, max gpu level=%d\n",
+			pmali_plat->scale_info.maxclk, pmali_plat->maxclk_sysfs, get_gpu_max_clk_level());
+	return sprintf(buf, "%d\n", get_gpu_max_clk_level());
 }
 
 static ssize_t max_freq_write(struct class *class,
@@ -213,6 +220,7 @@ static ssize_t max_freq_write(struct class *class,
 	if ((0 != ret) || (val > pmali_plat->cfg_clock) || (val < pinfo->minclk))
 		return -EINVAL;
 
+	pmali_plat->maxclk_sysfs = val;
 	pinfo->maxclk = val;
 	revise_mali_rt();
 
@@ -324,7 +332,7 @@ int mpgpu_class_init(void)
 	int ret = 0;
 	int i;
 	int attr_num =  ARRAY_SIZE(mali_class_attrs);
-
+	
 	ret = class_register(&mpgpu_class);
 	if (ret) {
 		printk(KERN_ERR "%s: class_register failed\n", __func__);

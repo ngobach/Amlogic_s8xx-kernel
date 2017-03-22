@@ -93,6 +93,7 @@ struct ntd_info {
 	struct module *owner;
 	struct device dev;
 	int usecount;
+	int thread_stop_flag;;
 	unsigned long badblocks;
     struct list_head list;
 
@@ -247,6 +248,8 @@ extern int add_ntd_blktrans_dev(struct ntd_blktrans_dev *new);
 extern int del_ntd_blktrans_dev(struct ntd_blktrans_dev *old);
 extern int register_ntd_blktrans(struct ntd_blktrans_ops *tr);
 extern int deregister_ntd_blktrans(struct ntd_blktrans_ops *tr);
+extern int blk_device_register(struct device *dev, int num);
+extern int blk_class_register(struct class *cls);
 
 #define ntd_for_each_device(mtd)			\
 	for ((ntd) = __ntd_next_device(0);		\

@@ -11,6 +11,7 @@
 obj-y +=early_init/
 ###For Display, this is for quick logo show##
 obj-$(CONFIG_AM_DISPLAY_MODULE) += display/
+obj-$(CONFIG_AMLOGIC_LED)		+= led/
 
 obj-$(CONFIG_POST_PROCESS_MANAGER) += ppmgr/
 
@@ -66,6 +67,8 @@ obj-$(CONFIG_AML_AUDIO_DSP) += audiodsp/
 
 obj-$(CONFIG_AML_RTC)+= rtc/
 
+obj-$(CONFIG_AML_VRTC) += vrtc/
+
 obj-y += power/
 
 obj-$(CONFIG_AML_PMU_ALGORITHM_SUPPORT) += pmu/
@@ -75,7 +78,7 @@ obj-$(CONFIG_TVIN) += tvin/
 
 obj-$(CONFIG_AML_EXT_HDMIIN) += ext_hdmiin/
 
-obj-y += thermal/
+#obj-y += thermal/
 
 
 #####Sound system is later init in kernel default..######################
@@ -100,7 +103,11 @@ obj-$(CONFIG_D2D3_PROCESS) += d2d3/
 
 obj-$(CONFIG_AML_REG_DEBUG) += regd/
 
+obj-$(CONFIG_AML_CODEC_MM)  	+= codec_mm/
+
 obj-$(CONFIG_AML_WATCHDOG) += watchdog/
+
+obj-$(CONFIG_AMLOGIC_JTAG) += jtag/
 
 obj-$(CONFIG_UMP) += gpu/ump/
 obj-$(CONFIG_MALI400) += gpu/mali/
@@ -117,4 +124,4 @@ obj-y += spi/
 
 obj-y += defendkey/
 
-obj-$(CONFIG_VFD) += vfd/
+#obj-$(CONFIG_VFD) += vfd/

@@ -1,0 +1,22 @@
+#ifdef CONFIG_AML_AVIN
+/// ****************************************************************************
+///    -       Avin
+//$$ DEVICE="aml-avin"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_STR = "avin_pin"
+//$$ L2 PROP_U32 = "avin_irq"
+//$$ L2 PROP_U32 = "detect_time_length"
+//$$ L2 PROP_U32 = "detect_interval_length"
+//$$ L2 PROP_U32 = "set_detect_times"
+//$$ L2 PROP_U32 = "set_fault_tolerance"
+	aml-avin {
+		compatible = "amlogic,avin_detect";
+		status = "okay";
+		avin_pin = "GPIOW_4";
+		avin_irq = <0>;
+		detect_time_length = <1>;
+		detect_interval_length = <100>;
+		set_detect_times = <5>;
+		set_fault_tolerance = <1>;
+	};
+#endif

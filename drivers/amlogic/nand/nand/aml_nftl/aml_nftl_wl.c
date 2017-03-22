@@ -1,7 +1,7 @@
 /**
  *wl.c - jnftl wear leveling & garbage collection
  */
-
+ 
 #include <linux/rbtree.h>
 #include <linux/list.h>
 #include <linux/kthread.h>
@@ -19,7 +19,7 @@
  *     2. malloc node
  *     3. evaluate logical block
  *
- * If the logical block is not a valid value, NULL will be returned,
+ * If the logical block is not a valid value, NULL will be returned, 
  * else return list node
  */
 static inline struct wl_list_t *construct_lnode(struct aml_nftl_wl_t* wl, addr_blk_t vt_blk, addr_blk_t phy_blk)
@@ -33,7 +33,7 @@ static inline struct wl_list_t *construct_lnode(struct aml_nftl_wl_t* wl, addr_b
 	if(lnode) {
 		lnode->vt_blk = vt_blk;
 		lnode->phy_blk = phy_blk;
-
+		
 	}
 	return lnode;
 }
@@ -46,7 +46,7 @@ static inline struct wl_list_t *construct_lnode(struct aml_nftl_wl_t* wl, addr_b
  *     2. malloc node
  *     3. evaluate linear block & ec
  *
- * If the linear block is not a valid value, NULL will be returned,
+ * If the linear block is not a valid value, NULL will be returned, 
  * else return tree node
  */
 static inline struct wl_rb_t* construct_tnode(struct aml_nftl_wl_t* wl, addr_blk_t blk)
@@ -140,7 +140,7 @@ static void add_tree(struct aml_nftl_wl_t* wl, struct wl_tree_t* tree, struct wl
 	}
 	rb_link_node(&tnode->rb_node, parent, p);
 	rb_insert_color(&tnode->rb_node, &tree->root);
-
+	
 	tree->count++;
 	return;
 }
@@ -157,7 +157,7 @@ static void add_tree(struct aml_nftl_wl_t* wl, struct wl_tree_t* tree, struct wl
  *     2. search the same ec_blk in the tree
  *     3. return tree node or NULL
  */
-static struct wl_rb_t* search_tree(struct aml_nftl_wl_t* wl, struct wl_tree_t* tree, addr_blk_t blk,
+static struct wl_rb_t* search_tree(struct aml_nftl_wl_t* wl, struct wl_tree_t* tree, addr_blk_t blk, 
 						erase_count_t ec)
 {
 	struct rb_node **p = &tree->root.rb_node;
@@ -179,7 +179,7 @@ static struct wl_rb_t* search_tree(struct aml_nftl_wl_t* wl, struct wl_tree_t* t
 			return cur;
 	}
 
-	return NULL;
+	return NULL;	
 }
 
 static void add_used(struct aml_nftl_wl_t* wl, addr_blk_t blk)
@@ -226,7 +226,7 @@ static void add_free(struct aml_nftl_wl_t * wl, addr_blk_t blk)
 {
 	struct aml_nftl_info_t *aml_nftl_info = wl->aml_nftl_info;
 	struct phyblk_node_t *phy_blk_node;
-	struct wl_rb_t* tnode_cold;
+	struct wl_rb_t* tnode_cold;	
 	struct wl_rb_t* tnode;
 
 	if (blk < 0)
@@ -251,7 +251,7 @@ static void add_free(struct aml_nftl_wl_t * wl, addr_blk_t blk)
 /**
  * staticwl_linear_blk - static wear leveling this linear block
  * @ blk : root linear block
- *
+ * 
  * Static wl block should be the logical block only with root block
  *
  *     1. get root sector map
@@ -274,7 +274,7 @@ WRITE_RETRY:
 	if(aml_nftl_wl->get_best_free(aml_nftl_wl, &dest_blk))
 	{
 		aml_nftl_dbg("%s line:%d nftl couldn`t get best free block: %d %d\n", __func__, __LINE__, aml_nftl_wl->free_root.count, aml_nftl_wl->wait_gc_block);
-		return -ENOENT;
+		return -ENOENT;	
 	}
 
 	aml_nftl_wl->add_used(aml_nftl_wl, dest_blk);
@@ -366,7 +366,7 @@ static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag
 			vt_blk_num = gc_cur_list->gc_blk_addr;
 			if (vt_blk_num == aml_nftl_info->current_write_block)
 				continue;
-			if ((vt_blk_num >= aml_nftl_info->current_write_block - MAX_BLK_NUM_PER_NODE)
+			if ((vt_blk_num >= aml_nftl_info->current_write_block - MAX_BLK_NUM_PER_NODE) 
 				&& (vt_blk_num <= aml_nftl_info->current_write_block + MAX_BLK_NUM_PER_NODE)
 				&& (gc_flag != DO_COPY_PAGE))
 				continue;
@@ -432,7 +432,7 @@ static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag
 
 /**
  * gc_copy_special - copy root, leaf, sroot, sleaf to free block
- *
+ * 
  * Copy all block to new free block, regardless valid sectors in each blocks
  *
  *     1. malloc special root, leaf sector map for temp use
@@ -504,10 +504,10 @@ WRITE_RETRY:
                         if(aml_nftl_wl->get_best_free(aml_nftl_wl, &dest_blk))
                         {
                             aml_nftl_dbg("%s line:%d, nftl write page faile blk: %d page: %d , retry_cnt:%d\n", __func__,  __LINE__, dest_blk, dest_page, retry_cnt);
-		            return -ENOENT;
+		            return -ENOENT;	
 		        }
 		         goto WRITE_RETRY;
-#endif
+#endif                         
 		}
 		writed_pages++;
 		if ((gc_flag == DO_COPY_PAGE_AVERAGELY) && (writed_pages >= aml_nftl_wl->page_copy_per_gc) && (k < (aml_nftl_wl->pages_per_blk - aml_nftl_wl->page_copy_per_gc)))
@@ -655,7 +655,7 @@ int aml_nftl_wl_init(struct aml_nftl_info_t *aml_nftl_info)
 
 	aml_nftl_wl->aml_nftl_info = aml_nftl_info;
 	aml_nftl_info->aml_nftl_wl = aml_nftl_wl;
-
+	
 	aml_nftl_wl->wl_delta = WL_DELTA;
 	aml_nftl_wl->pages_per_blk = aml_nftl_info->pages_per_blk;
 	aml_nftl_wl->gc_start_block = aml_nftl_info->accessibleblocks - 1;

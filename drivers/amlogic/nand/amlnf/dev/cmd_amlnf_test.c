@@ -29,7 +29,7 @@ void * memset_nand_test(void * s, unsigned long c,size_t count)
 		}
 	}
 	/* fill 8 bits at a time */
-	/*s8 = (char *)sl;            //this can write one byte
+	/*s8 = (char *)sl;            //this can write one byte 
 	while (count--)
 		*s8++ = c;*/
 
@@ -37,18 +37,18 @@ void * memset_nand_test(void * s, unsigned long c,size_t count)
 }
 static int nand_erase_ops_test(struct amlnand_phydev *phydev, uint64_t off, uint64_t len)
 {
-	struct amlnand_chip *aml_chip = phydev->aml_chip;
+	struct amlnand_chip *aml_chip = phydev->aml_chip;	
 	struct phydev_ops *devops = &(phydev->ops);
-	struct hw_controller *controller = &(aml_chip->controller);
-	struct chip_operation *operation = &(aml_chip->operation);
+	struct hw_controller *controller = &(aml_chip->controller); 
+	struct chip_operation *operation = &(aml_chip->operation);	
 	struct chip_ops_para *ops_para = &(aml_chip->ops_para);
 
 	uint64_t addr, off, erase_addr, erase_len, erase_off;
 	int ret = 0;
-
+	
 	erase_addr = erase_off = off;
 	erase_len = len ;
-
+	
 	if((erase_off+erase_len) > phydev->size ){
 		aml_nand_msg("nand write size is out of space");
 		ret= -NAND_ERASE_FAILED;
@@ -56,12 +56,12 @@ static int nand_erase_ops_test(struct amlnand_phydev *phydev, uint64_t off, uint
 	}
 
 	for (; erase_addr < erase_off + erase_len; erase_addr +=  phydev->erasesize) {
-
+		
 		memset(devops, 0x0, sizeof(struct phydev_ops));
 		devops->addr = erase_addr;
-		devops->len = phydev->erasesize;
+		devops->len = phydev->erasesize;			
 		devops->mode = NAND_HW_ECC;
-
+		
 		 ret = phydev->block_isbad(phydev);
 		if (ret > 0) {
 			aml_nand_msg("Skipping bad block at 0x%08llx", erase_addr);
@@ -71,12 +71,12 @@ static int nand_erase_ops_test(struct amlnand_phydev *phydev, uint64_t off, uint
 			aml_nand_msg("nand get bad block failed: ret=%d at addr=%llx",ret, erase_addr);
 			ret =  -NAND_ERASE_FAILED;
 		}
-
+		
 		ret = nand_erase(phydev);
 		if (ret < 0){
 			aml_nand_msg("nand Erase failure: %d %llx", ret, erase_addr);
 			ret =  -NAND_ERASE_FAILED;
-		}
+		}		
 	}
 
 
@@ -87,7 +87,7 @@ exit_error:
 
 static int nand_read_ops_test(struct amlnand_phydev *phydev,uint64_t off , uint64_t len , unsigned char * dat_buf)
 {
-	struct amlnand_chip *aml_chip = phydev->aml_chip;
+	struct amlnand_chip *aml_chip = phydev->aml_chip;	
 	struct phydev_ops *devops = &(phydev->ops);
 	uint64_t offset , write_len;
 	unsigned char * buffer = NULL;
@@ -101,7 +101,7 @@ static int nand_read_ops_test(struct amlnand_phydev *phydev,uint64_t off , uint6
 		ret = -NAND_READ_FAILED;
 		goto exit_error;
 	}
-
+	
 	if(!dat_buf){
 		aml_nand_msg("nand read no buf");
 		return -NAND_READ_FAILED;
@@ -113,7 +113,7 @@ static int nand_read_ops_test(struct amlnand_phydev *phydev,uint64_t off , uint6
 	}
 
 	if((offset + write_len) > phydev->size){
-		aml_nand_msg("Attemp to read out side the dev area");
+		aml_nand_msg("Attemp to read out side the dev area");		
 		return -NAND_READ_FAILED;
 	}
 	memset(devops, 0x0, sizeof(struct phydev_ops));
@@ -122,8 +122,8 @@ static int nand_read_ops_test(struct amlnand_phydev *phydev,uint64_t off , uint6
 	devops->datbuf = buffer;
 	devops->oobbuf = NULL;
 	devops->mode = NAND_HW_ECC;
-	aml_nand_dbg("phydev->writesize= %x",phydev->writesize);
-	do{
+	aml_nand_dbg("phydev->writesize= %x",phydev->writesize);		
+	do{ 	
 		if((devops->addr % phydev->erasesize) == 0 ){
 			ret =  phydev->block_isbad(phydev);
 			if (ret > 0){
@@ -145,12 +145,12 @@ static int nand_read_ops_test(struct amlnand_phydev *phydev,uint64_t off , uint6
 			break;
 		}
 		devops->addr +=  phydev->writesize;
-
+		
 	}while(devops->addr < (offset + write_len));
 
 
 exit_error:
-
+	
 	if(buffer){
 		aml_nand_free(buffer);
 	}
@@ -159,8 +159,8 @@ exit_error:
 }
 
 static int nand_write_ops_test(struct amlnand_phydev *phydev , uint64_t off, uint64_t len, unsigned char * dat_buf, int flag)
-{
-	struct amlnand_chip *aml_chip = phydev->aml_chip;
+{	
+	struct amlnand_chip *aml_chip = phydev->aml_chip;	
 	struct phydev_ops *devops = &(phydev->ops);
 	unsigned char * verify_buf =NULL;
 	unsigned char * buffer = NULL;
@@ -170,22 +170,22 @@ static int nand_write_ops_test(struct amlnand_phydev *phydev , uint64_t off, uin
 	offset = off;
 	write_len = len;
 	buffer = dat_buf;
-
+	
 	if(!buffer){
 		aml_nand_msg("nand write no buf");
 		return -NAND_WRITE_FAILED;
 	}
-
+	
 	if ((offset & (phydev->writesize - 1)) != 0 ||(write_len & (phydev->writesize - 1)) != 0) {
 		aml_nand_msg ("Attempt to write non page aligned data");
 		return -NAND_WRITE_FAILED;
 	}
 
 	if((offset + write_len) > phydev->size){
-		aml_nand_msg("Attemp to write out side the dev area");
+		aml_nand_msg("Attemp to write out side the dev area");		
 		return -NAND_WRITE_FAILED;
 	}
-
+	
 	if(flag == 1){
 		verify_buf = aml_nand_malloc(2*phydev->writesize);
 		if(verify_buf){
@@ -197,7 +197,7 @@ static int nand_write_ops_test(struct amlnand_phydev *phydev , uint64_t off, uin
 	memset(devops, 0x0, sizeof(struct phydev_ops));
 	devops->addr = offset;
 	devops->len = phydev->writesize;
-	devops->datbuf = buffer;
+	devops->datbuf = buffer;		
 	devops->oobbuf = NULL;
 	devops->mode = NAND_HW_ECC;
 	aml_nand_dbg("phydev->writesize= %x",phydev->writesize);
@@ -236,17 +236,17 @@ static int nand_write_ops_test(struct amlnand_phydev *phydev , uint64_t off, uin
 			}
 			devops->datbuf = buffer;
 		}
-
+		
 		devops->addr +=  phydev->writesize;
-
+		
 		if((((phydev->offset + devops->addr) % phydev->erasesize)==0))
 			aml_nand_dbg("aml nand write block %d ok",((phydev->offset + devops->addr) / phydev->erasesize));
-
+		
 	}while(devops->addr < (offset + write_len));
 
-
+	
 exit_error:
-
+	
 	if(flag == 1){
 		if(verify_buf){
 			aml_nand_free(verify_buf);
@@ -270,7 +270,7 @@ static int amlnand_test2()
 
 }
 static int amlnand_test1(void)
-{
+{	
 	struct amlnand_phydev *phydev = NULL;
 	struct amlnand_chip *aml_chip;
 	struct phydev_ops  *devops;
@@ -310,7 +310,7 @@ static int amlnand_test1(void)
 				aml_nand_msg("nand test 1 : write failed ");
 				ret= -NAND_WRITE_FAILED;
 				goto exit_0;
-			}
+			}	
 //read disturb
 			offset = 0;
 			read_len =	phydev->size;
@@ -344,7 +344,7 @@ exit_0:
 }
 
 static int amlnand_test0(void)
-{
+{	
 	struct amlnand_phydev *phydev = NULL;
 	struct amlnand_chip *aml_chip;
 	struct phydev_ops  *devops;
@@ -384,7 +384,7 @@ static int amlnand_test0(void)
 				aml_nand_msg("nand test 0 : write failed ");
 				ret= -NAND_WRITE_FAILED;
 				goto exit_0;
-			}
+			}	
 //read
 			offset = 0;
 			read_len =  phydev->size;
@@ -430,7 +430,7 @@ int do_amlnand_test(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		printf("argc less than 2 :\n");
 		goto usage;
 	}
-
+	
 	cmd = argv[1];
 
 	if (strncmp(cmd, "0", 1) == 0){
@@ -472,7 +472,7 @@ int do_amlnand_test(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		return 0;
 	}else{
 			goto usage;
-	}
+	}	
 
 usage:
 	cmd_usage(cmdtp);

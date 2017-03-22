@@ -104,6 +104,7 @@ uint16_t SiiDrvRxGetPixelFreq(void)
  *  @param[in]		p_sync_info		pointer to return data buffer for sync information
  *
  *****************************************************************************/
+extern int debug_level;
 void SiiDrvRxGetSyncInfo(sync_info_type *p_sync_info)
 {
 	uint8_t d[4];
@@ -123,6 +124,25 @@ void SiiDrvRxGetSyncInfo(sync_info_type *p_sync_info)
 	p_sync_info->Interlaced = (vid_stat_reg & RX_M__VID_STAT__INTERLACE) ? INTL : PROG;
 	p_sync_info->HPol = (vid_stat_reg & RX_M__VID_STAT__HSYNC_POL) ? POS : NEG;
 	p_sync_info->VPol = (vid_stat_reg & RX_M__VID_STAT__VSYNC_POL) ? POS : NEG;
+
+	if (debug_level > 0)
+		printk("sii9293 GetSyncInfo:\n\
+		ClocksPerLine = %d\n\
+		TotalLines = %d\n\
+		PixelFreq = %d\n\
+		Interlaced = %s:%s\n\
+		HPol = %s:%s\n\
+		VPol = %s:%s\n",
+		p_sync_info->ClocksPerLine,
+		p_sync_info->TotalLines,
+		p_sync_info->PixelFreq,
+		(p_sync_info->Interlaced==INTL)?"1":"0",
+		(p_sync_info->Interlaced==INTL)?"INTL":"PROG",
+		(p_sync_info->HPol==POS)?"0":"1",
+		(p_sync_info->HPol==POS)?"POS":"NEG",
+		(p_sync_info->VPol==POS)?"0":"1",
+		(p_sync_info->VPol==POS)?"POS":"NEG" );
+
 }
 
 /*****************************************************************************/

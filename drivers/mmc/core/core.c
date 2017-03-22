@@ -544,6 +544,9 @@ struct mmc_async_req *mmc_start_req(struct mmc_host *host,
 		trace_mmc_blk_rw_start(areq->mrq->cmd->opcode,
 				       areq->mrq->cmd->arg,
 				       areq->mrq->data);
+		if (mmc_host_cmd23(host)) {
+			mmc_send_cmd23_req(host, areq->mrq->sbc->arg);
+		}
 		start_err = __mmc_start_data_req(host, areq->mrq);
 	}
 

@@ -238,6 +238,7 @@ struct aml_dvb* aml_get_dvb_device(void)
 
 EXPORT_SYMBOL(aml_get_dvb_device);
 
+#ifndef CONFIG_AM_DISABLE_DSC
 static int dvb_dsc_open(struct inode *inode, struct file *file)
 {
 	struct dvb_device *dvbdev = file->private_data;
@@ -245,6 +246,8 @@ static int dvb_dsc_open(struct inode *inode, struct file *file)
 	struct aml_dsc *dsc;
 	int id;
 	unsigned long flags;
+
+	pr_dbg("enable dsc");
 
 	spin_lock_irqsave(&dvb->slock, flags);
 
@@ -265,7 +268,7 @@ static int dvb_dsc_open(struct inode *inode, struct file *file)
 
 	dsc = &dvb->dsc[id];
 	dsc->id   = id;
-	dsc->pid  = -1;
+	dsc->pid  = 0x1fff;
 	dsc->set  = 0;
 	dsc->dvb  = dvb;
 
@@ -328,13 +331,17 @@ static int dvb_dsc_release(struct inode *inode, struct file *file)
 	spin_lock_irqsave(&dvb->slock, flags);
 
 	dsc->used = 0;
-	dsc_release(dsc);
+	dsc_set_pid(dsc, 0x1fff);
+
+	dsc->pid  = 0x1fff;
+	dsc->set = 0;
 	dvb->dsc_dev->users--;
 
 	spin_unlock_irqrestore(&dvb->slock, flags);
 
 	return 0;
 }
+#endif // #ifndef CONFIG_AM_DISABLE_DSC
 
 static int aml_dvb_asyncfifo_init(struct aml_dvb *advb, struct aml_asyncfifo *asyncfifo, int id)
 {
@@ -621,17 +628,17 @@ static ssize_t demux##i##_store_source(struct class *class,  struct class_attrib
 static ssize_t demux##i##_show_free_filters(struct class *class,  struct class_attribute *attr,char *buf)\
 {\
 	struct aml_dvb *dvb = &aml_dvb_device;\
-	struct aml_dmx *dmx = &dvb->dmx[i];\
+	struct dvb_demux *dmx = &dvb->dmx[i].demux;\
 	int fid, count;\
 	ssize_t ret = 0;\
-	unsigned long flags;\
-	spin_lock_irqsave(&dvb->slock, flags);\
+	if (mutex_lock_interruptible(&dmx->mutex)) \
+		return -ERESTARTSYS; \
 	count = 0;\
-	for(fid = 0; fid < FILTER_COUNT; fid++){\
-		if(!dmx->filter[fid].used)\
+	for (fid = 0; fid < dmx->filternum; fid++) {\
+		if (!dmx->filter[fid].state != DMX_STATE_FREE)\
 			count++;\
 	}\
-	spin_unlock_irqrestore(&dvb->slock, flags);\
+	mutex_unlock(&dmx->mutex);\
 	ret = sprintf(buf, "%d\n", count);\
 	return ret;\
 }
@@ -770,6 +777,7 @@ static ssize_t dvr##i##_store_mode(struct class *class,  struct class_attribute 
 	DEMUX_CHANNEL_ACTIVITY_FUNC_DECL(2)
 #endif
 
+#ifndef CONFIG_AM_DISABLE_DSC
 /*Show free descramblers count*/
 static ssize_t dsc_show_free_dscs(struct class *class,  struct class_attribute *attr,char *buf)
 {
@@ -789,6 +797,7 @@ static ssize_t dsc_show_free_dscs(struct class *class,  struct class_attribute *
 	ret = sprintf(buf, "%d\n", count);
 	return ret;
 }
+#endif // #ifndef CONFIG_AM_DISABLE_DSC
 
 /*Show the async fifo source*/
 #define ASYNCFIFO_SOURCE_FUNC_DECL(i)  \
@@ -1050,6 +1059,7 @@ static ssize_t demux##i##_reset_store(struct class *class,  struct class_attribu
 	DEMUX_RESET_FUNC_DECL(2)
 #endif
 
+#ifndef CONFIG_AM_DISABLE_DSC
 static struct file_operations dvb_dsc_fops = {
         .owner          = THIS_MODULE,
         .read           = NULL,
@@ -1066,6 +1076,7 @@ static struct dvb_device dvbdev_dsc = {
         .writers        = DSC_COUNT,
         .fops           = &dvb_dsc_fops,
 };
+#endif // #ifndef CONFIG_AM_DISABLE_DSC
 
 static struct class_attribute aml_stb_class_attrs[] = {
 	__ATTR(hw_setting, S_IRUGO|S_IWUSR, stb_show_hw_setting, stb_store_hw_setting),
@@ -1130,7 +1141,9 @@ static struct class_attribute aml_stb_class_attrs[] = {
 	__ATTR(audio_pts,  S_IRUGO | S_IWUSR | S_IWGRP, demux_show_audio_pts, NULL),
 	__ATTR(first_video_pts,  S_IRUGO | S_IWUSR, demux_show_first_video_pts, NULL),
 	__ATTR(first_audio_pts,  S_IRUGO | S_IWUSR, demux_show_first_audio_pts, NULL),
+#ifndef CONFIG_AM_DISABLE_DSC
 	__ATTR(free_dscs,  S_IRUGO | S_IWUSR, dsc_show_free_dscs, NULL),
+#endif // #ifndef CONFIG_AM_DISABLE_DSC
 
 #define DMX_RESET_ATTR_DECL(i)\
 		__ATTR(demux##i##_reset,  S_IRUGO | S_IWUSR, NULL, demux##i##_reset_store)
@@ -1262,12 +1275,21 @@ static int aml_dvb_probe(struct platform_device *pdev)
 		}
 	}
 
+	for (i=0; i<DSC_COUNT; i++) {
+		advb->dsc[i].id = i;
+		advb->dsc[i].used = 0;
+		advb->dsc[i].set = 0;
+		advb->dsc[i].pid = 0x1fff;
+	}
+
+#ifndef CONFIG_AM_DISABLE_DSC
 	/*Register descrambler device*/
 	ret = dvb_register_device(&advb->dvb_adapter, &advb->dsc_dev,
                                    &dvbdev_dsc, advb, DVB_DEVICE_DSC);
 	if(ret<0) {
 		goto error;
 	}
+#endif // #ifndef CONFIG_AM_DISABLE_DSC
 
 	/*Init the async fifos*/
 	for (i=0; i<ASYNCFIFO_COUNT; i++) {
@@ -1293,9 +1315,11 @@ error:
 		}
 	}
 
+#ifndef CONFIG_AM_DISABLE_DSC
 	if(advb->dsc_dev) {
 		dvb_unregister_device(advb->dsc_dev);
 	}
+#endif // #ifndef CONFIG_AM_DISABLE_DSC
 
 	for (i=0; i<DMX_DEV_COUNT; i++) {
 		if (advb->dmx[i].id!=-1) {
@@ -1317,7 +1341,9 @@ static int aml_dvb_remove(struct platform_device *pdev)
 	aml_unregist_dmx_class();
 	class_unregister(&aml_stb_class);
 
+#ifndef CONFIG_AM_DISABLE_DSC
 	dvb_unregister_device(advb->dsc_dev);
+#endif // #ifndef CONFIG_AM_DISABLE_DSC
 
 	for (i=0; i<DMX_DEV_COUNT; i++) {
 		aml_dvb_dmx_release(advb, &advb->dmx[i]);

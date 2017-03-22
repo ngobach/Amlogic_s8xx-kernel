@@ -198,6 +198,107 @@ static void verify_cea861vic(uint8_t vid_idx)
 #endif // SI_USE_DEBUG_PRINT
 }
 
+static uint8_t search_other_video_mode(sync_info_type *p_sync_info)
+{
+	int i, max = NMB_OF_VIDEO_OTHER_MODES;
+	uint8_t detected_video_idx = SI_VIDEO_MODE_NON_STD;
+	int16_t range;
+
+	enum
+	{
+		not_found = 0,
+		found_not_exact = 1,
+		found_exact = 2
+	}
+	search_result = not_found;
+
+	for (i=0; i<max; i++)
+	{
+		const videoMode_t *p_video_table = &VideoModeTableOther[i];
+		bool_t interlaced = p_sync_info->Interlaced;
+		uint16_t total_V_lines_measured =
+			(interlaced ?
+			(p_sync_info->TotalLines * 2)
+			: p_sync_info->TotalLines);
+
+		// check progressive/interlaced
+		if (interlaced != p_video_table->Interlaced)
+			continue;
+
+		// check number of lines
+		if (ABS_DIFF(total_V_lines_measured, p_video_table->Total.V) > LINES_TOLERANCE)
+			continue;
+
+		// check number of clocks per line (it works for all possible replications)
+		if (ABS_DIFF(p_sync_info->ClocksPerLine, p_video_table->Total.H) > PIXELS_TOLERANCE)
+			continue;
+
+		// check Pixel Freq (in 10kHz units)
+//		if(ABS_DIFF(p_sync_info->PixelFreq, p_video_table->PixClk) > FPIX_TOLERANCE)  // tolerance based on fixed bandwidth
+                if (0 != ABS_DIFF(p_sync_info->PixelFreq, p_video_table->PixClk))  // tolerance based on dynamic bandwidth (fixed ratio)
+                {
+                    range = p_video_table->PixClk / ABS_DIFF(p_sync_info->PixelFreq, p_video_table->PixClk);
+
+                    if ((range) < FPIX_TOLERANCE_RANGE)    // per PLL range
+                        continue;
+                }
+
+#if 0        // enable it for mode search tuning
+                DEBUG_PRINT(MSG_STAT,
+                "Index in table: %d, interlaced: %d, range: %d",
+                (int) i, (int) interlaced, (int)range);
+
+                DEBUG_PRINT(MSG_STAT,
+                "Pixel Freq detected: %d, Pixel Freq in video table: %d",
+                (int) p_sync_info->PixelFreq, (int) p_video_table->PixClk);
+
+                DEBUG_PRINT(MSG_STAT,
+                "clock per lines detected: %d, lines detected: %d",
+                (int) p_sync_info->ClocksPerLine, (int) total_V_lines_measured);
+
+                DEBUG_PRINT(MSG_STAT,
+                "clock per lines in video table: %d, lines in video table: %d\n",
+                (int) p_video_table->Total.H, (int) p_video_table->Total.V);
+#endif
+
+		// if all previous tests passed, then we found at least one mode even polarity is mismatched
+		if (search_result == not_found)
+		{
+			search_result = found_not_exact;
+			detected_video_idx = i;
+		}
+
+		// check exact number of lines
+		if (ABS_DIFF(total_V_lines_measured, p_video_table->Total.V) > 1)
+			continue;
+
+		// check polarities
+		if (
+			(p_sync_info->HPol == p_video_table->HPol) &&
+			(p_sync_info->VPol == p_video_table->VPol)
+			)
+		{
+			// if all previous checks passed
+			search_result = found_exact;
+			detected_video_idx = i;
+			break;
+		}
+	}
+
+	switch (search_result)
+	{
+	case not_found:
+		break;
+	case found_exact:
+		break;
+	case found_not_exact:
+		DEBUG_PRINT(MSG_STAT, ("RX: Warning: not exact video mode found\n"));
+		break;
+	}
+
+	return detected_video_idx;
+}
+
 static bool_t is_video_in_range(sync_info_type *p_sync_info)
 {
 	bool_t test_passed = false;
@@ -441,7 +542,7 @@ static bool_t fill_sync_info_from_video_table(sync_info_type *p_sync_info, uint8
 static uint8_t detect_video_resolution(sync_info_type *p_sync_info)
 {
 	uint8_t detected_video_idx = get_video_index_from_hdmi_vsif();
-	bool_t bb;
+//	bool_t bb;
 
 	if(SI_VIDEO_MODE_NON_STD == detected_video_idx)
 	{
@@ -468,7 +569,12 @@ static uint8_t detect_video_resolution(sync_info_type *p_sync_info)
 				// In other words, consider any non- CEA-861D or non-3D
 				// format as a PC resolution if video timing parameters
 				// are within allowed range.
-				detected_video_idx = SI_VIDEO_MODE_PC_OTHER;
+				detected_video_idx = search_other_video_mode(p_sync_info);
+				if ( detected_video_idx != SI_VIDEO_MODE_NON_STD )
+				{
+					gDriverContext.input_video_mode_other = detected_video_idx;
+					detected_video_idx = SI_VIDEO_MODE_PC_OTHER;
+				}
 #endif // SI_ALLOW_PC_MODES
 			}
 		}
@@ -552,7 +658,8 @@ void VMD_VideoStableNotify(uint8_t vid_idx )
         }
     }
     sysfs_notify(&devinfo->device->kobj, NULL, "input_video_mode");
-    send_sii5293_uevent(devinfo->device, DEVICE_EVENT, DEV_INPUT_VIDEO_MODE_EVENT, str);
+    //send_sii5293_uevent(devinfo->device, DEVICE_EVENT, DEV_INPUT_VIDEO_MODE_EVENT, str);
+    queue_delayed_work(devinfo->wq, &devinfo->work_stable_video, HZ*3);
 }
 #endif
 

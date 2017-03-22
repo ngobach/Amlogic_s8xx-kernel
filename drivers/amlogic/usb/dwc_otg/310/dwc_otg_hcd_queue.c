@@ -310,7 +310,9 @@ dwc_otg_qh_t *dwc_otg_hcd_qh_create(dwc_otg_hcd_t * hcd,
 
 	if (hcd->core_if->dma_desc_enable
 	    && (dwc_otg_hcd_qh_init_ddma(hcd, qh) < 0)) {
+	    DWC_SPINUNLOCK(hcd->lock);
 		dwc_otg_hcd_qh_free(hcd, qh);
+		DWC_SPINLOCK(hcd->lock);
 		return NULL;
 	}
 
