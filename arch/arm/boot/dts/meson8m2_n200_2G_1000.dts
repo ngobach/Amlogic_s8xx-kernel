@@ -63,11 +63,12 @@
 
         #address-cells = <1>;
         #size-cells = <1>;
-		mem_4k2k_decoder: region@1 {
-			region_name = "cma_4k2k";
-			linux,contiguous-region;
-			reg = <0x00000000 0x0ca00000>;
-		};
+
+	mem_4k2k_decoder: region@1 {
+		region_name = "cma_4k2k";
+		linux,contiguous-region;
+		reg = <0x00000000 0x0ca00000>;
+	};
 
         cma_0:region@0 {
            region_name = "cma_0";
@@ -126,7 +127,7 @@
                 compatible = "amlogic,vdec";
                 dev_name = "vdec.0";
                 status = "okay";
-///				reserve-memory = <0x04000000>; // 64M
+//				reserve-memory = <0x04000000>; // 64M
 //				reserve-iomap = "true";
 //				linux,contiguous-region = <&mem_4k2k_decoder>;
         };
@@ -155,7 +156,6 @@
 		dev_name = "ppmgr";
 		status = "okay";
 		reserve-memory = <0x02000000>; // 32M
-
 	};
 
     amvenc_avc{
