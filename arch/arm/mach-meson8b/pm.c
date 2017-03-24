@@ -36,9 +36,8 @@
 #include <mach/meson-secure.h>
 #endif
 
-#ifdef CONFIG_SUSPEND_WATCHDOG
+#include <mach/register.h>
 #include <mach/watchdog.h>
-#endif /* CONFIG_SUSPEND_WATCHDOG */
 
 #include <mach/mod_gate.h>
 
@@ -58,6 +57,7 @@ static int early_suspend_flag = 0;
 
 static unsigned int  cec_config;       // 4 bytes: use to control cec switch on/off,distinguish between Mbox and Tablet. bit[0]:1:Mbox; 0:Tablet
 static struct meson_pm_config *pdata;
+static bool power_off_flag = 0;
 static struct device_node *cec_np = NULL;
 
 #define CLK(addr)  \
@@ -411,6 +411,13 @@ static void meson_pm_suspend(void)
 	aml_clr_reg32_mask(P_HHI_SYS_CPU_CLK_CNTL, 1 << 7);
 	aml_clr_reg32_mask(P_HHI_SYS_PLL_CNTL, 1 << 30);//disable sys pll
 
+	if (!power_off_flag)
+		// Prevent Beelink MXQ from powering down
+		aml_write_reg32(P_AO_RTI_STATUS_REG1, 0x01010101);
+	else
+		//
+		aml_write_reg32(P_AO_RTI_STATUS_REG2, 0x87654321);
+
 #ifdef CONFIG_AML_GPIO_KEY
 	if(det_pwr_key())//get pwr key and wakeup im
 	{
@@ -435,6 +442,12 @@ static void meson_pm_suspend(void)
 		}while((aml_read_reg32(P_AO_GPIO_I)&(1<<3)));
 #endif
 #endif
+	}
+	if (power_off_flag)
+	{
+		// reboot if woke up after "power off"
+		aml_clr_reg32_mask(P_WATCHDOG_TC,(1 << WATCHDOG_ENABLE_BIT));
+		aml_write_reg32(P_WATCHDOG_TC,(1<<22) | (3<<24));
 	}
 	aml_set_reg32_mask(P_HHI_SYS_PLL_CNTL, (1 << 30)); //enable sys pll
 	printk(KERN_INFO "... wake up\n");
@@ -466,6 +479,11 @@ static void meson_pm_suspend(void)
 #ifdef CONFIG_AO_TRIG_CLK
 	run_arc_program();
 #endif
+}
+void meson_pm_poweroff(void)
+{
+	power_off_flag = 1;
+	meson_pm_suspend();
 }
 
 static int meson_pm_prepare(void)
