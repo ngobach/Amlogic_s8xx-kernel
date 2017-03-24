@@ -35,8 +35,8 @@ obj-y += cpufreq/
 obj-$(CONFIG_GPIO_AMLOGIC) += gpio/
 obj-y += pinctrl/
 
-obj-$(CONFIG_AML_NEXT_GEN_NAND) += nand/amlnf/
-obj-$(CONFIG_AM_NAND) += nand/nand/
+#obj-$(CONFIG_AML_NEXT_GEN_NAND) += nand/amlnf/
+#obj-$(CONFIG_AM_NAND) += nand/nand/
 
 obj-y += ethernet/
 
@@ -52,9 +52,10 @@ obj-$(CONFIG_I2C) += i2c/
 #obj-y += extern_io/
 
 obj-$(CONFIG_EFUSE)+=efuse/
+
 obj-$(CONFIG_AM_INPUT)		+= input/
 
-obj-$(CONFIG_AML_TOUCH_ALGORITHM_SUPPORT) += touch/
+#obj-$(CONFIG_AML_TOUCH_ALGORITHM_SUPPORT) += touch/
 
 obj-$(CONFIG_AMLOGIC_SPI_NOR) += spi_nor/
 
@@ -71,7 +72,7 @@ obj-$(CONFIG_AML_VRTC) += vrtc/
 
 obj-y += power/
 
-obj-$(CONFIG_AML_PMU_ALGORITHM_SUPPORT) += pmu/
+#obj-$(CONFIG_AML_PMU_ALGORITHM_SUPPORT) += pmu/
 
 obj-y += tvin_v4l2/
 obj-$(CONFIG_TVIN) += tvin/

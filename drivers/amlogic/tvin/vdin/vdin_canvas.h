@@ -18,14 +18,10 @@
 
 #include <linux/amlogic/amports/canvas.h>
 #include <linux/amlogic/amports/vframe.h>
-#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
-#define VDIN_CANVAS_MAX_WIDTH			4096
-#define VDIN_CANVAS_MAX_HEIGH			2228
-#else
+
 #define VDIN_CANVAS_MAX_WIDTH			1920
 #define VDIN_CANVAS_MAX_HEIGH			2228
-#endif
-#define VDIN_CANVAS_MAX_CNT		        9	
+#define VDIN_CANVAS_MAX_CNT			11
 
 extern const unsigned int vdin_canvas_ids[2][VDIN_CANVAS_MAX_CNT];
 extern void vdin_canvas_init(struct vdin_dev_s *devp);
@@ -34,4 +30,3 @@ extern void vdin_canvas_start_config(struct vdin_dev_s *devp);
 extern void vdin_canvas_auto_config(struct vdin_dev_s *devp);
 
 #endif /* __VDIN_CANVAS_H */
-

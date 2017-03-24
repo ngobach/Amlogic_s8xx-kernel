@@ -2605,6 +2605,7 @@
 #define AAFILTER_Y_ALPHA0_WID     8
 #define AAFILTER_Y_ALPHA1_BIT           0
 #define AAFILTER_Y_ALPHA1_WID     8
+
 #define TVFE_AAFILTER_CTRL2                           ((TOP_BASE_ADD+0x92)<<2)
 #define AAFILTER_Y_ALPHA2_BIT           24
 #define AAFILTER_Y_ALPHA2_WID     8
@@ -2740,43 +2741,6 @@
 #define AFC_YC_ALHPA12_BIT                       0
 #define AFC_YC_ALHPA12_WID                 8
 
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-#define TVFE_ATV_DMD_CLP_CTRL                                ((TOP_BASE_ADD+0xA8)<<2)
-#define ATV_DMD_IN_EN_BIT			24
-#define ATV_DMD_IN_EN_WID			1
-#define ATV_SIGNED_IN_ATV_DMD_BIT		21
-#define ATV_SIGNED_IN_ATV_DMD_WID		1
-#define ATV_DMD_IN_CLAMP_EN_BIT			20
-#define ATV_DMD_IN_CLAMP_EN_WID			1
-#define ATV_DMD_IN_CLAMP_STEP_BIT		0
-#define ATV_DMD_IN_CLAMP_STEP_WID		20	//u12.8
-
-#define TVFE_VAFE_CTRL0					     ((TOP_BASE_ADD+0xB0)<<2)
-#define VAFE_PGA_CPCAPSEL_BIT			22
-#define VAFE_PGA_CPCAPSEL_WID			2
-#define VAFE_FILTER_EN_BIT			19
-#define VAFE_FILTER_EN_WID			1
-#define VAFE_FILTER_BIAS_ADJ_BIT		17
-#define VAFE_FILTER_BIAS_ADJ_WID		2
-#define VAFE_TUNC_ADJ_BIT			12
-#define VAFE_TUNC_ADJ_WID			5
-#define VAFE_BW_SEL_BIT				8
-#define VAFE_BW_SEL_WID				4
-#define VAFE_FILTER_RESV_BIT			0
-#define VAFE_FILTER_RESV_WID			8
-
-#define TVFE_VAFE_CTRL1     				     ((TOP_BASE_ADD+0xB1)<<2)
-#define VAFE_IN_SEL_BIT				12
-#define VAFE_IN_SEL_WID				2
-#define VAFE_PGA_EN_BIT				8
-#define VAFE_PGA_EN_WID				1
-#define VAFE_PGA_GAIN_BIT			0
-#define VAFE_PGA_GAIN_WID			8
-
-#define TVFE_VAFE_CTRL2     				     ((TOP_BASE_ADD+0xB2)<<2)
-#define VAFE_PGA_RESV_BIT			0
-#define VAFE_PGA_RESV_WID			32
-#endif
 
 // **************************************************** *************************
 // ******** CVD2 REGISTERS ********

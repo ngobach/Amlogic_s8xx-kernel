@@ -15,17 +15,10 @@
 // ***************************************************************************
 typedef enum tvafe_adc_ch_e {
 	TVAFE_ADC_CH_NULL = 0,
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-	TVAFE_ADC_CH_0,
-	TVAFE_ADC_CH_1,
-	TVAFE_ADC_CH_2,
-	TVAFE_ADC_CH_3,
-#else
 	TVAFE_ADC_CH_PGA,
 	TVAFE_ADC_CH_A,
 	TVAFE_ADC_CH_B,
 	TVAFE_ADC_CH_C,
-#endif
 } tvafe_adc_ch_t;
 
 // ***************************************************************************
@@ -96,6 +89,5 @@ extern void tvafe_set_comp_fmt(struct tvin_parm_s *parm, struct tvafe_cal_s *cal
 extern void tvafe_init_reg(struct tvafe_cvd2_s *cvd2, struct tvafe_cvd2_mem_s *mem, enum tvin_port_e port, struct tvafe_pin_mux_s *pinmux);
 extern void tvafe_set_apb_bus_err_ctrl(void);
 extern void tvafe_enable_module(bool enable);
-extern void tvafe_enable_avout(enum tvin_port_e port,bool enable);
+extern void tvafe_enable_avout(bool enable);
 #endif  // _TVAFE_GENERAL_H
-

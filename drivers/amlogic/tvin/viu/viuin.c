@@ -31,7 +31,6 @@
 #include <linux/amlogic/amports/canvas.h>
 #include <linux/amlogic/amports/vframe.h>
 #include <linux/amlogic/amports/vframe_provider.h>
-#include <linux/amlogic/vout/vout_notify.h>
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <mach/am_regs.h>
 #ifdef CONFIG_GAMMA_AUTO_TUNE
@@ -93,10 +92,6 @@ MODULE_PARM_DESC(vsync_enter_line_threshold_overflow_count,"\n count of overflow
 static unsigned short v_cut_offset = 0;
 module_param(v_cut_offset,ushort,0664);
 MODULE_PARM_DESC(v_cut_offset,"the cut window vertical offset for viuin");
-
-static unsigned short open_cnt = 0;
-module_param(open_cnt,ushort,0664);
-MODULE_PARM_DESC(open_cnt,"open_cnt for vdin0/1");
 
 typedef struct viuin_s{
         unsigned int flag;
@@ -534,24 +529,10 @@ static int viuin_support(struct tvin_frontend_s *fe, enum tvin_port_e port)
         else
                 return -1;
 }
-void viuin_check_venc_line(viuin_t *devp_local)
-{
-	unsigned int vencv_line_cur,cnt;
-	cnt = 0;
-	do{
-		vencv_line_cur = (RD(devp_local->enc_info_addr)>>16)&0x1fff;
-		udelay(10);
-		cnt++;
-		if(cnt > 100000)
-			break;
-	}while(vencv_line_cur != 1);
-	if(vencv_line_cur != 1)
-		printk("**************%s,vencv_line_cur:%d,cnt:%d***********\n",__func__,vencv_line_cur,cnt);
-}
+
 static int viuin_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 {
         viuin_t *devp = container_of(fe,viuin_t,frontend);
-	unsigned int viu_mux = 0;
         if(!memcpy(&devp->parm,fe->private_data,sizeof(vdin_parm_t))){
                 printk("[viuin..]%s memcpy error.\n",__func__);
                 return -1;
@@ -559,50 +540,40 @@ static int viuin_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
         /*open the venc to vdin path*/
         switch(RD_BITS(VPU_VIU_VENC_MUX_CTRL,0,2)){
                 case 0:
-                        viu_mux = 0x8;//WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x88,4,8);
+                        WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x88,4,8);
 			devp->enc_info_addr = ENCL_INFO_READ;
                         break;
                 case 1:
-                        viu_mux = 0x1;//WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x11,4,8);
+                        WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x11,4,8);
 			devp->enc_info_addr = ENCI_INFO_READ;
                         break;
                 case 2:
-                        viu_mux = 0x2;//WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x22,4,8);
+                        WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x22,4,8);
 			devp->enc_info_addr = ENCP_INFO_READ;
                         break;
                 case 3:
-                        viu_mux = 0x4;//WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x44,4,8);
+                        WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x44,4,8);
 			devp->enc_info_addr = ENCT_INFO_READ;
                         break;
                 default:
                         break;
         }
-	viuin_check_venc_line(devp);
-	WR_BITS(VPU_VIU_VENC_MUX_CTRL,viu_mux,4,4);
-	WR_BITS(VPU_VIU_VENC_MUX_CTRL,viu_mux,8,4);
         devp->flag = 0;
-        open_cnt++;
         return 0;
 }
 static void viuin_close(struct tvin_frontend_s *fe)
 {
         viuin_t *devp = container_of(fe,viuin_t,frontend);
-		viuin_check_venc_line(devp);
         memset(&devp->parm,0,sizeof(vdin_parm_t));
         /*close the venc to vdin path*/
-        if(open_cnt)
-            open_cnt--;
-        if(open_cnt == 0){
-		WR_BITS(VPU_VIU_VENC_MUX_CTRL,0,8,4);
-        WR_BITS(VPU_VIU_VENC_MUX_CTRL,0,4,4);
-		}
+                        WR_BITS(VPU_VIU_VENC_MUX_CTRL,0,4,8);
 }
 
 static void viuin_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
 {
         //do something the same as start_amvdec_viu_in
         viuin_t *devp = container_of(fe,viuin_t,frontend);
-        	if (devp->flag && AMVIUIN_DEC_START) {
+		if (devp->flag && AMVIUIN_DEC_START) {
 		        printk("[viuin..]%s viu_in is started already.\n",__func__);
 		return;
 	}
@@ -616,7 +587,7 @@ static void viuin_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
 {
 
         viuin_t *devp = container_of(fe,viuin_t,frontend);
-       	if (devp->flag && AMVIUIN_DEC_START)
+	if (devp->flag && AMVIUIN_DEC_START)
 	        devp->flag |= AMVIUIN_DEC_STOP;
         else
                 printk("[viuin..]%s viu in dec isn't start.\n",__func__);
@@ -625,20 +596,16 @@ static void viuin_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
 
 static int viuin_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 {
-    int curr_port;
-
 	viuin_t *devp = container_of(fe,viuin_t,frontend);
 
 	if (!devp)
 	    return -ENODEV;
 
-    curr_port = RD_BITS(VPU_VIU_VENC_MUX_CTRL,0,2);
-
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 	vsync_enter_line_curr = (READ_VCBUS_REG(devp->enc_info_addr)>>16)&0x1fff;
 	if(vsync_enter_line_curr > vsync_enter_line_max)
                 vsync_enter_line_max = vsync_enter_line_curr;
-	if(vsync_enter_line_max_threshold > vsync_enter_line_min_threshold && curr_port == 0){
+	if(vsync_enter_line_max_threshold > vsync_enter_line_min_threshold){
 		if((vsync_enter_line_curr > vsync_enter_line_max_threshold)||(vsync_enter_line_curr < vsync_enter_line_min_threshold)){
 		        vsync_enter_line_threshold_overflow_count++;
 		        return TVIN_BUF_SKIP;
@@ -661,7 +628,7 @@ static int viuin_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 }
 
 static struct tvin_decoder_ops_s viu_dec_ops ={
-	.support            = viuin_support,
+        .support            = viuin_support,
 	.open               = viuin_open,
 	.start              = viuin_start,
 	.stop               = viuin_stop,
@@ -671,19 +638,24 @@ static struct tvin_decoder_ops_s viu_dec_ops ={
 
 static void viuin_sig_propery(struct tvin_frontend_s *fe, struct tvin_sig_property_s *prop)
 {
-	const vinfo_t *info;
-	viuin_t *devp = container_of(fe,viuin_t,frontend);
-	info = get_current_vinfo();
-	prop->color_format = info->viu_color_fmt;
-	prop->dest_cfmt = devp->parm.dfmt;
-	prop->scaling4w = devp->parm.dest_hactive;
+        viuin_t *devp = container_of(fe,viuin_t,frontend);
+
+        #if ((MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)\
+			||(MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8B))
+        prop->color_format = TVIN_YUV422;
+        #else
+        prop->color_format = TVIN_RGB444;
+        #endif
+        prop->dest_cfmt = devp->parm.dfmt;
+
+        prop->scaling4w = devp->parm.dest_hactive;
 	prop->scaling4h = devp->parm.dest_vactive;
 
 	prop->vs = v_cut_offset;
 	prop->ve = 0;
 	prop->hs = 0;
 	prop->he = 0;
-	prop->decimation_ratio = 0;
+        prop->decimation_ratio = 0;
 }
 
 static bool viu_check_frame_skip(struct tvin_frontend_s *fe)
@@ -752,7 +724,7 @@ static int viuin_remove(struct platform_device *pdev)
 {
         struct viuin_s *devp = platform_get_drvdata(pdev);
   #ifdef CONFIG_GAMMA_AUTO_TUNE
-  		int i=0;
+		int i=0;
         for(i=0; gamma_proc_class_attrs[i].attr.name; i++) {
 		class_remove_file(gamma_proc_clsp,&gamma_proc_class_attrs[i]);
 	}

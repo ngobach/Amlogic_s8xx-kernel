@@ -27,7 +27,7 @@
 #include <linux/mm.h>
 #include <linux/of.h>
 #include <linux/of_fdt.h>
-#include <linux/dma-contiguous.h>
+
 /* Amlogic headers */
 #include <linux/amlogic/amports/canvas.h>
 #include <mach/am_regs.h>
@@ -67,8 +67,8 @@ MODULE_PARM_DESC(vga_yuv422_enable, "vga_yuv422_enable");
 
 
 /*****************************the  version of changing log************************/
-static char last_version_s[]="2013-11-29||11-28";
-static char version_s[] = "2015-07-08||17-23";
+static char last_version_s[]="2013-11-4||10-13";
+static char version_s[] = "2013-11-29||11-28";
 /***************************************************************************/
 void get_afe_version(char **ver, char **last_ver)
 {
@@ -127,7 +127,7 @@ static ssize_t tvafe_store(struct device *dev, struct device_attribute *attr,con
 		tvafe_vga_get_edid(&edid);
 		for(i=0; i<32; i++)
 		{
-        		pr_info("0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x.\n", edid.value[(i<<3)+0],
+			pr_info("0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x 0x%2x.\n", edid.value[(i<<3)+0],
 				edid.value[(i<<3)+1], edid.value[(i<<3)+2], edid.value[(i<<3)+3], edid.value[(i<<3)+4],
 				edid.value[(i<<3)+5], edid.value[(i<<3)+6], edid.value[(i<<3)+7] );
 		}
@@ -135,20 +135,20 @@ static ssize_t tvafe_store(struct device *dev, struct device_attribute *attr,con
 	else if(!strncmp(buff,"set_edid",strlen("set_edid"))){
 		int i=0;
 		struct tvafe_vga_edid_s edid={ {0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
-									 	0x30, 0xa4, 0x21, 0x00, 0x01, 0x01, 0x01, 0x01,
-									 	0x0e, 0x17, 0x01, 0x03, 0x80, 0x24, 0x1d, 0x78,
-									 	0xee, 0x00, 0x0c, 0x0a, 0x05, 0x04, 0x09, 0x02,
-									 	0x00, 0x20, 0x80, 0xa1, 0x08, 0x70, 0x01, 0x01,
-									 	0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-									 	0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x3a,
-									 	0x80, 0x18, 0x71, 0x38, 0x2d, 0x40, 0x58, 0x2c,
-									 	0x45, 0x00, 0xa0, 0x5a, 0x00, 0x00, 0x00, 0x1e,
-									 	0x00, 0x00, 0x00, 0xfd, 0x00, 0x3b, 0x3c, 0x1f,
- 										0x2d, 0x08, 0x00, 0x0a, 0x20, 0x20, 0x20, 0x20,
- 										0x20, 0x20, 0x00, 0x00, 0x00, 0xfc, 0x00, 0x44,
- 										0x35, 0x30, 0x4c, 0x57, 0x37, 0x31, 0x30, 0x30,
+										0x30, 0xa4, 0x21, 0x00, 0x01, 0x01, 0x01, 0x01,
+										0x0e, 0x17, 0x01, 0x03, 0x80, 0x24, 0x1d, 0x78,
+										0xee, 0x00, 0x0c, 0x0a, 0x05, 0x04, 0x09, 0x02,
+										0x00, 0x20, 0x80, 0xa1, 0x08, 0x70, 0x01, 0x01,
+										0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+										0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x3a,
+										0x80, 0x18, 0x71, 0x38, 0x2d, 0x40, 0x58, 0x2c,
+										0x45, 0x00, 0xa0, 0x5a, 0x00, 0x00, 0x00, 0x1e,
+										0x00, 0x00, 0x00, 0xfd, 0x00, 0x3b, 0x3c, 0x1f,
+										0x2d, 0x08, 0x00, 0x0a, 0x20, 0x20, 0x20, 0x20,
+										0x20, 0x20, 0x00, 0x00, 0x00, 0xfc, 0x00, 0x44,
+										0x35, 0x30, 0x4c, 0x57, 0x37, 0x31, 0x30, 0x30,
 										0x0a, 0x20, 0x20, 0x20, 0x21, 0x39, 0x90, 0x30,
-									 	0x62, 0x1a, 0x27, 0x40, 0x68, 0xb0, 0x36, 0x00,
+										0x62, 0x1a, 0x27, 0x40, 0x68, 0xb0, 0x36, 0x00,
 										0xa0, 0x64, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x88,
 										0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
 										0x30, 0xa4, 0x21, 0x00, 0x01, 0x01, 0x01, 0x01,
@@ -225,24 +225,24 @@ static ssize_t dumpmem_store(struct device *dev, struct device_attribute *attr,c
 {
 	unsigned int n=0;
 	char *buf_orig, *ps, *token;
-    	char *parm[6] = {NULL};
-    	struct tvafe_dev_s *devp;
-    	if(!buff)
+	char *parm[6] = {NULL};
+	struct tvafe_dev_s *devp;
+	if(!buff)
 	    return len;
-    	buf_orig = kstrdup(buff, GFP_KERNEL);
+	buf_orig = kstrdup(buff, GFP_KERNEL);
 	//printk(KERN_INFO "input cmd : %s",buf_orig);
 	devp = dev_get_drvdata(dev);
 	ps = buf_orig;
-    	while (1) {
-    		token = strsep(&ps, " \n");
-    		if (token == NULL)
-    			break;
-    		if (*token == '\0')
-    			continue;
-    		parm[n++] = token;
-	    	}
+	while (1) {
+		token = strsep(&ps, " \n");
+		if (token == NULL)
+			break;
+		if (*token == '\0')
+			continue;
+		parm[n++] = token;
+		}
 	if(!strncmp(parm[0], "dumpmem", strlen("dumpmem"))){
-	 	 if(parm[1] != NULL){
+		 if(parm[1] != NULL){
 		    struct file *filp = NULL;
 		    loff_t pos = 0;
 		    void * buf = NULL;
@@ -326,81 +326,6 @@ static ssize_t cvd_reg8a_store(struct device *dev, struct device_attribute *attr
 	return count;
 }
 static DEVICE_ATTR(cvd_reg8a,0644,NULL,cvd_reg8a_store);
-
-static ssize_t reg_store(struct device *dev, struct device_attribute *attr,const char *buff,size_t count)
-{
-	unsigned int argn=0,addr=0,value=0,end=0;
-	char *p,*para,*buf_work,cmd=0;
-	char *argv[3];
-
-	buf_work = kstrdup(buff, GFP_KERNEL);
-	p = buf_work;
-
-	for(argn = 0; argn < 3; argn++){
-		para = strsep(&p," ");
-		if(para == NULL)
-			break;
-		argv[argn] = para;
-	}
-
-	if(argn < 1 || argn > 3)
-		return count;
-
-	cmd = argv[0][0];
-	switch(cmd){
-		case 'r':
-		case 'R':
-		        if(argn < 2){
-			        pr_err("syntax error.\n");
-		        }else{
-			        addr = simple_strtol(argv[1],NULL,16);
-			        value = R_APB_REG(addr<<2);
-			        pr_info("APB[0x%04x]=0x%08x\n", addr, value);
-		        }
-		        break;
-		case 'w':
-		case 'W':
-		        if(argn < 3){
-			        pr_err("syntax error.\n");
-		        }else{
-			        value = simple_strtol(argv[1],NULL,16);
-			        addr = simple_strtol(argv[2],NULL,16);
-			        W_APB_REG(addr<<2,value);
-			        pr_info("Write APB[0x%04x]=0x%08x\n", addr, R_APB_REG(addr<<2));
-		        }
-		        break;
-		case 'd':
-		case 'D':
-		        if(argn < 3){
-			        pr_err("syntax error.\n");
-		        }else{
-			        addr = simple_strtol(argv[1],NULL,16);
-			        end = simple_strtol(argv[2],NULL,16);
-			        for(; addr <= end; addr++)
-				        pr_info("APB[0x%04x]=0x%08x\n", addr, R_APB_REG(addr<<2));
-		        }
-			break;
-		default:
-			pr_err("not support.\n");
-			break;
-        }
-	return count;
-}
-
-
-static ssize_t reg_show(struct device *dev,struct device_attribute *attr,char *buff)
-{
-	ssize_t len=0;
-
-	len += sprintf(buff+len,"Usage:\n");
-	len += sprintf(buff+len,"\techo [read|write <date>] addr > reg;Access ATV DEMON/TVAFE/HDMIRX logic address.\n");
-	len += sprintf(buff+len,"\techo dump <start> <end> > reg;Dump ATV DEMON/TVAFE/HDMIRX logic address.\n");
-	len += sprintf(buff+len,"Address format:\n");
-	len += sprintf(buff+len,"\taddr    : 0xXXXX, 16 bits register address\n");
-	return len;
-}
-static DEVICE_ATTR(reg,0644,reg_show,reg_store);
-
 /*
  * tvafe 10ms timer handler
  */
@@ -432,33 +357,32 @@ param:void
 		return -1;
 	}
 	pinmux = devp->pinmux;
-#if (MESON_CPU_TYPE < MESON_CPU_TYPE_MESONG9TV)
 	switch(port)
 	{
 		case TVIN_PORT_VGA0:
 			if (pinmux->pin[VGA0_SOG] >= TVAFE_ADC_PIN_SOG_0){
-			    if(ret==(int)R_APB_BIT(ADC_REG_34,4,1))
-				     ret=(int)R_APB_BIT(ADC_REG_34,7,1);
+			    if(ret==(int)READ_APB_REG_BITS(ADC_REG_34,4,1))
+				     ret=(int)READ_APB_REG_BITS(ADC_REG_34,7,1);
 			    else
 				ret=0;
 			}
-				//ret=(int)R_APB_BIT(ADC_REG_2B,(pinmux->pin[VGA0_SOG] - TVAFE_ADC_PIN_SOG_0),1);
+				//ret=(int)READ_APB_REG_BITS(ADC_REG_2B,(pinmux->pin[VGA0_SOG] - TVAFE_ADC_PIN_SOG_0),1);
 			break;
 		case TVIN_PORT_COMP0:
 			if (pinmux->pin[COMP0_SOG] >= TVAFE_ADC_PIN_SOG_0)
-				ret=(int)R_APB_BIT(ADC_REG_2B,(pinmux->pin[COMP0_SOG] - TVAFE_ADC_PIN_SOG_0),1);
+				ret=(int)READ_APB_REG_BITS(ADC_REG_2B,(pinmux->pin[COMP0_SOG] - TVAFE_ADC_PIN_SOG_0),1);
 			break;
 		case TVIN_PORT_CVBS0:
 			if (pinmux->pin[CVBS0_SOG] >= TVAFE_ADC_PIN_SOG_0)
-				ret=(int)R_APB_BIT(ADC_REG_2B,(pinmux->pin[CVBS0_SOG] - TVAFE_ADC_PIN_SOG_0),1);
+				ret=(int)READ_APB_REG_BITS(ADC_REG_2B,(pinmux->pin[CVBS0_SOG] - TVAFE_ADC_PIN_SOG_0),1);
 			break;
 		case TVIN_PORT_CVBS1:
 			if (pinmux->pin[CVBS1_SOG] >= TVAFE_ADC_PIN_SOG_0)
-				ret=(int)R_APB_BIT(ADC_REG_2B,(pinmux->pin[CVBS1_SOG] - TVAFE_ADC_PIN_SOG_0),1);
+				ret=(int)READ_APB_REG_BITS(ADC_REG_2B,(pinmux->pin[CVBS1_SOG] - TVAFE_ADC_PIN_SOG_0),1);
 			break;
 		case TVIN_PORT_CVBS2:
 			if (pinmux->pin[CVBS2_SOG] >= TVAFE_ADC_PIN_SOG_0)
-				ret=(int)R_APB_BIT(ADC_REG_2B,(pinmux->pin[CVBS2_SOG] - TVAFE_ADC_PIN_SOG_0),1);
+				ret=(int)READ_APB_REG_BITS(ADC_REG_2B,(pinmux->pin[CVBS2_SOG] - TVAFE_ADC_PIN_SOG_0),1);
 			break;
 		case TVIN_PORT_HDMI0:
 			break;
@@ -471,9 +395,8 @@ param:void
 		default:
 			break;
 	}
-	//ret=(bool)R_APB_BIT(ADC_REG_34,1,1);
+	//ret=(bool)READ_APB_REG_BITS(ADC_REG_34,1,1);
 	//printk("[%s]:port==%s,ret=%d\n",__func__,tvin_port_str(port),ret);
-#endif
 	return ret;
 }
 
@@ -486,40 +409,12 @@ int tvafe_dec_support(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	struct tvafe_dev_s *devp = container_of(fe, struct tvafe_dev_s, frontend);
 
 	/* check afe port and index */
-	if (((port < TVIN_PORT_VGA0) || (port > TVIN_PORT_SVIDEO7))||(fe->index != devp->index))
+	if (((port < TVIN_PORT_VGA0) || (port > TVIN_PORT_SVIDEO7)) ||
+			(fe->index != devp->index))
 		return -1;
 
 	return 0;
 }
-
-#ifdef CONFIG_CMA
-void tvafe_cma_alloc(struct tvafe_dev_s *devp)
-{
-	unsigned int mem_size_m = devp->cma_mem_size;
-	if (devp->cma_config_en == 0)
-		return;
-	devp->venc_pages = dma_alloc_from_contiguous(&(devp->this_pdev->dev), (mem_size_m * SZ_1M) >> PAGE_SHIFT, 0);
-	if (devp->venc_pages) {
-		devp->mem.start = page_to_phys(devp->venc_pages);
-		devp->mem.size  = mem_size_m * SZ_1M;
-		pr_info("tvafe mem_start = 0x%x, mem_size = 0x%x\n",devp->mem.start,devp->mem.size);
-		pr_info("tvafe cma alloc ok!\n");
-	} else {
-		pr_err("\ntvafe cma mem undefined2.\n");
-	}
-}
-
-void tvafe_cma_release(struct tvafe_dev_s *devp)
-{
-	if (devp->cma_config_en == 0)
-		return;
-	if (devp->venc_pages && devp->cma_mem_size) {
-		dma_release_from_contiguous(&(devp->this_pdev->dev), devp->venc_pages, (devp->cma_mem_size * SZ_1M)>>PAGE_SHIFT);
-		pr_info("tvafe cma release ok!\n");
-	}
-}
-#endif
-
 
 /*
  * tvafe open port and init register
@@ -537,18 +432,6 @@ int tvafe_dec_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		mutex_unlock(&devp->afe_mutex);
 		return 1;
 	}
-	#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-	if ((port < TVIN_PORT_CVBS0)|| (port > TVIN_PORT_CVBS7))
-	{
-		pr_err("[tvafe..] %s(%d), %s unsupport\n", __func__,
-				devp->index, tvin_port_str(port));
-		mutex_unlock(&devp->afe_mutex);
-		return 1;
-	}
-	#endif
-#ifdef CONFIG_CMA
-	tvafe_cma_alloc(devp);
-#endif
 	/* init variable */
 	memset(tvafe, 0, sizeof(struct tvafe_info_s));
 	/**enable and reset tvafe clock**/
@@ -593,15 +476,6 @@ void tvafe_dec_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
 		mutex_unlock(&devp->afe_mutex);
 		return;
 	}
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-	if ((port < TVIN_PORT_CVBS0)|| (port > TVIN_PORT_CVBS7))
-	{
-		pr_err("[tvafe..] %s(%d), %s unsupport\n", __func__,
-				devp->index, tvin_port_str(port));
-		mutex_unlock(&devp->afe_mutex);
-		return;
-	}
-#endif
 
 	if (devp->flags & TVAFE_FLAG_DEV_STARTED)
 	{
@@ -636,15 +510,6 @@ void tvafe_dec_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		mutex_unlock(&devp->afe_mutex);
 		return;
 	}
-	#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-	if ((port < TVIN_PORT_CVBS0)|| (port > TVIN_PORT_CVBS7))
-	{
-		pr_err("[tvafe..] %s(%d), %s unsupport\n", __func__,
-				devp->index, tvin_port_str(port));
-		mutex_unlock(&devp->afe_mutex);
-		return;
-	}
-	#endif
 
 	/* init variable */
 	memset(&tvafe->adc, 0, sizeof(struct tvafe_adc_s));
@@ -654,9 +519,9 @@ void tvafe_dec_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	memset(&tvafe->parm.info, 0, sizeof(struct tvin_info_s));
 
 	tvafe->parm.port = port;
-#if (MESON_CPU_TYPE < MESON_CPU_TYPE_MESONG9TV)
+
 	tvafe_adc_digital_reset();
-#endif
+
 	// need to do ...
 	/** write 7740 register for cvbs clamp **/
 	if ((port >= TVIN_PORT_CVBS0) && (port <= TVIN_PORT_SVIDEO7))
@@ -693,24 +558,13 @@ void tvafe_dec_close(struct tvin_frontend_s *fe)
 		mutex_unlock(&devp->afe_mutex);
 		return;
 	}
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-	if ((tvafe->parm.port < TVIN_PORT_CVBS0)|| (tvafe->parm.port > TVIN_PORT_CVBS7))
-	{
-		pr_err("[tvafe..] %s(%d), %s unsupport\n", __func__,
-				devp->index, tvin_port_str(tvafe->parm.port));
-		mutex_unlock(&devp->afe_mutex);
-		return;
-	}
-#endif
-#ifdef CONFIG_CMA
-	tvafe_cma_release(devp);
-#endif
+
 	del_timer_sync(&devp->timer);
 
 	/**set cvd2 reset to high**/
 	tvafe_cvd2_hold_rst(&tvafe->cvd2);
 	/**disable av out**/
-	tvafe_enable_avout(tvafe->parm.port,false);
+	tvafe_enable_avout(false);
 #ifdef TVAFE_POWERDOWN_IN_IDLE
 	/**disable tvafe clock**/
 	tvafe_enable_module(false);
@@ -754,12 +608,14 @@ int tvafe_dec_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	{
 		tvafe_cvd2_check_3d_comb(&tvafe->cvd2);
 	}
+
 #ifdef TVAFE_SET_CVBS_PGA_EN
 	if ((port >= TVIN_PORT_CVBS0) && (port <= TVIN_PORT_SVIDEO7))
 	{
 		tvafe_cvd2_adj_pga(&tvafe->cvd2);
 	}
 #endif
+
 #ifdef TVAFE_SET_CVBS_CDTO_EN
 	if (tvafe->parm.info.fmt == TVIN_SIG_FMT_CVBS_PAL_I)
 	{
@@ -774,7 +630,7 @@ int tvafe_dec_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	{
 		tvafe_vga_vs_cnt(&tvafe->adc);
         if(tvafe->adc.vga_auto.phase_state == VGA_VDIN_BORDER_DET){
-                		tvin_vdin_bar_detect(tvafe->parm.info.fmt,&tvafe->adc);
+				tvin_vdin_bar_detect(tvafe->parm.info.fmt,&tvafe->adc);
 		}
 
 	}
@@ -1404,7 +1260,7 @@ static long tvafe_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             if(fmt >= TVIN_SIG_FMT_COMP_1080P_23HZ_D976 && fmt <= TVIN_SIG_FMT_COMP_1080P_60HZ_D000){
 				//1080p
 				tvafe->cal.fmt_cal_val.comp_cal_val[0].a_analog_clamp -= 2;
-	   			tvafe_set_cal_value2(&(tvafe->cal.fmt_cal_val.comp_cal_val[0]));
+				tvafe_set_cal_value2(&(tvafe->cal.fmt_cal_val.comp_cal_val[0]));
 				i = 0;
 			}else if((fmt >= TVIN_SIG_FMT_COMP_720P_59HZ_D940 && fmt <= TVIN_SIG_FMT_COMP_720P_50HZ_D000)
 					|| (fmt >= TVIN_SIG_FMT_COMP_1080I_47HZ_D952 && fmt <= TVIN_SIG_FMT_COMP_1080I_60HZ_D000)){
@@ -1596,17 +1452,16 @@ static void tvafe_delete_device(int minor)
 
 typedef int (*hook_func_t)(void);
 extern void aml_fe_hook_cvd(hook_func_t atv_mode,hook_func_t cvd_hv_lock);
-static struct resource tvafe_memobj;
+
 static int tvafe_drv_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct tvafe_dev_s *tdevp;
 	struct device_node *of_node = pdev->dev.of_node;
 	const void *name;
-	int offset,size,mem_size_m;
-	struct resource *res;
+	int offset,size;
+	//struct resource *res;
 	//struct tvin_frontend_s * frontend;
-	mem_size_m = 0;
 
 	/* allocate memory for the per-device structure */
 	tdevp = kmalloc(sizeof(struct tvafe_dev_s), GFP_KERNEL);
@@ -1656,7 +1511,7 @@ static int tvafe_drv_probe(struct platform_device *pdev)
 	ret = device_create_file(tdevp->dev,&dev_attr_debug);
 	ret = device_create_file(tdevp->dev,&dev_attr_cvd_reg8a);
 	ret = device_create_file(tdevp->dev,&dev_attr_dumpmem);
-	ret = device_create_file(tdevp->dev,&dev_attr_reg);
+
 	if(ret < 0) {
 		pr_err("tvafe: fail to create dbg attribute file\n");
 		goto fail_create_dbg_file;
@@ -1664,55 +1519,39 @@ static int tvafe_drv_probe(struct platform_device *pdev)
 
 	/* get device memory */
 #ifdef CONFIG_USE_OF
-	res = &tvafe_memobj;
 	ret = find_reserve_block(pdev->dev.of_node->name,0);
 	if(ret < 0) {
-#ifdef CONFIG_CMA
-		if (of_node) {
-			ret = of_property_read_u32(of_node, "max_size", &mem_size_m);
-			if (ret) {
-				pr_err("\nvdin cma mem undefined1.\n");
-			}
-			else {
-				tdevp->cma_mem_size = mem_size_m;
-				tdevp->this_pdev = pdev;
-				tdevp->cma_config_en = 1;
-			}
-		}
-#endif
-		if (tdevp->cma_config_en != 1) {
-			name = of_get_property(of_node, "share-memory-name", NULL);
-			if(!name){
-			        pr_err("\ntvafe memory resource undefined1.\n");
-			        ret = -EFAULT;
-			        goto fail_get_resource_mem;
-			}else {
-			        ret= find_reserve_block_by_name(name);
-			        if(ret<0) {
-			                pr_err("\ntvafe memory resource undefined2.\n");
-			                ret = -EFAULT;
-			                goto fail_get_resource_mem;
-			        }
-			        name = of_get_property(of_node, "share-memory-offset", NULL);
-			        if(name)
-			                offset = of_read_ulong(name,1);
-			        else {
-			                pr_err("\ntvafe memory resource undefined3.\n");
-			                ret = -EFAULT;
-			                goto fail_get_resource_mem;
-			        }
-			        name = of_get_property(of_node, "share-memory-size", NULL);
-			        if(name)
-			                size = of_read_ulong(name,1);
-			        else {
-			                pr_err("\ntvafe memory resource undefined4.\n");
-			                ret = -EFAULT;
-			                goto fail_get_resource_mem;
-			        }
+		name = of_get_property(of_node, "share-memory-name", NULL);
+		if(!name){
+		        pr_err("\ntvafe memory resource undefined1.\n");
+		        ret = -EFAULT;
+		        goto fail_get_resource_mem;
+		}else {
+		        ret= find_reserve_block_by_name(name);
+		        if(ret<0) {
+		                pr_err("\ntvafe memory resource undefined2.\n");
+		                ret = -EFAULT;
+		                goto fail_get_resource_mem;
+		        }
+		        name = of_get_property(of_node, "share-memory-offset", NULL);
+		        if(name)
+		                offset = of_read_ulong(name,1);
+		        else {
+		                pr_err("\ntvafe memory resource undefined3.\n");
+		                ret = -EFAULT;
+		                goto fail_get_resource_mem;
+		        }
+		        name = of_get_property(of_node, "share-memory-size", NULL);
+		        if(name)
+		                size = of_read_ulong(name,1);
+		        else {
+		                pr_err("\ntvafe memory resource undefined4.\n");
+		                ret = -EFAULT;
+		                goto fail_get_resource_mem;
+		        }
 
-			        tdevp->mem.start = (phys_addr_t)get_reserve_block_addr(ret)+offset;
-			        tdevp->mem.size = size;
-			}
+		        tdevp->mem.start = (phys_addr_t)get_reserve_block_addr(ret)+offset;
+		        tdevp->mem.size = size;
 		}
 	}
 	else {
@@ -1729,11 +1568,9 @@ static int tvafe_drv_probe(struct platform_device *pdev)
 	tdevp->mem.start = res->start;
 	tdevp->mem.size = res->end - res->start + 1;
 #endif
-	if (tdevp->cma_config_en != 1) {
-		pr_info(" tvafe cvd memory addr is:0x%x, cvd mem_size is:0x%x . \n",
-				tdevp->mem.start,
-				tdevp->mem.size);
-	}
+	pr_info(" tvafe cvd memory addr is:0x%x, cvd mem_size is:0x%x . \n",
+			tdevp->mem.start,
+			tdevp->mem.size);
 #ifdef CONFIG_USE_OF
 	if(of_property_read_u32_array(pdev->dev.of_node, "tvafe_pin_mux",
 				(u32*)tvafe_pinmux.pin, TVAFE_SRC_SIG_MAX_NUM)){
@@ -1810,9 +1647,7 @@ static int tvafe_drv_remove(struct platform_device *pdev)
 static int tvafe_drv_suspend(struct platform_device *pdev,pm_message_t state)
 {
 	struct tvafe_dev_s *tdevp;
-	struct tvafe_info_s *tvafe;
 	tdevp = platform_get_drvdata(pdev);
-	tvafe = &tdevp->tvafe;
 
 	/* close afe port first */
     if (tdevp->flags & TVAFE_FLAG_DEV_OPENED)
@@ -1824,7 +1659,7 @@ static int tvafe_drv_suspend(struct platform_device *pdev,pm_message_t state)
         /**set cvd2 reset to high**/
         tvafe_cvd2_hold_rst(&tdevp->tvafe.cvd2);
         /**disable av out**/
-        tvafe_enable_avout(tvafe->parm.port,false);
+        tvafe_enable_avout(false);
     }
 
     /*disable and reset tvafe clock*/
@@ -1923,4 +1758,3 @@ module_exit(tvafe_drv_exit);
 MODULE_DESCRIPTION("AMLOGIC TVAFE driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Xu Lin <lin.xu@amlogic.com>");
-

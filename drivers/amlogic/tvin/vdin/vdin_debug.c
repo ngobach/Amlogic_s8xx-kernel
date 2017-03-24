@@ -77,7 +77,7 @@ static DEVICE_ATTR(sig_det, 0664, sig_det_show, sig_det_store);
 
 static ssize_t vdin_attr_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-        struct vdin_dev_s *devp = dev_get_drvdata(dev);
+        //struct vdin_dev_s *devp = dev_get_drvdata(dev);
         ssize_t len = 0;
         len += sprintf(buf+len,"\n0 HDMI0\t1 HDMI1\t2 HDMI2\t3 Component0\t4 Component1"
                                "\n5 CVBS0\t6 CVBS1\t7 Vga0\t8 CVBS2\n");
@@ -85,7 +85,6 @@ static ssize_t vdin_attr_show(struct device *dev, struct device_attribute *attr,
 	len += sprintf(buf+len,"echo v4l2start bt656/viuin/isp h_actve v_active frame_rate cfmt dfmt scan_fmt >/sys/class/vdin/vdinx/attr.\n");
 	len += sprintf(buf+len,"cfmt/dfmt:\t0: RGB44\t1 YUV422\t2 YUV444\t7 NV12\t8 NV21\n");
 	len += sprintf(buf+len,"scan_fmt:\t1: PROGRESSIVE\t2 INTERLACE\n");
-	len += sprintf(buf+len,"abnormal cnt %u\n",devp->abnormal_cnt);
         return len;
 }
 static void vdin_dump_mem(char *path, vdin_dev_t *devp)
@@ -127,7 +126,7 @@ static void dump_other_mem(char *path,unsigned int start,unsigned int offset)
         if(IS_ERR(filp)){
                 printk(KERN_ERR"create %s error.\n",path);
                 return;
-       	}
+	}
         buf = phys_to_virt(start);
         vfs_write(filp,buf,offset,&pos);
         pr_info("write from 0x%x to 0x%x to %s.\n",start,start+offset,path);
@@ -157,12 +156,12 @@ static void vdin_dump_state(vdin_dev_t *devp)
 		pr_info("current vframe(%u):\n buf(w%u,h%u),type (0x%x,%u), duration(%d), ratio_control (0x%x).\n",
                           vf->index,vf->width,vf->height,vf->type,vf->type,vf->duration,vf->ratio_control);
 		pr_info(" trans fmt %u,left_start_x %u,right_start_x %u,width_x %u\n"
-	      		  " left_start_y %u,right_start_y %u,height_y %u\n",
-	      		  vf->trans_fmt,vf->left_eye.start_x,vf->right_eye.start_x,vf->left_eye.width,
-	      		  vf->left_eye.start_y,vf->right_eye.start_y,vf->left_eye.height);
+			  " left_start_y %u,right_start_y %u,height_y %u\n",
+			  vf->trans_fmt,vf->left_eye.start_x,vf->right_eye.start_x,vf->left_eye.width,
+			  vf->left_eye.start_y,vf->right_eye.start_y,vf->left_eye.height);
                 pr_info("current parameters:\n frontend of vdin index: %d, 3d flag: 0x%x, reserved 0x%x,"
-                        " devp->flags:0x%x, max buffer num %u, send2di:%s.\n",curparm->index,  curparm->flag,
-                        curparm->reserved, devp->flags,devp->canvas_max_num,devp->send2di?"1":"0");
+                        " devp->flags:0x%x, max buffer num %u.\n",curparm->index,  curparm->flag,
+                        curparm->reserved, devp->flags,devp->canvas_max_num);
         }
 
 	pr_info("Vdin driver version: %s\n",VDIN_VER);
@@ -177,22 +176,13 @@ static void vdin_dump_histgram(vdin_dev_t *devp)
 			printk("\n");
 	}
 }
-static void vdin_write_mem(vdin_dev_t *devp,char *type,char *path)
+static void vdin_write_mem(vdin_dev_t *devp,char *path)
 {
-	unsigned int real_size=0, size=0, vtype=0;
+	unsigned int real_size=0, size=0;
         struct file *filp = NULL;
         loff_t pos = 0;
         mm_segment_t old_fs;
-	void *dts = NULL;
 
-	vtype = simple_strtol(type,NULL,10);
-	if(!devp->curr_wr_vfe){
-	        devp->curr_wr_vfe = provider_vf_get(devp->vfp);
-	        if(!devp->curr_wr_vfe){
-	        	pr_info("no buffer to write.\n");
-	        	return;
-	        }
-        }
         old_fs = get_fs();
 	set_fs(KERNEL_DS);
 	printk("bin file path =%s\n",path);
@@ -201,26 +191,17 @@ static void vdin_write_mem(vdin_dev_t *devp,char *type,char *path)
                 printk(KERN_ERR"read %s error.\n",path);
                 return;
         }
-        devp->curr_wr_vfe->vf.type = VIDTYPE_VIU_SINGLE_PLANE|VIDTYPE_VIU_FIELD|VIDTYPE_VIU_422;
-        if(vtype == 1){
-        	devp->curr_wr_vfe->vf.type |= VIDTYPE_INTERLACE_TOP;
-        	real_size = (devp->curr_wr_vfe->vf.width*devp->curr_wr_vfe->vf.height);
-        	printk("current vframe type is top.\n");
-        }else if(vtype == 3){
-        	devp->curr_wr_vfe->vf.type |= VIDTYPE_INTERLACE_BOTTOM;
-        	real_size = (devp->curr_wr_vfe->vf.width*devp->curr_wr_vfe->vf.height);
-        	printk("current vframe type is bottom.\n");
-        }else{
-                real_size = (devp->curr_wr_vfe->vf.width*devp->curr_wr_vfe->vf.height<<1);
+        if(!devp->curr_wr_vfe){
+	        devp->curr_wr_vfe = provider_vf_get(devp->vfp);
         }
-	dts = ioremap(canvas_get_addr(devp->curr_wr_vfe->vf.canvas0Addr),real_size);
-        size = vfs_read(filp,dts,real_size,&pos);
+        real_size = (devp->curr_wr_vfe->vf.width*devp->curr_wr_vfe->vf.height<<1);
+        devp->curr_wr_vfe->vf.type = VIDTYPE_VIU_SINGLE_PLANE|VIDTYPE_VIU_FIELD|VIDTYPE_VIU_422;
+        size = vfs_read(filp,phys_to_virt(canvas_get_addr(devp->curr_wr_vfe->vf.canvas0Addr)),real_size,&pos);
         if(size < real_size){
 	        pr_info("%s read %u < %u error.\n",__func__,size,real_size);
                 return;
         }
         vfs_fsync(filp,0);
-	iounmap(dts);
         filp_close(filp,NULL);
         set_fs(old_fs);
 	provider_vf_put(devp->curr_wr_vfe, devp->vfp);
@@ -257,13 +238,9 @@ static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,
         parse_param(buf_orig,(char **)&parm);
 
 	    if(!strncmp(parm[0], "fps", 3)){
-            if(devp->cycle){
-                if ((devp->parm.port >= TVIN_PORT_HDMI0) && (devp->parm.port <= TVIN_PORT_HDMI7))
-                    fps = (VDIN_HDMI_MEAS_CLK + (devp->cycle>>3))/devp->cycle;
-                else
-                    fps = (VDIN_CRYSTAL + (devp->cycle>>3))/devp->cycle;
-            }
-            pr_info("%u f/s\n",fps);
+		if(devp->cycle)
+			fps = (VDIN_CRYSTAL + (devp->cycle>>3))/devp->cycle;
+                pr_info("%u f/s\n",fps);
         }
         else if(!strcmp(parm[0],"capture")){
 		if(parm[3] != NULL){
@@ -306,9 +283,6 @@ static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,
                         case 8://CVBS2
                                 port = TVIN_PORT_CVBS2;
                                 break;
-			case 9://CVBS3 as atvdemod to cvd
-				port = TVIN_PORT_CVBS3;
-                                break;
                         default:
                                 port = TVIN_PORT_CVBS0;
                                 break;
@@ -318,26 +292,26 @@ static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,
                 devp->flags |= VDIN_FLAG_FS_OPENED;
 	        /* request irq */
 	        snprintf(devp->irq_name, sizeof(devp->irq_name),  "vdin%d-irq", devp->index);
-			pr_info("vdin work in normal mode\n");
-			ret = request_irq(devp->irq, vdin_isr, IRQF_SHARED, devp->irq_name, (void *)devp);
+		pr_info("vdin work in normal mode\n");
+		ret = request_irq(devp->irq, vdin_isr, IRQF_SHARED, devp->irq_name, (void *)devp);
 
-			/*disable irq untill vdin is configured completely*/
-			disable_irq_nosync(devp->irq);
+                /*disable irq untill vdin is configured completely*/
+                disable_irq_nosync(devp->irq);
 	        /* remove the hardware limit to vertical [0-max]*/
 	        WRITE_VCBUS_REG(VPP_PREBLEND_VD1_V_START_END, 0x00000fff);
 	        pr_info("open device %s ok\n", dev_name(devp->dev));
-			vdin_open_fe(port,0,devp);
-			devp->parm.port = port;
-			devp->parm.info.fmt = fmt;
-			devp->fmt_info_p  = (struct tvin_format_s*)tvin_get_fmt_info(fmt);
-			devp->flags |= VDIN_FLAG_DEC_STARTED;
-			vdin_start_dec(devp);
+                vdin_open_fe(port,0,devp);
+                devp->parm.port = port;
+                devp->parm.info.fmt = fmt;
+                devp->fmt_info_p  = (struct tvin_format_s*)tvin_get_fmt_info(fmt);
+				devp->flags |= VDIN_FLAG_DEC_STARTED;
+                vdin_start_dec(devp);
         }
         else if(!strcmp(parm[0],"tvstop")){
                 vdin_stop_dec(devp);
                 vdin_close_fe(devp);
                 devp->flags &= (~VDIN_FLAG_FS_OPENED);
-				devp->flags &= (~VDIN_FLAG_DEC_STARTED);
+		devp->flags &= (~VDIN_FLAG_DEC_STARTED);
 	        /* free irq */
 	        free_irq(devp->irq,(void *)devp);
 	        /* reset the hardware limit to vertical [0-1079]  */
@@ -407,7 +381,7 @@ static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,
 			pr_info("enable manual convertion w=%u h=%u dest_cfmt=%s.\n",
 				devp->debug.scaler4w,devp->debug.scaler4h,tvin_color_fmt_str(devp->debug.dest_cfmt));
                 } else {
-                	devp->flags &= (~VDIN_FLAG_MANUAL_CONVERTION);
+			devp->flags &= (~VDIN_FLAG_MANUAL_CONVERTION);
                         pr_info("disable manual convertion w=%u h=%u dest_cfmt=%s.\n",
 				devp->debug.scaler4w,devp->debug.scaler4h,tvin_color_fmt_str(devp->debug.dest_cfmt));
                 }
@@ -421,37 +395,9 @@ static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,
         else if(!strcmp(parm[0],"force_recycle")) {
                 devp->flags |= VDIN_FLAG_FORCE_RECYCLE;
         }else if(!strcmp(parm[0],"read_pic")){
-        	vdin_write_mem(devp,parm[1],parm[2]);
-	}else if(!strcmp(parm[0],"rgb_xy")){
-		unsigned int x, y;
-		x = simple_strtoul(parm[1],NULL,10);
-		y = simple_strtoul(parm[2],NULL,10);
-		vdin_set_prob_xy(devp->addr_offset,x,y,devp);
-	}else if(!strcmp(parm[0],"rgb_info")){
-		unsigned int r, g,b;
-		vdin_get_prob_rgb(devp->addr_offset,&r,&g,&b);
-		printk("rgb_info-->r:%d,g:%d,b:%d\n",r,g,b);
-	}else if(!strcmp(parm[0],"mpeg2vdin")){
-		devp->h_active = simple_strtoul(parm[1],NULL,10);
-		devp->v_active = simple_strtoul(parm[2],NULL,10);
-		vdin_set_mpegin(devp);
-		printk("mpeg2vdin:h_active:%d,v_active:%d\n",devp->h_active,devp->v_active);
-	}else if(!strcmp(parm[0],"yuv_rgb_info")){
-	    unsigned int rgb_yuv0,rgb_yuv1,rgb_yuv2;
-	    vdin_get_vdin_yuv_rgb_mat0(devp->addr_offset,&rgb_yuv0,&rgb_yuv1,&rgb_yuv2);
-		printk("rgb_yuv0 :%d, rgb_yuv1 :%d , rgb_yuv2 :%d\n",rgb_yuv0,rgb_yuv1,rgb_yuv2);
-    }else if(!strcmp(parm[0],"mat0_xy")){
-        unsigned int x, y;
-		x = simple_strtoul(parm[1],NULL,10);
-		y = simple_strtoul(parm[2],NULL,10);
-		printk("pos x  :%d, pos y  :%d  \n",x,y);
-        vdin_set_prob_matrix0_xy(devp->addr_offset,x,y,devp);
-    }else if(!strcmp(parm[0],"mat0_set")){
-        unsigned int x;
-		x = simple_strtoul(parm[1],NULL,10);
-        printk("matrix set : %d \n",x);
-        vdin_set_before_after_mat0(devp->addr_offset,x,devp);
-    }
+		vdin_write_mem(devp,parm[1]);
+}
+
 
         kfree(buf_orig);
         return len;
@@ -817,14 +763,9 @@ static void memp_set(int type)
 	switch (type) {
 	case MEMP_VDIN_WITHOUT_3D:
 	case MEMP_VDIN_WITH_3D:
-#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
-                aml_write_reg32(P_VPU_VDIN_ASYNC_HOLD_CTRL, 0x80408040);
-                aml_write_reg32(P_VPU_VDISP_ASYNC_HOLD_CTRL, 0x80408040);
-                aml_write_reg32(P_VPU_VPUARB2_ASYNC_HOLD_CTRL, 0x80408040);
-#endif
+
 #if defined(VDIN_V1)
-//#if ((MESON_CPU_TYPE != MESON_CPU_TYPE_MESON8B)||
-#if ((MESON_CPU_TYPE != MESON_CPU_TYPE_MESON8B)&&(MESON_CPU_TYPE != MESON_CPU_TYPE_MESONG9TV)&&(MESON_CPU_TYPE != MESON_CPU_TYPE_MESONG9BB))//??
+#if (MESON_CPU_TYPE != MESON_CPU_TYPE_MESON8B)
 		aml_set_reg32_mask(P_MMC_QOS7_CTRL0, 1<<25);	// set audio to urgent
                 aml_write_reg32(P_MMC_CHAN_CTRL0, 0xf);		// set ch1-7 arbiter weight to 0
 		aml_clr_reg32_mask(P_MMC_CHAN_CTRL1, 0xf<<20);	// set ch8 arbiter weight to 0
@@ -835,16 +776,6 @@ static void memp_set(int type)
                 aml_set_reg32_mask(P_VPU_VD1_MMC_CTRL, 1<<12);       //           arb0
                 aml_set_reg32_mask(P_VPU_VD2_MMC_CTRL, 1<<12);       //           arb0
                 aml_set_reg32_mask(P_VPU_DI_IF1_MMC_CTRL, 1<<12);    //           arb0
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB
-				/* move to vdin arb */
-                aml_set_reg32_mask(P_VPU_DI_MEM_MMC_CTRL, 1<<12);    //           arb1
-                aml_set_reg32_mask(P_VPU_DI_INP_MMC_CTRL, 1<<12);    //           arb1
-                aml_set_reg32_mask(P_VPU_DI_MTNRD_MMC_CTRL, 1<<12);  //           arb0
-                aml_set_reg32_mask(P_VPU_DI_CHAN2_MMC_CTRL, 1<<12);  //           arb1
-                aml_set_reg32_mask(P_VPU_DI_MTNWR_MMC_CTRL, 1<<12);  //           arb1
-                aml_set_reg32_mask(P_VPU_DI_NRWR_MMC_CTRL, 1<<12);   //           arb1
-                aml_set_reg32_mask(P_VPU_DI_DIWR_MMC_CTRL, 1<<12);   //           arb1
-#else
                 aml_clr_reg32_mask(P_VPU_DI_MEM_MMC_CTRL, 1<<12);    //           arb1
                 aml_clr_reg32_mask(P_VPU_DI_INP_MMC_CTRL, 1<<12);    //           arb1
                 aml_set_reg32_mask(P_VPU_DI_MTNRD_MMC_CTRL, 1<<12);  //           arb0
@@ -853,17 +784,11 @@ static void memp_set(int type)
                 aml_clr_reg32_mask(P_VPU_DI_NRWR_MMC_CTRL, 1<<12);   //           arb1
                 aml_clr_reg32_mask(P_VPU_DI_DIWR_MMC_CTRL, 1<<12);   //           arb1
 #endif
-#endif
-		memp = type;
 		break;
 	case MEMP_DCDR_WITHOUT_3D:
 	case MEMP_DCDR_WITH_3D:
-#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
-       aml_write_reg32(P_VPU_VDIN_ASYNC_HOLD_CTRL, 0x80408040);
-#endif
 #if defined(VDIN_V1)
-//#if (MESON_CPU_TYPE != MESON_CPU_TYPE_MESON8B)
-#if ((MESON_CPU_TYPE != MESON_CPU_TYPE_MESON8B)&&(MESON_CPU_TYPE != MESON_CPU_TYPE_MESONG9TV)&&(MESON_CPU_TYPE != MESON_CPU_TYPE_MESONG9BB))//??
+#if (MESON_CPU_TYPE != MESON_CPU_TYPE_MESON8B)
 		aml_set_reg32_mask(P_MMC_QOS7_CTRL0, 1<<25);		// set audio to urgent
                 aml_write_reg32(P_MMC_CHAN_CTRL0, 0xf);			// set ch1-7 arbiter weight to 0
 		aml_clr_reg32_mask(P_MMC_CHAN_CTRL1, 0xf<<20);		// set ch8 arbiter weight to 0
@@ -873,16 +798,6 @@ static void memp_set(int type)
                 aml_set_reg32_mask(P_VPU_VD1_MMC_CTRL, 1<<12);       //           arb0
                 aml_set_reg32_mask(P_VPU_VD2_MMC_CTRL, 1<<12);       //           arb0
                 aml_set_reg32_mask(P_VPU_DI_IF1_MMC_CTRL, 1<<12);    //           arb0
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB
-				/* move to vdin arb */
-                aml_set_reg32_mask(P_VPU_DI_MEM_MMC_CTRL, 1<<12);    //           arb1
-                aml_set_reg32_mask(P_VPU_DI_INP_MMC_CTRL, 1<<12);    //           arb1
-                aml_set_reg32_mask(P_VPU_DI_MTNRD_MMC_CTRL, 1<<12);  //           arb0
-                aml_set_reg32_mask(P_VPU_DI_CHAN2_MMC_CTRL, 1<<12);  //           arb1
-                aml_set_reg32_mask(P_VPU_DI_MTNWR_MMC_CTRL, 1<<12);  //           arb1
-                aml_set_reg32_mask(P_VPU_DI_NRWR_MMC_CTRL, 1<<12);   //           arb1
-                aml_set_reg32_mask(P_VPU_DI_DIWR_MMC_CTRL, 1<<12);   //           arb1
-#else
                 aml_clr_reg32_mask(P_VPU_DI_MEM_MMC_CTRL, 1<<12);    //           arb1
                 aml_clr_reg32_mask(P_VPU_DI_INP_MMC_CTRL, 1<<12);    //           arb1
                 aml_set_reg32_mask(P_VPU_DI_MTNRD_MMC_CTRL, 1<<12);  //           arb0
@@ -891,14 +806,12 @@ static void memp_set(int type)
                 aml_clr_reg32_mask(P_VPU_DI_NRWR_MMC_CTRL, 1<<12);   //           arb1
                 aml_clr_reg32_mask(P_VPU_DI_DIWR_MMC_CTRL, 1<<12);   //           arb1
 #endif
-#endif
 		memp = type;
 		break;
 	case MEMP_ATV_WITHOUT_3D:
 	case MEMP_ATV_WITH_3D:
 #if defined(VDIN_V1)
-//#if (MESON_CPU_TYPE != MESON_CPU_TYPE_MESON8B)
-#if ((MESON_CPU_TYPE != MESON_CPU_TYPE_MESON8B)&&(MESON_CPU_TYPE != MESON_CPU_TYPE_MESONG9TV)&&(MESON_CPU_TYPE != MESON_CPU_TYPE_MESONG9BB))//??
+#if (MESON_CPU_TYPE != MESON_CPU_TYPE_MESON8B)
 		aml_set_reg32_mask(P_MMC_QOS7_CTRL0, 1<<25);		// set audio to urgent
                 aml_write_reg32(P_MMC_CHAN_CTRL0, 0xf);			// set ch1-7 arbiter weight to 0
 		aml_clr_reg32_mask(P_MMC_CHAN_CTRL1, 0xf<<20);		// set ch8 arbiter weight to 0
@@ -909,16 +822,6 @@ static void memp_set(int type)
                 aml_set_reg32_mask(P_VPU_VD1_MMC_CTRL, 1<<12);       //           arb0
                 aml_set_reg32_mask(P_VPU_VD2_MMC_CTRL, 1<<12);       //           arb0
                 aml_set_reg32_mask(P_VPU_DI_IF1_MMC_CTRL, 1<<12);    //           arb0
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB
-				/* move to vdin arb */
-                aml_set_reg32_mask(P_VPU_DI_MEM_MMC_CTRL, 1<<12);    //           arb1
-                aml_set_reg32_mask(P_VPU_DI_INP_MMC_CTRL, 1<<12);    //           arb1
-                aml_set_reg32_mask(P_VPU_DI_MTNRD_MMC_CTRL, 1<<12);  //           arb0
-                aml_set_reg32_mask(P_VPU_DI_CHAN2_MMC_CTRL, 1<<12);  //           arb1
-                aml_set_reg32_mask(P_VPU_DI_MTNWR_MMC_CTRL, 1<<12);  //           arb1
-                aml_set_reg32_mask(P_VPU_DI_NRWR_MMC_CTRL, 1<<12);   //           arb1
-                aml_set_reg32_mask(P_VPU_DI_DIWR_MMC_CTRL, 1<<12);   //           arb1
-#else
                 aml_clr_reg32_mask(P_VPU_DI_MEM_MMC_CTRL, 1<<12);    //           arb1
                 aml_clr_reg32_mask(P_VPU_DI_INP_MMC_CTRL, 1<<12);    //           arb1
                 aml_set_reg32_mask(P_VPU_DI_MTNRD_MMC_CTRL, 1<<12);  //           arb0
@@ -926,7 +829,7 @@ static void memp_set(int type)
                 aml_clr_reg32_mask(P_VPU_DI_MTNWR_MMC_CTRL, 1<<12);  //           arb1
                 aml_clr_reg32_mask(P_VPU_DI_NRWR_MMC_CTRL, 1<<12);   //           arb1
                 aml_clr_reg32_mask(P_VPU_DI_DIWR_MMC_CTRL, 1<<12);   //           arb1
-#endif
+
                 aml_set_reg32_mask(P_VPU_TVD3D_MMC_CTRL, 1<<14);     //           arb2
                 aml_set_reg32_mask(P_VPU_TVD3D_MMC_CTRL, 1<<15);     //           urgent
                 aml_set_reg32_mask(P_VPU_TVDVBI_MMC_CTRL, 1<<14);    //           arb2
@@ -960,4 +863,3 @@ void vdin_remove_class_files(struct class *vdin_clsp)
 {
 	class_remove_file(vdin_clsp, &class_attr_memp);
 }
-

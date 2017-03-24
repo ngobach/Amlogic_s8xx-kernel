@@ -38,12 +38,11 @@
 #include "vdin_vf.h"
 #include "vdin_regs.h"
 
-#define VDIN_VER "Ref.2015/11/23"
+#define VDIN_VER "Ref.2014/08/11a"
 
 /*the counter of vdin*/
 #define VDIN_MAX_DEVS			2
 #define VDIN_CRYSTAL                    24000000
-#define VDIN_HDMI_MEAS_CLK              51000000
 /* values of vdin_dev_t.flags */
 #define VDIN_FLAG_NULL			0x00000000
 #define VDIN_FLAG_DEC_INIT		0x00000001
@@ -60,8 +59,7 @@
 #define VDIN_FLAG_FORCE_RECYCLE         0x00000800
 /*flag for vdin scale down,color fmt convertion*/
 #define VDIN_FLAG_MANUAL_CONVERTION     0x00001000
-/*flag for vdin rdma enable*/
-#define VDIN_FLAG_RDMA_ENABLE           0x00002000
+
 /*values of vdin isr bypass check flag */
 #define VDIN_BYPASS_STOP_CHECK          0x00000001
 #define VDIN_BYPASS_CYC_CHECK           0x00000002
@@ -190,15 +188,7 @@ typedef struct vdin_dev_s {
 	unsigned int			hcnt64_tag;
 	unsigned int			cycle_tag;
         unsigned int                    start_time;//ms vdin start time
-        bool                            send2di;
         vdin_debug_t                    debug;
-	unsigned int			cma_config_en;
-#ifdef CONFIG_CMA
-	struct platform_device	*this_pdev[2];
-	struct page 			*venc_pages[2];
-	unsigned int			cma_mem_size[2];//MBYTE
-	unsigned int			cma_mem_alloc[2];
-#endif
 } vdin_dev_t;
 
 extern int vdin_create_class_files(struct class *vdin_clsp);
@@ -214,4 +204,3 @@ extern irqreturn_t vdin_isr(int irq, void *dev_id);
 extern irqreturn_t vdin_v4l2_isr(int irq, void *dev_id);
 
 #endif /* __TVIN_VDIN_DRV_H */
-
