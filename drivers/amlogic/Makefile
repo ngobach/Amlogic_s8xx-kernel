@@ -54,9 +54,8 @@ obj-$(CONFIG_I2C) += i2c/
 obj-$(CONFIG_EFUSE)+=efuse/
 obj-$(CONFIG_AM_INPUT)		+= input/
 
-#ifneq ($(wildcard $(srctree)/../hardware/amlogic/touch),)
-#obj-$(CONFIG_AML_TOUCH_ALGORITHM_SUPPORT) += touch/
-#endif
+obj-$(CONFIG_AML_TOUCH_ALGORITHM_SUPPORT) += touch/
+
 obj-$(CONFIG_AMLOGIC_SPI_NOR) += spi_nor/
 
 #obj-$(CONFIG_CARDREADER) += cardreader/
@@ -72,9 +71,7 @@ obj-$(CONFIG_AML_VRTC) += vrtc/
 
 obj-y += power/
 
-#ifneq ($(wildcard $(srctree)/../hardware/amlogic/pmu),)
-#obj-$(CONFIG_AML_PMU_ALGORITHM_SUPPORT) += pmu/
-#endif
+obj-$(CONFIG_AML_PMU_ALGORITHM_SUPPORT) += pmu/
 
 obj-y += tvin_v4l2/
 obj-$(CONFIG_TVIN) += tvin/
@@ -94,20 +91,6 @@ obj-$(CONFIG_AM_DVB) += dvb_tv/
 obj-$(CONFIG_AM_SMARTCARD) += smartcard/
 
 obj-$(CONFIG_AM_WIFI) += wifi/
-#obj-$(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE) += wifi/broadcom/drivers/ap6xxx/broadcm_40181/
-#obj-$(CONFIG_BCMDHD_141_AMPAK) += wifi/broadcom/drivers/ap6xxx/bcmdhd_1_141_xx/
-#obj-$(CONFIG_BCMDHD_4354_AMPAK) += wifi/broadcom/drivers/ap6xxx/broadcm_4354/
-#obj-$(CONFIG_BCMDHD) += wifi/broadcom/drivers/usi/bcmdhd/
-#obj-$(CONFIG_RTL8188EU) += wifi/realtek/drivers/8188eu/rtl8xxx_EU/
-#obj-$(CONFIG_RTL8192CU) += wifi/realtek/drivers/8192cu/rtl8xxx_CU/
-#obj-$(CONFIG_RTL8192DU) += wifi/realtek/drivers/8192du/rtl8xxx_DU/
-#obj-$(CONFIG_RTL8192EU) += realtek/drivers/8192eu/rtl8192EU/
-#obj-$(CONFIG_RTL8189ES) += wifi/realtek/drivers/8189es/rtl8189ES/
-#obj-$(CONFIG_RTL8723BS) += wifi/realtek/drivers/8723bs/rtl8723BS/
-#obj-$(CONFIG_RTL8723AU) += wifi/realtek/drivers/8723au/rtl8723AU/
-#obj-$(CONFIG_RTL8723BU) += wifi/realtek/drivers/8723bu/rtl8723BU/
-#obj-$(CONFIG_RTL8821AU) += wifi/realtek/drivers/8811au/rtl8811AU/
-#obj-$(CONFIG_RTL8812AU) += wifi/realtek/drivers/8812au/rtl8812AU/
 
 obj-y += bluetooth/
 obj-$(CONFIG_MESON_NFC) += nfc/
@@ -125,6 +108,7 @@ obj-$(CONFIG_AML_CODEC_MM)  	+= codec_mm/
 obj-$(CONFIG_AML_WATCHDOG) += watchdog/
 
 obj-$(CONFIG_AMLOGIC_JTAG) += jtag/
+
 obj-$(CONFIG_UMP) += gpu/ump/
 obj-$(CONFIG_MALI400) += gpu/mali/
 
@@ -137,5 +121,5 @@ obj-y += crypto/
 #obj-$(CONFIG_MESON_TRUSTZONE) += trustzone/
 obj-$(CONFIG_MESON_TRUSTZONE) += secure_monitor/
 obj-y += spi/
-obj-y += yuvplayer/
+
 obj-y += defendkey/
