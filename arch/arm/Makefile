@@ -55,14 +55,6 @@ endif
 
 comma = ,
 
-#
-# The Scalar Replacement of Aggregates (SRA) optimization pass in GCC 4.9 and
-# later may result in code being generated that handles signed short and signed
-# char struct members incorrectly. So disable it.
-# (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=65932)
-#
-KBUILD_CFLAGS	+= $(call cc-option,-fno-ipa-sra)
-
 # This selects which instruction set is used.
 # Note that GCC does not numerically define an architecture version
 # macro, but instead defines a whole series of macros which makes
@@ -170,6 +162,7 @@ machine-$(CONFIG_ARCH_MESON6TVD)	+= meson6tvd
 machine-$(CONFIG_ARCH_MESON8)		+= meson8
 machine-$(CONFIG_ARCH_MESON8B)		+= meson8b
 machine-$(CONFIG_ARCH_MESONG9TV)	+= mesong9tv
+machine-$(CONFIG_ARCH_MESONG9BB)	+= mesong9bb
 machine-$(CONFIG_ARCH_MMP)		+= mmp
 machine-$(CONFIG_ARCH_MSM)		+= msm
 machine-$(CONFIG_ARCH_MV78XX0)		+= mv78xx0

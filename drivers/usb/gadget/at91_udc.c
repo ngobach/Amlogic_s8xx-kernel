@@ -21,6 +21,7 @@
 #include <linux/ioport.h>
 #include <linux/slab.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/list.h>
 #include <linux/interrupt.h>
 #include <linux/proc_fs.h>
@@ -1699,6 +1700,16 @@ static int at91udc_probe(struct platform_device *pdev)
 	if (!dev->platform_data && !pdev->dev.of_node) {
 		/* small (so we copy it) but critical! */
 		DBG("missing platform_data\n");
+		return -ENODEV;
+	}
+
+	if (pdev->num_resources != 2) {
+		DBG("invalid num_resources\n");
+		return -ENODEV;
+	}
+	if ((pdev->resource[0].flags != IORESOURCE_MEM)
+			|| (pdev->resource[1].flags != IORESOURCE_IRQ)) {
+		DBG("invalid resource type\n");
 		return -ENODEV;
 	}
 

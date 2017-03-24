@@ -102,7 +102,7 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 
 	policy = cdbs->cur_policy;
 
-	/* Get Absolute Load */
+	/* Get Absolute Load (in terms of freq for ondemand gov) */
 	for_each_cpu(j, policy->cpus) {
 		struct cpu_dbs_common_info *j_cdbs;
 		u64 cur_wall_time, cur_idle_time;
@@ -165,7 +165,6 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 			total_load += load;
 			hg_tuners->cpu_load_history[j][hg_tuners->hotplug_load_index] = load;
 		}
-
 		if (load > max_load)
 			max_load = load;
 	}
@@ -195,15 +194,17 @@ void gov_queue_work(struct dbs_data *dbs_data, struct cpufreq_policy *policy,
 {
 	int i;
 
+	mutex_lock(&cpufreq_governor_lock);
 	if (!policy->governor_enabled)
-		return;
-
+		goto out_unlock;
 	if (!all_cpus) {
-		__gov_queue_work(policy->cpu, dbs_data, delay);
+		__gov_queue_work(raw_smp_processor_id(), dbs_data, delay);
 	} else {
 		for_each_cpu(i, policy->cpus)
 			__gov_queue_work(i, dbs_data, delay);
 	}
+out_unlock:
+	mutex_unlock(&cpufreq_governor_lock);
 }
 EXPORT_SYMBOL_GPL(gov_queue_work);
 
@@ -270,6 +271,7 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 	unsigned int max_periods;
 	int io_busy = 0;
 	int rc, i;
+	static unsigned int hg_init = 1;
 
 	if (have_governor_per_policy())
 		dbs_data = policy->governor_data;
@@ -338,7 +340,22 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		if(dbs_data->cdata->governor == GOV_HOTPLUG){
 			hg_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(policy->cpu);
 			mutex_init(&hg_dbs_info->hotplug_thread_mutex);
+
+			if (hg_init) {
+				struct hg_dbs_tuners *tuners = dbs_data->tuners;
+				if (tuners->hotplug_min_freq < policy->min)
+					tuners->hotplug_min_freq = policy->min;
+				if (tuners->hotplug_max_freq < policy->min)
+					tuners->hotplug_max_freq = policy->min;
+				if (tuners->hotplug_max_freq > policy->max)
+					tuners->hotplug_max_freq = policy->max;
+				if (tuners->hotplug_min_freq > policy->max)
+					tuners->hotplug_min_freq = policy->max;
+				hg_init = 0;
+			}
 		}
+		if((dbs_data->cdata->governor != GOV_HOTPLUG) && (num_online_cpus() < NR_CPUS))
+			schedule_work(&policy->up_cpu);
 		return 0;
 	case CPUFREQ_GOV_POLICY_EXIT:
 		if (!--dbs_data->usage_count) {
@@ -476,8 +493,6 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			gov_queue_work(dbs_data, policy,
 					delay_for_sampling_rate(sampling_rate), true);
 
-		if((dbs_data->cdata->governor != GOV_HOTPLUG) && (num_online_cpus() < NR_CPUS))
-			schedule_work(&policy->up_cpu);
 		break;
 
 	case CPUFREQ_GOV_STOP:

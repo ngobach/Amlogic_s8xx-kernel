@@ -37,7 +37,8 @@ enum {
 	VIDEO_WIDEOPTION_16_9_LETTER_BOX  = 11,
 	VIDEO_WIDEOPTION_16_9_PAN_SCAN    = 12,
 	VIDEO_WIDEOPTION_16_9_COMBINED    = 13,
-    VIDEO_WIDEOPTION_MAX              = 14
+	VIDEO_WIDEOPTION_16_10			  = 14,
+    VIDEO_WIDEOPTION_MAX              = 15
 };
 
 typedef  struct {
@@ -124,6 +125,7 @@ typedef  struct {
 #define VDIF_BURSTSIZE_Y_BIT         8
 #define VDIF_MANULE_START_FRAME      (1<<7)
 #define VDIF_CHRO_RPT_LAST           (1<<6)
+#define VDIF_LITTLE_ENDIAN           (1<<4)
 #define VDIF_CHROMA_HZ_AVG           (1<<3)
 #define VDIF_LUMA_HZ_AVG             (1<<2)
 #define VDIF_SEPARATE_EN             (1<<1)

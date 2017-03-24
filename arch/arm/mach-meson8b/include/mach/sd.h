@@ -94,9 +94,6 @@ struct amlsd_platform {
     unsigned int gpio_dat3;
     unsigned int jtag_pin;
 
-#if defined(CONFIG_MACH_MESON8B_ODROIDC)
-	unsigned int gpio_volsw;
-#endif
     int is_sduart;
     bool is_in;
     bool is_tuned;                      /* if card has been tuning */
@@ -678,13 +675,13 @@ extern struct mmc_host *sdio_host;
 }while(0)
 
 //for external codec status, if using external codec, jtag should not be set. 
-// extern int ext_codec;
+extern int ext_codec;
 
 #ifndef CONFIG_MESON_TRUSTZONE
 // P_AO_SECURE_REG1 is "Secure Register 1" in <M8-Secure-AHB-Registers.doc>
 #define aml_jtag_gpioao() do{\
     aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \
-    if(0)\
+    if(!ext_codec)\
         aml_set_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1))); \
 }while(0)
 

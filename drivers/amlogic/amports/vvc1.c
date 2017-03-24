@@ -152,6 +152,7 @@ enum {
 #define RATE_30_FPS  3003   /* 29.97 */
 #define DUR2PTS(x) ((x)*90/96)
 #define PTS2DUR(x) ((x)*96/90)
+#define ERRORDURATION(x) ((x<=0)||(x>=90000))
 
 static inline bool close_to(int a, int b, int m)
 {
@@ -305,6 +306,9 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
             }
         }
 #endif
+        if ((picture_type == B_PICTURE) && avi_flag) {
+            pts_valid = 0;
+        }
 
         if ((pts_valid) && (frm.state != RATE_MEASURE_DONE)) {
             if (frm.state == RATE_MEASURE_START_PTS) {
@@ -320,7 +324,8 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
                     if ((close_to(frm.rate, RATE_30_FPS, RATE_CORRECTION_THRESHOLD) &&
                          close_to(DUR2PTS(vvc1_amstream_dec_info.rate), RATE_24_FPS, RATE_CORRECTION_THRESHOLD)) ||
                         (close_to(frm.rate, RATE_24_FPS, RATE_CORRECTION_THRESHOLD) &&
-                         close_to(DUR2PTS(vvc1_amstream_dec_info.rate), RATE_30_FPS, RATE_CORRECTION_THRESHOLD))) {
+                         close_to(DUR2PTS(vvc1_amstream_dec_info.rate), RATE_30_FPS, RATE_CORRECTION_THRESHOLD)) ||
+                         ERRORDURATION(vvc1_amstream_dec_info.rate)) {
                         printk("vvc1: frame rate converted from %d to %d\n",
                             vvc1_amstream_dec_info.rate, PTS2DUR(frm.rate));
                         vvc1_amstream_dec_info.rate = PTS2DUR(frm.rate);
@@ -391,7 +396,9 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
             vf->type |= VIDTYPE_VIU_NV21;
 #endif
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-			vf->orientation = 0 ;
+            vf->orientation = 0 ;
+            vf->type_original = vf->type;
+
             set_aspect_ratio(vf, READ_VREG(VC1_PIC_RATIO));
 
             vfbuf_use[buffer_index]++;
@@ -433,7 +440,8 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
             vf->type |= VIDTYPE_VIU_NV21;
 #endif
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-			vf->orientation = 0 ;
+            vf->orientation = 0 ;
+            vf->type_original = vf->type;
             set_aspect_ratio(vf, READ_VREG(VC1_PIC_RATIO));
 
             vfbuf_use[buffer_index]++;
@@ -490,7 +498,9 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
             vf->type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD;
 #endif
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-			vf->orientation = 0 ;
+            vf->orientation = 0 ;
+            vf->type_original = vf->type;
+
             set_aspect_ratio(vf, READ_VREG(VC1_PIC_RATIO));
 
             vfbuf_use[buffer_index]++;
@@ -823,7 +833,7 @@ static void vvc1_put_timer_func(unsigned long arg)
 
 static s32 vvc1_init(void)
 {
-    printk("vvc1_init\n");
+    printk("vvc1_init, format %d\n", vvc1_amstream_dec_info.format);
     init_timer(&recycle_timer);
 
     stat |= STAT_TIMER_INIT;

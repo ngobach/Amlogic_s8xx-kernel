@@ -39,6 +39,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/timer.h>
 #include <linux/list.h>
 #include <linux/interrupt.h>
@@ -1250,7 +1251,7 @@ sl811h_hub_control(
 			sl811_write(sl811, SL11H_CTLREG1, sl811->ctrl1);
 
 			mod_timer(&sl811->timer, jiffies
-					+ msecs_to_jiffies(USB_RESUME_TIMEOUT));
+					+ msecs_to_jiffies(20));
 			break;
 		case USB_PORT_FEAT_POWER:
 			port_power(sl811, 0);

@@ -159,6 +159,8 @@
 #define DWC3_OSTS		0xcc10
 
 /* Bit fields */
+/* Global User Control Register */
+#define DWC3_GUCTL_USBHSTINAUTORETRYEN	(1 << 14)
 
 /* Global Configuration Register */
 #define DWC3_GCTL_PWRDNSCALE(n)	((n) << 19)
@@ -836,15 +838,15 @@ struct dwc3_event_depevt {
  *	12	- VndrDevTstRcved
  * @reserved15_12: Reserved, not used
  * @event_info: Information about this event
- * @reserved31_25: Reserved, not used
+ * @reserved31_24: Reserved, not used
  */
 struct dwc3_event_devt {
 	u32	one_bit:1;
 	u32	device_event:7;
 	u32	type:4;
 	u32	reserved15_12:4;
-	u32	event_info:9;
-	u32	reserved31_25:7;
+	u32	event_info:8;
+	u32	reserved31_24:8;
 } __packed;
 
 /**

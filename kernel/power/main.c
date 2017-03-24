@@ -293,12 +293,12 @@ static ssize_t state_show(struct kobject *kobj, struct kobj_attribute *attr,
 {
 	char *s = buf;
 #ifdef CONFIG_SUSPEND
-	suspend_state_t i;
+	int i;
 
-	for (i = PM_SUSPEND_MIN; i < PM_SUSPEND_MAX; i++)
-		if (pm_states[i].state)
-			s += sprintf(s,"%s ", pm_states[i].label);
-
+	for (i = 0; i < PM_SUSPEND_MAX; i++) {
+		if (pm_states[i] && valid_state(i))
+			s += sprintf(s,"%s ", pm_states[i]);
+	}
 #endif
 #ifdef CONFIG_HIBERNATION
 	s += sprintf(s, "%s\n", "disk");
@@ -313,8 +313,12 @@ static ssize_t state_show(struct kobject *kobj, struct kobj_attribute *attr,
 static suspend_state_t decode_state(const char *buf, size_t n)
 {
 #ifdef CONFIG_SUSPEND
-	suspend_state_t state = PM_SUSPEND_MIN;
-	struct pm_sleep_state *s;
+#ifdef CONFIG_EARLYSUSPEND
+	suspend_state_t state = PM_SUSPEND_ON;
+#else
+	suspend_state_t state = PM_SUSPEND_STANDBY;
+#endif
+	const char * const *s;
 #endif
 	char *p;
 	int len;
@@ -328,9 +332,8 @@ static suspend_state_t decode_state(const char *buf, size_t n)
 
 #ifdef CONFIG_SUSPEND
 	for (s = &pm_states[state]; state < PM_SUSPEND_MAX; s++, state++)
-		if (s->state && len == strlen(s->label)
-		    && !strncmp(buf, s->label, len))
-			return s->state;
+		if (*s && len == strlen(*s) && !strncmp(buf, *s, len))
+			return state;
 #endif
 
 	return PM_SUSPEND_ON;
@@ -353,7 +356,16 @@ static ssize_t state_store(struct kobject *kobj, struct kobj_attribute *attr,
 
 	state = decode_state(buf, n);
 	if (state < PM_SUSPEND_MAX)
+	{
+#ifdef CONFIG_EARLYSUSPEND
+		if (state == PM_SUSPEND_ON || valid_state(state)) {
+			error = 0;
+			request_suspend_state(state);
+		}
+#else
 		error = pm_suspend(state);
+#endif
+	}
 	else if (state == PM_SUSPEND_MAX)
 		error = hibernate();
 	else
@@ -446,8 +458,8 @@ static ssize_t autosleep_show(struct kobject *kobj,
 
 #ifdef CONFIG_SUSPEND
 	if (state < PM_SUSPEND_MAX)
-		return sprintf(buf, "%s\n", pm_states[state].state ?
-					pm_states[state].label : "error");
+		return sprintf(buf, "%s\n", valid_state(state) ?
+						pm_states[state] : "error");
 #endif
 #ifdef CONFIG_HIBERNATION
 	return sprintf(buf, "disk\n");
@@ -553,7 +565,10 @@ pm_trace_dev_match_store(struct kobject *kobj, struct kobj_attribute *attr,
 power_attr(pm_trace_dev_match);
 
 #endif /* CONFIG_PM_TRACE */
-
+#ifdef CONFIG_USER_WAKELOCK
+power_attr(wake_lock);
+power_attr(wake_unlock);
+#endif
 #ifdef CONFIG_FREEZER
 static ssize_t pm_freeze_timeout_show(struct kobject *kobj,
 				      struct kobj_attribute *attr, char *buf)
@@ -587,6 +602,10 @@ static struct attribute * g[] = {
 #ifdef CONFIG_PM_SLEEP
 	&pm_async_attr.attr,
 	&wakeup_count_attr.attr,
+#ifdef CONFIG_USER_WAKELOCK
+	&wake_lock_attr.attr,
+	&wake_unlock_attr.attr,
+#endif
 #ifdef CONFIG_PM_AUTOSLEEP
 	&autosleep_attr.attr,
 #endif

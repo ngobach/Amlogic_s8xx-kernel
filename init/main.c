@@ -499,8 +499,6 @@ asmlinkage void __init start_kernel(void)
 	boot_cpu_init();
 	page_address_init();
 	pr_notice("%s", linux_banner);
-	pr_notice("%s", linux_scm_version_banner);
-
 	setup_arch(&command_line);
 	mm_init_owner(&init_mm, &init_task);
 	mm_init_cpumask(&init_mm);
@@ -607,10 +605,6 @@ asmlinkage void __init start_kernel(void)
 #ifdef CONFIG_X86
 	if (efi_enabled(EFI_RUNTIME_SERVICES))
 		efi_enter_virtual_mode();
-#endif
-#ifdef CONFIG_X86_ESPFIX64
-	/* Should be run before the first non-init thread is created */
-	init_espfix_bsp();
 #endif
 	thread_info_cache_init();
 	cred_init();

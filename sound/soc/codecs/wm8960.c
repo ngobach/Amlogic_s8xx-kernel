@@ -246,7 +246,7 @@ SOC_SINGLE("PCM Playback -6dB Switch", WM8960_DACCTL1, 7, 1, 0),
 SOC_ENUM("ADC Polarity", wm8960_enum[0]),
 SOC_SINGLE("ADC High Pass Filter Switch", WM8960_DACCTL1, 0, 1, 0),
 
-SOC_ENUM("DAC Polarity", wm8960_enum[1]),
+SOC_ENUM("DAC Polarity", wm8960_enum[2]),
 SOC_SINGLE_BOOL_EXT("DAC Deemphasis Switch", 0,
             wm8960_get_deemph, wm8960_put_deemph),
 
@@ -581,15 +581,15 @@ static struct {
     int rate;
     unsigned int val;
 } alc_rates[] = {
-	{ 48000, 0 },
-	{ 44100, 0 },
-	{ 32000, 1 },
-	{ 22050, 2 },
-	{ 24000, 2 },
-	{ 16000, 3 },
-	{ 11025, 4 },
-	{ 12000, 4 },
-	{  8000, 5 },
+    { 48000, 0 },
+    { 44100, 0 },
+    { 32000, 1 },
+    { 22050, 2 },
+    { 24000, 2 },
+    { 16000, 3 },
+    { 11250, 4 },
+    { 12000, 4 },
+    {  8000, 5 },
 };
 
 static int wm8960_hw_params(struct snd_pcm_substream *substream,

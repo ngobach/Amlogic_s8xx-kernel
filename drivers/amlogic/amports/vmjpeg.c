@@ -198,7 +198,9 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
             vf->canvas0Addr = vf->canvas1Addr = index2canvas0(index);
             vf->pts = (pts_valid) ? pts : 0;
             vf->pts_us64 = (pts_valid) ? pts_us64 : 0;
-			vf->orientation = 0 ;
+            vf->orientation = 0 ;
+            vf->type_original = vf->type;
+
             vfbuf_use[index]++;
 
             kfifo_put(&display_q, (const vframe_t **)&vf);
@@ -270,6 +272,7 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
                 vf->pts = 0;
                 vf->pts_us64 = 0;
             }
+            vf->type_original = vf->type;
 
             vfbuf_use[index]++;
 
@@ -278,7 +281,6 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
 		    vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);            
 #endif
         }
-
         WRITE_VREG(MREG_FROM_AMRISC, 0);
     }
 

@@ -28,7 +28,7 @@
 #include "osd.h"
 #include <linux/amlogic/vout/vinfo.h>
 #include <linux/amlogic/logo/logo.h>
-#include <ump/ump_kernel_interface.h>
+#include "../drivers/amlogic/gpu/ump/include/ump/ump_kernel_interface.h"
 #define  OSD_COUNT 	2 /* we have two osd layer on hardware*/
 
 #define KEYCOLOR_FLAG_TARGET  1
@@ -115,6 +115,8 @@ extern void osddev_set_osd_clone(u32 index, u32 clone);
 extern void osddev_set_osd_update_pan(u32 index);
 extern void osddev_get_osd_rotate_angle(u32 index, u32 *angle);
 extern void osddev_set_osd_rotate_angle(u32 index, u32 angle);
+extern void osddev_get_update_state(u32 index, u32 *up_free);
+extern void osddev_set_update_state(u32 index, u32 up_free);
 extern void osddev_get_prot_canvas(u32 index, s32 *x_start, s32 *y_start, s32 *x_end, s32 *y_end);
 extern void osddev_set_prot_canvas(u32 index, s32 x_start, s32 y_start, s32 x_end, s32 y_end);
 extern void osddev_set(struct myfb_dev *fbdev);
@@ -123,6 +125,8 @@ extern int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
         u16 transp, struct myfb_dev *fbdev);
 extern void osddev_init(void) ;        
 extern void osddev_enable(int enable,int index);
+extern int osddev_sync_request( struct fb_info * info,u32 xoffset, u32 yoffset,s32 in_fence_fd);
+extern int osddev_wait_for_vsync(void);
 
 extern void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi);
 

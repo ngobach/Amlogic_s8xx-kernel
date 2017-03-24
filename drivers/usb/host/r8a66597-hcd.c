@@ -27,6 +27,7 @@
 #include <linux/kernel.h>
 #include <linux/sched.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/timer.h>
 #include <linux/delay.h>
 #include <linux/list.h>
@@ -2300,7 +2301,7 @@ static int r8a66597_bus_resume(struct usb_hcd *hcd)
 		rh->port &= ~USB_PORT_STAT_SUSPEND;
 		rh->port |= USB_PORT_STAT_C_SUSPEND << 16;
 		r8a66597_mdfy(r8a66597, RESUME, RESUME | UACT, dvstctr_reg);
-		msleep(USB_RESUME_TIMEOUT);
+		msleep(50);
 		r8a66597_mdfy(r8a66597, UACT, RESUME | UACT, dvstctr_reg);
 	}
 

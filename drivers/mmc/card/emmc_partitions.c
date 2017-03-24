@@ -89,6 +89,27 @@ unsigned int mmc_capacity (struct mmc_card *card)
         return card->csd.capacity << (card->csd.read_blkbits - 9);
 }
 
+static int mmc_send_cmd23(struct mmc_host *host,
+                unsigned int blockcount)
+{
+    int err;
+    struct mmc_command cmd = {0};
+
+    BUG_ON(!host);
+
+    cmd.opcode = MMC_SET_BLOCK_COUNT;
+    cmd.arg = blockcount;
+    cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
+
+    err = mmc_wait_for_cmd(host, &cmd, MMC_CMD_RETRIES);
+    if (err) {
+        pr_err("%s %d error\n",__func__, __LINE__);
+        return err;
+    }
+
+    return 0;
+}
+
 static int mmc_transfer (struct mmc_card *card, unsigned dev_addr,
         unsigned blocks, void *buf, int write)
 {
@@ -104,6 +125,10 @@ static int mmc_transfer (struct mmc_card *card, unsigned dev_addr,
         printk("[%s] %s range exceeds device capacity!\n", __FUNCTION__, write?"write":"read");
         ret = -1;
         goto exit_err;
+    }
+
+    if (mmc_host_cmd23(card->host)) {
+        mmc_send_cmd23(card->host, blocks);
     }
 
     size = blocks << card->csd.read_blkbits;
@@ -177,7 +202,11 @@ int get_reserve_partition_off (struct mmc_card *card) // byte unit
     if (storage_flag == EMMC_BOOT_FLAG) {
         off = MMC_BOOT_PARTITION_SIZE + MMC_BOOT_PARTITION_RESERVED;
     } else if (storage_flag == SPI_EMMC_FLAG) {
-        off = 0;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8B
+        off = MMC_BOOT_PARTITION_SIZE + MMC_BOOT_PARTITION_RESERVED;
+#else
+	      off = 0;
+#endif	              
     } else if ((storage_flag == 0) || (storage_flag == -1)){ // if storage_flag is invalid
         if (POR_EMMC_BOOT()) {
             off = MMC_BOOT_PARTITION_SIZE + MMC_BOOT_PARTITION_RESERVED;
@@ -581,10 +610,8 @@ int aml_emmc_partition_ops (struct mmc_card *card, struct gendisk *disk)
     struct mmc_host *mmc_host = card->host;
     struct amlsd_platform* pdata = mmc_priv(mmc_host);
     struct amlsd_host *host = pdata->host;
-#if !defined(CONFIG_MACH_MESON8B_ODROIDC)
     struct disk_part_iter piter;
     struct hd_struct *part;
-#endif
     struct class * aml_store_class = NULL;
 
     // printk("Enter %s\n", __FUNCTION__);
@@ -601,7 +628,6 @@ int aml_emmc_partition_ops (struct mmc_card *card, struct gendisk *disk)
     }
 
     mmc_claim_host(card->host);
-#if !defined(CONFIG_MACH_MESON8B_ODROIDC)
     disk_part_iter_init(&piter, disk, DISK_PITER_INCL_EMPTY);
     while ((part = disk_part_iter_next(&piter))){
 	printk("Delete invalid mbr partition part %p, part->partno %d\n",
@@ -609,7 +635,7 @@ int aml_emmc_partition_ops (struct mmc_card *card, struct gendisk *disk)
         delete_partition(disk, part->partno);
     }
     disk_part_iter_exit(&piter);
-#endif
+
     ret = mmc_read_partition_tbl(card, pt_fmt);
     if (ret == 0) { // ok
         ret = add_emmc_partition(disk, pt_fmt);

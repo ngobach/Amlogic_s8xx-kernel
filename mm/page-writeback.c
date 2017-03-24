@@ -35,9 +35,10 @@
 #include <linux/buffer_head.h> /* __set_page_dirty_buffers */
 #include <linux/pagevec.h>
 #include <linux/timer.h>
+#include <linux/mm_inline.h>
 #include <linux/sched/rt.h>
 #include <trace/events/writeback.h>
-
+#include "internal.h"
 /*
  * Sleep at most 200ms at a time in balance_dirty_pages().
  */
@@ -793,11 +794,8 @@ static void bdi_update_write_bandwidth(struct backing_dev_info *bdi,
 	 *                   bw * elapsed + write_bandwidth * (period - elapsed)
 	 * write_bandwidth = ---------------------------------------------------
 	 *                                          period
-	 *
-	 * @written may have decreased due to account_page_redirty().
-	 * Avoid underflowing @bw calculation.
 	 */
-	bw = written - min(written, bdi->written_stamp);
+	bw = written - bdi->written_stamp;
 	bw *= HZ;
 	if (unlikely(elapsed > period)) {
 		do_div(bw, elapsed);
@@ -861,7 +859,7 @@ static void global_update_bandwidth(unsigned long thresh,
 				    unsigned long now)
 {
 	static DEFINE_SPINLOCK(dirty_lock);
-	static unsigned long update_time = INITIAL_JIFFIES;
+	static unsigned long update_time;
 
 	/*
 	 * check locklessly first to optimize away locking for the most time

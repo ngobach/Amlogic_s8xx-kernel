@@ -59,7 +59,6 @@ typedef struct {
 	unsigned int addr;
 } aml_hwc_addr_t;
 
-
 typedef  struct {
 	color_index_t	color_index;
 	u8	hw_colormat;
@@ -83,10 +82,8 @@ typedef  struct {
 
 	u8	color_type;
 	u8	bpp;
-
-		
-	
 }color_bit_define_t;
+
 typedef struct osd_ctl_s {
     u32  xres_virtual;
     u32  yres_virtual;

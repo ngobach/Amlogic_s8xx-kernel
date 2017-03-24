@@ -213,7 +213,14 @@ void osddev_set_window_axis(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
 {
 	osd_set_window_axis_hw(index, x0, y0, x1, y1);
 }
-
+int osddev_sync_request( struct fb_info * info,u32 xoffset, u32 yoffset,s32 in_fence_fd)
+{
+	return osd_sync_request(info->node, info->var.yres,xoffset ,yoffset ,in_fence_fd);
+}
+int osddev_wait_for_vsync(void)
+{
+	return osd_wait_vsync_event();
+}
 void osddev_get_osd_info(u32 index, s32 (*posdval)[4], u32 (*posdreg)[5], s32 info_flag)
 {
 	osd_get_osd_info_hw(index, posdval, posdreg, info_flag);
@@ -257,6 +264,16 @@ void osddev_get_osd_antiflicker(u32 index, u32 *on_off)
 void osddev_set_osd_antiflicker(u32 index, u32 vmode, u32 yres)
 {
         osd_set_osd_antiflicker_hw(index, vmode, yres);
+}
+
+void osddev_get_update_state(u32 index, u32 *up_free)
+{
+        osd_get_osd_updatestate_hw(index, up_free);
+}
+
+void osddev_set_update_state(u32 index, u32 up_free)
+{
+        osd_set_osd_updatestate_hw(index, up_free);
 }
 
 void osddev_get_osd_angle(u32 index, u32 *angle)
@@ -376,3 +393,21 @@ void osddev_resume(void)
 {
 	osd_resume_hw();
 }
+#ifdef CONFIG_HIBERNATION
+extern void  osd_freeze_hw(void);
+extern void  osd_thaw_hw(void);
+extern void  osd_restore_hw(void);
+
+void  osddev_freeze(void)
+{
+	osd_freeze_hw();
+}
+void osddev_thaw(void)
+{
+	osd_thaw_hw();
+}
+void osddev_restore(void)
+{
+	osd_restore_hw();
+}
+#endif

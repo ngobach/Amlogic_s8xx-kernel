@@ -67,9 +67,31 @@ static int s_venc_mux = 0;
 **	sysfs impletement part  
 **
 ******************************************************************/
-static  void   func_default_null(char  *str)
+static  int   func_default_null(char  *str)
 {
-	return ;
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+    int val;
+    unsigned int cntl0=0, cntl1=0;
+    int r = sscanf(str, "%d", &val);
+    if (r != 1) {
+        return -EINVAL;
+    }
+    if ((val < 0) || (val > 1)) {
+        return -EINVAL;
+    }
+    if(!val){
+        cntl0 = 0;
+        cntl1 = 8;
+        WRITE_MPEG_REG(HHI_VDAC_CNTL0, cntl0);//close cvbs
+        WRITE_MPEG_REG(HHI_VDAC_CNTL1, cntl1);
+    }else{
+        cntl0 = 1;
+        cntl1 = 0;
+        WRITE_MPEG_REG(HHI_VDAC_CNTL0, cntl0);//open cvbs
+        WRITE_MPEG_REG(HHI_VDAC_CNTL1, cntl1);
+    }
+#endif
+    return 0;
 }
 static   int* parse_para(char *para,char   *para_num)
 {
@@ -113,7 +135,7 @@ static  void  set_vout_mode(char * name)
 {
 	vmode_t    mode;
 
-	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"tvmode2 set to %s\r\n",name);
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"tvmode2 set to %s\n",name);
 	mode=validate_vmode2(name);
 	if(VMODE_MAX==mode)
 	{
@@ -122,11 +144,11 @@ static  void  set_vout_mode(char * name)
 	}
 	if(mode==get_current_vmode2())
 	{
-		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"don't set the same mode as current.\r\n");	
+		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"don't set the same mode as current.\n");	
 		return ;
 	}
 	set_current_vmode2(mode);
-	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"new mode2 %s set ok\r\n",name);
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"new mode2 %s set ok\n",name);
 	vout2_notifier_call_chain(VOUT_EVENT_MODE_CHANGE,&mode) ;
 }
 
@@ -158,7 +180,7 @@ static void  set_vout_window(char *para)
 	{
 		disp_rect[1]=disp_rect[0] ;
 	}
-	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"osd0=>x:%d ,y:%d,w:%d,h:%d\r\n osd1=> x:%d,y:%d,w:%d,h:%d \r\n", \
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"osd0=>x:%d ,y:%d,w:%d,h:%d\n osd1=> x:%d,y:%d,w:%d,h:%d\n", \
 			*pt,*(pt+1),*(pt+2),*(pt+3),*(pt+4),*(pt+5),*(pt+6),*(pt+7));
 	vout2_notifier_call_chain(VOUT_EVENT_OSD_DISP_AXIS,&disp_rect[0]) ;
 }
@@ -171,6 +193,7 @@ static void  set_vout_window(char *para)
 static const char *venc_mux_help = {
 	"venc_mux:\n"
 	"    0. single display, viu1->panel, viu2->null\n"
+	"    1. dual display, viu1->cvbs, viu2->panel\n"
 	"    2. dual display, viu1->hdmi, viu2->panel\n"
 	"    4. single display, viu1->null, viu2->hdmi\n"
 	"    8. dual display, viu1->panel, viu2->hdmi\n"
@@ -178,7 +201,7 @@ static const char *venc_mux_help = {
 
 static ssize_t venc_mux_show(struct class *class, struct class_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%s\ncurrent venc_mux: %d\r\n", venc_mux_help, s_venc_mux);
+	return sprintf(buf, "%s\ncurrent venc_mux: %d\n", venc_mux_help, s_venc_mux);
 }
 
 static ssize_t venc_mux_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count)
@@ -190,6 +213,10 @@ static ssize_t venc_mux_store(struct class *class, struct class_attribute *attr,
 	switch (mux) {
 	case 0x0:
 		mux_type = s_venc_mux;
+		aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, mux_type, 0, 4);
+		break;
+	case 0x1:
+		mux_type = mux |(s_venc_mux<<2);
 		aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, mux_type, 0, 4);
 		break;
 	case 0x2:
@@ -228,7 +255,7 @@ static int  create_vout_attr(void)
 	vout_info.base_class=class_create(THIS_MODULE,VOUT_CLASS_NAME);
 	if(IS_ERR(vout_info.base_class))
 	{
-		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create vout2 class fail\r\n");
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create vout2 class fail\n");
 		return  -1 ;
 	}
 	//create  class attr
@@ -236,11 +263,11 @@ static int  create_vout_attr(void)
 	{
 		if ( class_create_file(vout_info.base_class,vout_attr[i]))
 		{
-			amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create disp2 attribute %s fail\r\n",vout_attr[i]->attr.name);
+			amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create disp2 attribute %s fail\n",vout_attr[i]->attr.name);
 		}
 	}
 	if (class_create_file(vout_info.base_class, &class_attr_venc_mux))
-		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create disp2 attribute venc_mux fail\r\n");
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create disp2 attribute venc_mux fail\n");
 
 	return   0;
 }
@@ -304,7 +331,7 @@ static int
 	int ret =-1;
 	
 	vout_info.base_class=NULL;
-	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"start init vout2 module \r\n");
+	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"start init vout2 module\n");
 #if 0 //def CONFIG_HAS_EARLYSUSPEND
     early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
     early_suspend.suspend = meson_vout_early_suspend;
@@ -317,11 +344,11 @@ static int
 	s_venc_mux = aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL) & 0x3;
 	if(ret==0)
 	{
-		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create  vout2 attribute ok \r\n");
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create  vout2 attribute ok\n");
 	}
 	else
 	{
-		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create  vout2 attribute fail \r\n");
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create  vout2 attribute fail\n");
 	}
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8

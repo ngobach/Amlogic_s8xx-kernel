@@ -43,6 +43,9 @@
 #include <linux/amlogic/amports/vfp.h>
 
 #define AVMLVIDEO_MODULE_NAME "amlvideo"
+#define CREATE_TRACE_POINTS
+#include "trace/amlvideo.h"
+
 
 /* Wake up at about 30 fps */
 #define WAKE_NUMERATOR 30
@@ -62,7 +65,7 @@
 static vfq_t q_ready;
 extern bool omx_secret_mode;
 static u8 first_frame;
-static u32 vpts_last;
+static u64 last_pts_us64 = 0;
 
 
 #define DUR2PTS(x) ((x) - ((x) >> 4))
@@ -516,6 +519,7 @@ static int vidioc_querybuf(struct file *file, void *priv, struct v4l2_buffer *p)
 static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *p) {
     int ret = 0;
     if (omx_secret_mode == true) {
+        trace_qbuf(p->index);
         return ret;
     }
     if (ppmgrvf) {
@@ -564,16 +568,22 @@ static int freerun_cleancache_dqbuf(struct v4l2_buffer *p) {
     return ret;
 }
 
+static int my_wf_debug = 0;
+static int my_wb_debug = 0;
+
 static int freerun_dqbuf(struct v4l2_buffer *p) {
     int ret = 0;
+    int omx_ready = 0;
+    u64 pts_us64 = 0;
     if (omx_secret_mode == true) {
-        if (vfq_level(&q_ready)>AMLVIDEO_POOL_SIZE-1) {
-            msleep(10);
+        omx_ready = vfq_level(&q_ready);
+        if (omx_ready > AMLVIDEO_POOL_SIZE-1) {
+            my_wb_debug++;
             return -EAGAIN;
         }
     }
     if (!vf_peek(RECEIVER_NAME)) {
-        msleep(10);
+        my_wf_debug++;
         return -EAGAIN;
     }
     if (omx_secret_mode != true) {
@@ -587,19 +597,23 @@ static int freerun_dqbuf(struct v4l2_buffer *p) {
     if (omx_secret_mode == true) {
         vfq_push(&q_ready, ppmgrvf);
         p->index = 0;
-        p->timestamp.tv_sec = 0;
 
-        if (ppmgrvf->pts) {
+        if (ppmgrvf->pts_us64) {
             first_frame = 1;
-            p->timestamp.tv_usec = ppmgrvf->pts;
+            pts_us64 = ppmgrvf->pts_us64;
         } else if (first_frame == 0){
             first_frame = 1;
-            p->timestamp.tv_usec = 0;
+            pts_us64 = 0;
         } else {
-            p->timestamp.tv_usec = vpts_last + (DUR2PTS(ppmgrvf->duration));
+            pts_us64 = last_pts_us64 + (DUR2PTS(ppmgrvf->duration)*100/9);
         }
-        vpts_last = p->timestamp.tv_usec;
-        //printk("p->timestamp.tv_usec=%d\n",p->timestamp.tv_usec);
+        p->timestamp.tv_sec = pts_us64 >> 32;
+        p->timestamp.tv_usec = pts_us64 & 0xFFFFFFFF;
+        last_pts_us64 = pts_us64;
+
+        trace_dqbuf(p->index, my_wf_debug, my_wb_debug, omx_ready);
+        my_wf_debug = 0;
+        my_wb_debug = 0;
         return ret;
     }   
     if (ppmgrvf->pts != 0) {
@@ -730,6 +744,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i) 
     ret = videobuf_streamon(&fh->vb_vidq);
     if (ret == 0)
         fh->is_streamed_on = 1;
+    trace_onoff(1);
     return ret;
 }
 
@@ -741,6 +756,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
     ret = videobuf_streamoff(&fh->vb_vidq);
     if (ret == 0)
         fh->is_streamed_on = 0;
+    trace_onoff(0);
     return ret;
 }
 

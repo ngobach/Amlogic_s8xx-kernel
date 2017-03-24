@@ -26,6 +26,7 @@ obj-$(CONFIG_GRAVITY_STK8312)	+= stk831x.o
 
 obj-$(CONFIG_GRAVITY_MXC622X)     += mxc622x.o
 obj-$(CONFIG_GRAVITY_MXC6255XC)     += mxc6255xc.o
+obj-$(CONFIG_GRAVITY_STK8BAXX)     +=stk8baxx.o
 
 #GYROSCOPE
 obj-$(CONFIG_GYROSCOPE_L3GD20)    += l3gd20_gyr.o

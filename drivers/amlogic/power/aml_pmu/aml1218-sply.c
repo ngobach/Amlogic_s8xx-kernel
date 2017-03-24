@@ -50,7 +50,7 @@
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static struct early_suspend aml1218_early_suspend;
 static int    in_early_suspend = 0; 
-static int    early_power_status = 0;
+static int    early_power_status = -1;
 static struct wake_lock aml1218_lock;
 #endif
 struct aml1218_supply           *g_aml1218_supply  = NULL;
@@ -358,7 +358,7 @@ int aml1218_set_charge_enable(int enable)
         }
         if (ocv_voltage > 3950)
         {   
-            printk("%s, pmu_version:%d, ocv = %d, do not open charger.\n", __func__, pmu_version, ocv_voltage);
+            AML1218_DBG("%s, pmu_version:%d, ocv = %d, do not open charger.\n", __func__, pmu_version, ocv_voltage);
             return aml1218_set_bits(0x0017, 0x00, 0x01);
         }
     }
@@ -426,7 +426,7 @@ int aml1218_set_trickle_time(int minutes)
 {
     int bits;
 
-    if (minutes < 30 && minutes > 80) {
+    if ( (minutes < 30) || (minutes > 80) ) {
         AML1218_ERR("%s, invalid trickle time:%d\n", __func__, minutes);
         return -EINVAL;
     }
@@ -445,7 +445,7 @@ int aml1218_set_rapid_time(int minutes)
 {
     int bits;
 
-    if (minutes > 360 || minutes < 720) {
+    if ( (minutes < 360) || (minutes > 720) ) {
         AML1218_ERR("%s, invalid rapid time:%d\n", __func__, minutes);
         return -EINVAL;
     }
@@ -1355,7 +1355,7 @@ static int aml1218_update_state(struct aml_charger *charger)
 
     aml1218_set_bits(0x0035, (chg_status & 0x02000000) ? 0x00 : 0x04, 0x07);
     //aml1218_set_bits(0x003e, (chg_status & 0x02000000) ? 0x00 : 0x04, 0x07);
-    aml1218_set_bits(0x0047, (chg_status & 0x02000000) ? 0x00 : 0x04, 0x07);
+    aml1218_set_bits(0x0047, (chg_status & 0x02000000) ? 0x03 : 0x02, 0x07);
     aml1218_set_bits(0x004f, (chg_status & 0x02000000) >> 22, 0x08);
 
     charger->vbat = aml1218_get_battery_voltage();
@@ -1417,6 +1417,8 @@ static void aml1218_charging_monitor(struct work_struct *work)
         api->pmu_update_battery_capacity(charger, aml1218_battery); 
     } else {
         aml1218_update_state(charger);
+        schedule_delayed_work(&supply->work, supply->interval);
+        return;
     }
 
     /*
@@ -1439,7 +1441,7 @@ static void aml1218_charging_monitor(struct work_struct *work)
         (pre_chg_status != charger->charge_status) ||
         charger->resume                            ||
         power_protection) {
-        AML1218_INFO("battery vol change: %d->%d, vsys:%d\n", pre_rest_cap, charger->rest_vol, aml1218_get_vsys_voltage());
+        AML1218_DBG("battery vol change: %d->%d, vsys:%d\n", pre_rest_cap, charger->rest_vol, aml1218_get_vsys_voltage());
         if (unlikely(charger->resume)) {
             charger->resume = 0;                                        // MUST clear this flag
         }
@@ -1478,7 +1480,7 @@ static void aml1218_lateresume(struct early_suspend *h)
         input_report_key(aml1218_power_key, KEY_POWER, 0);                  // cancel power key 
         input_sync(aml1218_power_key);
     }
-    early_power_status = supply->aml_charger.ext_valid; 
+    early_power_status = -1;
     in_early_suspend = 0;
     wake_unlock(&aml1218_lock);
 }
@@ -1729,7 +1731,7 @@ static int aml1218_suspend(struct platform_device *dev, pm_message_t state)
         }
     }
 #ifdef CONFIG_HAS_EARLYSUSPEND
-    if (early_power_status != supply->aml_charger.ext_valid) {
+    if ((early_power_status != supply->aml_charger.ext_valid) && (early_power_status != -1)) {
         AML1218_DBG("%s, power status changed, prev:%x, now:%x, exit suspend process\n", 
                 __func__, early_power_status, supply->aml_charger.ext_valid);
         input_report_key(aml1218_power_key, KEY_POWER, 1);              // assume power key pressed 

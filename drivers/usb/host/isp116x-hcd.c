@@ -60,6 +60,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/list.h>
 #include <linux/slab.h>
 #include <linux/usb.h>
@@ -1487,7 +1488,7 @@ static int isp116x_bus_resume(struct usb_hcd *hcd)
 	spin_unlock_irq(&isp116x->lock);
 
 	hcd->state = HC_STATE_RESUMING;
-	msleep(USB_RESUME_TIMEOUT);
+	msleep(20);
 
 	/* Go operational */
 	spin_lock_irq(&isp116x->lock);

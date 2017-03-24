@@ -1235,7 +1235,7 @@ out:
 		 * leave kernel.
 		 */
 		if (p->mm && printk_ratelimit()) {
-			printk_deferred("process %d (%s) no longer affine to cpu%d\n",
+			printk_sched("process %d (%s) no longer affine to cpu%d\n",
 					task_pid_nr(p), p->comm, cpu);
 		}
 	}
@@ -1612,6 +1612,7 @@ out:
  */
 int wake_up_process(struct task_struct *p)
 {
+	WARN_ON(task_is_stopped_or_traced(p));
 	return try_to_wake_up(p, TASK_NORMAL, 0);
 }
 EXPORT_SYMBOL(wake_up_process);
@@ -5242,7 +5243,6 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
 
 	case CPU_UP_PREPARE:
 		rq->calc_load_update = calc_load_update;
-		account_reset_rq(rq);
 		break;
 
 	case CPU_ONLINE:
@@ -5295,6 +5295,7 @@ static int __cpuinit sched_cpu_active(struct notifier_block *nfb,
 				      unsigned long action, void *hcpu)
 {
 	switch (action & ~CPU_TASKS_FROZEN) {
+	case CPU_STARTING:
 	case CPU_DOWN_FAILED:
 		set_cpu_active((long)hcpu, true);
 		return NOTIFY_OK;
@@ -7762,7 +7763,7 @@ cpu_cgroup_allow_attach(struct cgroup *cgrp, struct cgroup_taskset *tset)
 		tcred = __task_cred(task);
 
 		if ((current != task) && !capable(CAP_SYS_NICE) &&
-		    !uid_eq(cred->euid, tcred->uid) && !uid_eq(cred->euid, tcred->suid))
+		    cred->euid != tcred->uid && cred->euid != tcred->suid)
 			return -EACCES;
 	}
 

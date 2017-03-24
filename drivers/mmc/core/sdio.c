@@ -35,6 +35,8 @@
 #include <linux/mmc/sdio_ids.h>
 #endif
 
+extern int sdio_card_irq_get(struct mmc_card *card);
+
 static int sdio_read_fbr(struct sdio_func *func)
 {
 	int ret;
@@ -1224,7 +1226,7 @@ int mmc_attach_sdio(struct mmc_host *host)
 		if (err)
 			goto remove_added;
 	}
-
+	sdio_card_irq_get(host->card);
 	mmc_claim_host(host);
 	return 0;
 
@@ -1310,10 +1312,10 @@ err:
 }
 EXPORT_SYMBOL(sdio_reset_comm);
 
+
 static void sdio_rescan (struct mmc_host *host)
 {
     int ret;
-
     host->rescan_entered = 0;
 	host->host_rescan_disable = false;
     mmc_detect_change(host, 0); // start the delayed_work
@@ -1326,6 +1328,7 @@ static void sdio_rescan (struct mmc_host *host)
     // }
 }
 
+
 void sdio_reinit (void)
 {
     if(comm_card) { // run sdio_rescan() already
@@ -1337,6 +1340,7 @@ void sdio_reinit (void)
         } else {
             printk("\033[0;47;33m [%s] Error: sdio_host is NULL \033[0m\n", __func__);
         }
+
     }
     printk("[%s] finish\n", __func__);
 }

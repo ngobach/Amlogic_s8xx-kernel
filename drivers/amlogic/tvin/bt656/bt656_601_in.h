@@ -19,7 +19,7 @@
 #include "../tvin_frontend.h"
 #include "../tvin_global.h"
 
-#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8 || MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB || MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV
 #define WR(x,val)                         WRITE_CBUS_REG(x,val)
 #define WR_BITS(x,val,start,length)       WRITE_CBUS_REG_BITS(x,val,start,length)
 #define RD(x)                             READ_CBUS_REG(x)
@@ -37,14 +37,14 @@ enum am656_status_e{
 };
 typedef struct am656in_dev_s{
         int                     index;
-        dev_t                   devt;           
+        dev_t                   devt;
         struct cdev             cdev;
         struct device          *dev;
         unsigned int            overflow_cnt;
         unsigned int            skip_vdin_frame_count;
         enum am656_status_e     dec_status;
         struct vdin_parm_s      para;
-        struct tvin_frontend_s  frontend; 
+        struct tvin_frontend_s  frontend;
 }am656in_dev_t;
 #endif
 

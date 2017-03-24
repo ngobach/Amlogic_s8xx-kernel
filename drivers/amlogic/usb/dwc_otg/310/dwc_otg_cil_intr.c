@@ -64,7 +64,7 @@ static const char * bc_name[]={
 	"DCP (Charger)",
 	"CDP (PC with Charger)",
 };
-static void charger_detect_work(void *_vp)
+void charger_detect_work(void *_vp)
 {
 	dwc_otg_core_if_t * core_if = (dwc_otg_core_if_t *) _vp;
 	dwc_irqflags_t flags;
@@ -77,15 +77,14 @@ static void charger_detect_work(void *_vp)
 	if(core_if->session_valid){
 		/* Save status, turn on pull up */
 		core_if->dev_if->vbus_on = 1;
-//		if(core_if->dev_if->pull_up){
+		if(core_if->dev_if->pull_up){
 			dwc_otg_device_soft_connect(core_if);
-//		}
+		}
 	}else{
 		core_if->dev_if->vbus_on = 0;
 		/* Disable Pull up, defaultly */
-//		if(core_if->dev_if->pull_up){
+		if(core_if->dev_if->pull_up)
 			dwc_otg_device_soft_disconnect(core_if);
-//		}
 	}
 	DWC_SPINUNLOCK_IRQRESTORE(core_if->lock,flags);
 
@@ -94,19 +93,31 @@ static void charger_detect_work(void *_vp)
 			core_if->bc_mode = USB_BC_MODE_DISCONNECT;
 		}else{
 			one_loop = 100; // ms
-			delay = one_loop * 20; // MAX 2s
+			if (core_if->non_normal_usb_charger_detect_delay != 0){
+			   delay = core_if->non_normal_usb_charger_detect_delay; // MAX 20s,for non-normol usb charger detect
+			   core_if->non_normal_usb_charger_detect_delay = 0;
+			}
+			else
+				delay = one_loop * 20; // MAX 2s
 
 			while(delay > 0){
 				if(core_if->device_connected){
-					core_if->bc_mode = USB_BC_MODE_SDP;	// PC
+					if(!core_if->session_valid)  
+						core_if->bc_mode = USB_BC_MODE_DISCONNECT;  //check if USB power removed
+					else
+					  core_if->bc_mode = USB_BC_MODE_SDP;	// PC
 					break;
 				}
 				DWC_MSLEEP(one_loop);
 				delay -= one_loop;
 			}
 
-			if(delay <= 0)	// Time out
-				core_if->bc_mode = USB_BC_MODE_DCP;	// Charger
+			if(delay <= 0) {	// Time out
+				if(!core_if->session_valid)  
+						core_if->bc_mode = USB_BC_MODE_DISCONNECT;  //check if USB power removed
+				else
+				    core_if->bc_mode = USB_BC_MODE_DCP;	// Charger
+			}
 		}
 		DWC_PRINTF("Detected battery charger type: %s\n",bc_name[core_if->bc_mode]);
 		dwc_otg_charger_detect_notifier_call(core_if->bc_mode);
@@ -502,7 +513,10 @@ int32_t dwc_otg_handle_session_req_intr(dwc_otg_core_if_t * core_if)
 		DWC_PRINTF("SRP: Device mode\n");
 		gotgctl.d32 =
 			DWC_READ_REG32(&core_if->core_global_regs->gotgctl);
-
+		if (gotgctl.b.sesreqscs)
+			DWC_PRINTF("SRP Success\n");
+		else
+			DWC_PRINTF("SRP Fail\n");
 		if (core_if->otg_ver) {
 			gotgctl.d32 = 0 ;	
 			gotgctl.b.devhnpen = 1;

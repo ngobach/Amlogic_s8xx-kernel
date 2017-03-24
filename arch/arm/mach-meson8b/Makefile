@@ -13,7 +13,6 @@ obj-  :=
 
 # Board support
 obj-$(CONFIG_MACH_MESON8B_COMMON_BOARD)	+= board-meson8b-common.o
-obj-$(CONFIG_MACH_MESON8B_ODROIDC) += board-meson8b-odroidc.o
 
 # Cache config
 obj-$(CONFIG_CACHE_L2X0) += cache.o
@@ -39,11 +38,11 @@ obj-$(CONFIG_MESON_SUSPEND) += power_suspend.o
 #ifneq ($(CONFIG_MESON_SUSPEND),y)
 #obj-$(CONFIG_SUSPEND) += sleep.o
 #endif
-obj-$(CONFIG_AMLOGIC_THERMAL) += thermal.o
+obj-$(CONFIG_AML_PLATFORM_THERMAL) += thermal.o
 
 obj-$(CONFIG_AML_HDMI_TX) +=  hdmi_tx_hw/
 
-obj-$(CONFIG_AM_LCD_OUTPUT) +=  lcd/
+obj-$(CONFIG_AML_LCD_TABLET) +=  lcd/
 
 # ARM Trustzone
 obj-$(CONFIG_MESON_TRUSTZONE) += meson-smc.o meson-secure.o

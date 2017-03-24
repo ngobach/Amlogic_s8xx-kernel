@@ -837,6 +837,10 @@ int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pda
         rn5t618_otg_job.value = value;
         return 0;
     }
+    if (!rn5t618_battery) {
+        RICOH_INFO("no battery, exit\n");    
+        return 0;
+    }
     rn5t618_otg_value = value;
     RICOH_INFO("%s, value:%d, is_short:%d\n", __func__, rn5t618_otg_value, g_rn5t618_init->vbus_dcin_short_connect);
     if (rn5t618_otg_value) {
@@ -1443,7 +1447,7 @@ static void rn5t618_charging_monitor(struct work_struct *work)
 }
 
 #if defined CONFIG_HAS_EARLYSUSPEND
-static int early_power_status = 0;
+static int early_power_status = -1;
 static void rn5t618_earlysuspend(struct early_suspend *h)
 {
     struct rn5t618_supply *supply = (struct rn5t618_supply *)h->param;
@@ -1461,7 +1465,7 @@ static void rn5t618_lateresume(struct early_suspend *h)
     schedule_work(&supply->work.work);                                      // update for upper layer 
     if (rn5t618_battery) {
         rn5t618_set_charge_current(rn5t618_battery->pmu_resume_chgcur);
-        early_power_status = supply->aml_charger.ext_valid; 
+        early_power_status = -1;
         input_report_key(rn5t618_power_key, KEY_POWER, 0);                  // cancel power key 
         input_sync(rn5t618_power_key);
     }
@@ -1740,7 +1744,7 @@ static int rn5t618_suspend(struct platform_device *dev, pm_message_t state)
         } 
     }
 #ifdef CONFIG_HAS_EARLYSUSPEND
-    if (early_power_status != supply->aml_charger.ext_valid) {
+    if ((early_power_status != supply->aml_charger.ext_valid) && (early_power_status != -1)) {
         RICOH_DBG("%s, power status changed, prev:%x, now:%x, exit suspend process\n", 
                   __func__, early_power_status, supply->aml_charger.ext_valid);
         input_report_key(rn5t618_power_key, KEY_POWER, 1);              // assume power key pressed 

@@ -39,7 +39,9 @@
 #include <linux/dma-contiguous.h>
 #include <linux/slab.h>
 #include "amports_priv.h"
+#include <linux/amlogic/codec_mm/codec_mm.h>
 
+#define MEM_NAME "codec_265"
 #include <mach/am_regs.h>
 #include "vdec_reg.h"
 
@@ -52,6 +54,8 @@
 
 //#define ERROR_HANDLE_DEBUG
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8B
+#undef SUPPORT_4K2K
+#elif MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB
 #undef SUPPORT_4K2K
 #else
 #define SUPPORT_4K2K
@@ -768,15 +772,14 @@ enum SliceType
 
 #define MAX_BUF_NUM 16
 typedef struct BUF_{
-  int index;
-  unsigned int alloc_flag;
-	/*buffer*/
-  unsigned int  cma_page_count;
-  struct page *alloc_pages;
-	unsigned long start_adr;
-	unsigned long size;
-	
-	unsigned long free_start_adr;
+    int index;
+    unsigned int alloc_flag;
+    /*buffer*/
+    unsigned int  cma_page_count;
+    unsigned long alloc_addr;
+    unsigned long start_adr;
+    unsigned int size;
+    unsigned long free_start_adr;
 }BUF_t;
 static BUF_t m_BUF[MAX_BUF_NUM];
 static u32 max_buf_num = MAX_BUF_NUM;
@@ -1119,123 +1122,147 @@ static void uninit_buf_list(hevc_stru_t* hevc)
       }
   }
 
-  if (release_cma_flag) {
-      for (i = 0; i < used_buf_num; i++) {
-        if (m_BUF[i].alloc_pages != NULL && m_BUF[i].cma_page_count > 0) {
-            if ((release_cma_flag == 2) && (previous_display_buf_adr >= m_BUF[i].start_adr)
-                && (previous_display_buf_adr < (m_BUF[i].start_adr + m_BUF[i].size)))
-              continue;
-            dma_release_from_contiguous(cma_dev, m_BUF[i].alloc_pages, m_BUF[i].cma_page_count);
-            printk("release cma buffer[%d] (%d %x)\n", i, m_BUF[i].cma_page_count, (unsigned)m_BUF[i].alloc_pages);
-            m_BUF[i].alloc_pages=NULL;
-            m_BUF[i].cma_page_count=0;
-        }
-      }
-  }
+   if (release_cma_flag) {
+       for (i = 0; i < used_buf_num; i++) {
+       if (m_BUF[i].alloc_addr != 0
+           && m_BUF[i].cma_page_count > 0) {
+               if ((release_cma_flag == 2)
+                   && (previous_display_buf_adr >=
+                   m_BUF[i].start_adr)
+                   && (previous_display_buf_adr <
+                   (m_BUF[i].start_adr +
+                   m_BUF[i].size)))
+               continue;
 
-  hevc->pic_list_init_flag = 0;
-  hevc->buf_num = 0;
+               pr_info("release cma buffer[%d] (%d %ld)\n", i,
+                   m_BUF[i].cma_page_count,
+                   m_BUF[i].alloc_addr);
+               codec_mm_free_for_dma(MEM_NAME,
+                   m_BUF[i].alloc_addr);
+                   m_BUF[i].alloc_addr = 0;
+                   m_BUF[i].cma_page_count = 0;
+
+           }
+       }
+   }
+
+    hevc->pic_list_init_flag = 0;
+    hevc->buf_num = 0;
 }
 
 static void init_buf_list(hevc_stru_t* hevc)
 {
-	int i;
-	int buf_size;
-	int mc_buffer_end = hevc->mc_buf->buf_start + hevc->mc_buf->buf_size;
-	
-	if (dynamic_buf_num_margin > 0)
-		used_buf_num = hevc->sps_num_reorder_pics_0
-		+ dynamic_buf_num_margin;
-	else
-		used_buf_num = max_buf_num;
+    int i;
+    int buf_size;
+    int mc_buffer_end = hevc->mc_buf->buf_start + hevc->mc_buf->buf_size;
 
-	if (used_buf_num > MAX_BUF_NUM)
-		used_buf_num = MAX_BUF_NUM;
+    if (dynamic_buf_num_margin > 0)
+        used_buf_num = hevc->sps_num_reorder_pics_0 + dynamic_buf_num_margin;
+    else
+        used_buf_num = max_buf_num;
 
-	if(buf_alloc_size>0){
-	    buf_size = buf_alloc_size;
-	    if(debug)printk("[Buffer Management] init_buf_list:\n");	
-	}
-	else{
-	    int pic_width = buf_alloc_width?buf_alloc_width:hevc->pic_w;
-	    int pic_height = buf_alloc_height?buf_alloc_height:hevc->pic_h;
-	    int pic_width_64 = (pic_width + 63) & (~0x3f);
-	    int pic_height_32 = (pic_height + 31) & (~0x1f);
-	    int lcu_size = hevc->lcu_size ;
+    if (used_buf_num > MAX_BUF_NUM)
+        used_buf_num = MAX_BUF_NUM;
+
+    if (buf_alloc_size>0) {
+        buf_size = buf_alloc_size;
+        if (debug) printk("[Buffer Management] init_buf_list:\n");
+     } else {
+        int pic_width = buf_alloc_width?buf_alloc_width:hevc->pic_w;
+        int pic_height = buf_alloc_height?buf_alloc_height:hevc->pic_h;
+        int pic_width_64 = (pic_width + 63) & (~0x3f);
+        int pic_height_32 = (pic_height + 31) & (~0x1f);
+        int lcu_size = hevc->lcu_size ;
 #if 1
-	    int pic_width_lcu  = (pic_width_64 % lcu_size) ? pic_width_64 / lcu_size  + 1 : pic_width_64 / lcu_size;
-	    int pic_height_lcu = (pic_height_32 % lcu_size) ? pic_height_32 / lcu_size + 1 : pic_height_32 / lcu_size;
-	    //int pic_height_lcu_2 = (pic_height_lcu + 1) & (~0x1);
-	    int pic_height_lcu_2 = (lcu_size == 32) ? (pic_height_lcu + 1) & (~0x1): ((lcu_size == 16) ? (pic_height_lcu + 3) & (~0x3) :
-	                             pic_height_lcu);
-	    int lcu_total       = pic_width_lcu * pic_height_lcu_2;
+        int pic_width_lcu  = (pic_width_64 % lcu_size) ? pic_width_64 / lcu_size  + 1 : pic_width_64 / lcu_size;
+        int pic_height_lcu = (pic_height_32 % lcu_size) ? pic_height_32 / lcu_size + 1 : pic_height_32 / lcu_size;
+        //int pic_height_lcu_2 = (pic_height_lcu + 1) & (~0x1);
+        int pic_height_lcu_2 = (lcu_size == 32) ? (pic_height_lcu + 1) & (~0x1): ((lcu_size == 16) ? (pic_height_lcu + 3) & (~0x3) :
+        pic_height_lcu);
+        int lcu_total       = pic_width_lcu * pic_height_lcu_2;
 #else
-	    int pic_width_lcu  = (pic_width % lcu_size) ? pic_width / lcu_size  + 1 : pic_width /lcu_size;
-	    int pic_height_lcu = (pic_height % lcu_size) ? pic_height / lcu_size + 1 : pic_height/lcu_size;
-	    int lcu_total       = pic_width_lcu * pic_height_lcu;
+        int pic_width_lcu  = (pic_width % lcu_size) ? pic_width / lcu_size  + 1 : pic_width /lcu_size;
+        int pic_height_lcu = (pic_height % lcu_size) ? pic_height / lcu_size + 1 : pic_height/lcu_size;
+        int lcu_total       = pic_width_lcu * pic_height_lcu;
 #endif
-	    int mc_buffer_size_u_v = lcu_total*lcu_size*lcu_size/2;
-	    int mc_buffer_size_u_v_h = (mc_buffer_size_u_v + 0xffff)>>16; //64k alignment
+        int mc_buffer_size_u_v = lcu_total*lcu_size*lcu_size/2;
+        int mc_buffer_size_u_v_h = (mc_buffer_size_u_v + 0xffff)>>16; //64k alignment
 
-	    buf_size = (mc_buffer_size_u_v_h<<16)*3;
-	    if (debug) printk("[Buffer Management] init_buf_list num %d (width %d height %d):\n",
-	         used_buf_num, pic_width, pic_height);
-  }  
-
-	for (i = 0; i < used_buf_num; i++) {
-		if(((i+1)*buf_size) > hevc->mc_buf->buf_size){
-        if(use_cma){
-            hevc->use_cma_flag = 1;
-        }
-        else{
-            if(debug)printk("%s maximum buf size is used\n", __func__);
-              break;
-        }
+        buf_size = (mc_buffer_size_u_v_h<<16)*3;
+        if (debug)
+            printk("[Buffer Management] init_buf_list num %d (width %d height %d):\n",
+                   used_buf_num, pic_width, pic_height);
     }
-    m_BUF[i].alloc_flag = 0;
-    m_BUF[i].index = i;
-		
-		if(hevc->use_cma_flag){
-		    if((m_BUF[i].cma_page_count!=0) && (m_BUF[i].alloc_pages!=NULL) &&
-		        (m_BUF[i].size != buf_size)){
-            dma_release_from_contiguous(cma_dev, m_BUF[i].alloc_pages, m_BUF[i].cma_page_count);
-            printk("release cma buffer[%d] (%d %x)\n", i, m_BUF[i].cma_page_count, (unsigned)m_BUF[i].alloc_pages);
-            m_BUF[i].alloc_pages=NULL;
-            m_BUF[i].cma_page_count=0;		        
-		    }
-		    if(m_BUF[i].alloc_pages == NULL){
-    		    m_BUF[i].cma_page_count = PAGE_ALIGN(buf_size)/PAGE_SIZE;
-            m_BUF[i].alloc_pages = dma_alloc_from_contiguous(cma_dev, m_BUF[i].cma_page_count, 4);
-            if(m_BUF[i].alloc_pages == NULL){
-                printk("allocate cma buffer[%d] fail\n", i);
-                m_BUF[i].cma_page_count = 0;
-                break;
+
+    for (i = 0; i < used_buf_num; i++) {
+        if (((i + 1) * buf_size) > hevc->mc_buf->buf_size) {
+            if (use_cma) {
+                hevc->use_cma_flag = 1;
+            } else {
+                if (debug) printk("%s maximum buf size is used\n", __func__);
+                    break;
             }
-            m_BUF[i].start_adr = page_to_phys(m_BUF[i].alloc_pages);
-            printk("allocate cma buffer[%d] (%d,%x,%x)\n", i, m_BUF[i].cma_page_count , (unsigned)m_BUF[i].alloc_pages, (unsigned)m_BUF[i].start_adr);
         }
-        else{
-            printk("reuse cma buffer[%d] (%d,%x,%x)\n", i, m_BUF[i].cma_page_count , (unsigned)m_BUF[i].alloc_pages, (unsigned)m_BUF[i].start_adr);
+        m_BUF[i].alloc_flag = 0;
+        m_BUF[i].index = i;
+
+        if (hevc->use_cma_flag) {
+            if ((m_BUF[i].cma_page_count != 0)
+              && (m_BUF[i].alloc_addr != 0)
+              && (m_BUF[i].size != buf_size)) {
+                codec_mm_free_for_dma(MEM_NAME,
+                m_BUF[i].alloc_addr);
+                pr_info("release cma buffer[%d] (%d %ld)\n", i,
+                m_BUF[i].cma_page_count,
+                m_BUF[i].alloc_addr);
+                m_BUF[i].alloc_addr = 0;
+                m_BUF[i].cma_page_count = 0;
+            }
+            if (m_BUF[i].alloc_addr == 0) {
+                m_BUF[i].cma_page_count =
+                PAGE_ALIGN(buf_size) / PAGE_SIZE;
+                m_BUF[i].alloc_addr = codec_mm_alloc_for_dma(
+                MEM_NAME, m_BUF[i].cma_page_count,
+                4 + PAGE_SHIFT, 0);
+                if (m_BUF[i].alloc_addr == 0) {
+                    pr_info("alloc cma buffer[%d] fail\n", i);
+                    m_BUF[i].cma_page_count = 0;
+                    break;
+                }
+                pr_info("allocate cma buffer[%d] (%d,%ld,%ld)\n",
+                i, m_BUF[i].cma_page_count,
+                m_BUF[i].alloc_addr,
+                m_BUF[i].start_adr);
+            } else {
+                pr_info("reuse cma buffer[%d] (%d,%ld,%ld)\n",
+                   i,
+                   m_BUF[i].cma_page_count,
+                   m_BUF[i].alloc_addr,
+                   m_BUF[i].start_adr);
+            }
+            m_BUF[i].start_adr =  m_BUF[i].alloc_addr;
+        } else {
+            m_BUF[i].cma_page_count = 0;
+            m_BUF[i].alloc_addr = 0;
+            m_BUF[i].start_adr =
+            hevc->mc_buf->buf_start + i * buf_size;
         }
-		}
-		else{
-		    m_BUF[i].cma_page_count = 0;
-		    m_BUF[i].alloc_pages = NULL;
-		    m_BUF[i].start_adr = hevc->mc_buf->buf_start + i*buf_size;
-    }		    
-    m_BUF[i].size = buf_size;
-    m_BUF[i].free_start_adr = m_BUF[i].start_adr;
+        m_BUF[i].size = buf_size;
+        m_BUF[i].free_start_adr = m_BUF[i].start_adr;
 
-		if(((m_BUF[i].start_adr+buf_size) > mc_buffer_end) && (m_BUF[i].alloc_pages==NULL)){
-	    if(debug) printk("Max mc buffer or mpred_mv buffer is used\n");		
-			break;
-		}
-
-    if(debug){
-        printk("Buffer %d: start_adr %lx size %lx\n", i, m_BUF[i].start_adr, m_BUF[i].size);
+        if (((m_BUF[i].start_adr + buf_size) > mc_buffer_end)
+            && (m_BUF[i].alloc_addr == 0)) {
+            if (debug) {
+                pr_info("Max mc buffer or mpred_mv buffer is used\n");
+            }
+            break;
+        }
+        if (debug) {
+            pr_info("Buffer %d: start_adr %p size %x\n", i,
+                (void *)m_BUF[i].start_adr, m_BUF[i].size);
+        }
     }
-	}
-	
+
 	hevc->buf_num = i;
 
 }
@@ -3588,6 +3615,8 @@ static int process_pending_vframe(hevc_stru_t *hevc, PIC_t* pair_pic, unsigned c
           vf->index |= (pair_pic->index << 8);
           vf->canvas1Addr = spec2canvas(pair_pic);
           pair_pic->vf_ref++;
+          vf->type_original = vf->type;
+
           kfifo_put(&display_q, (const vframe_t **)&vf);
         }
       }
@@ -3601,6 +3630,8 @@ static int process_pending_vframe(hevc_stru_t *hevc, PIC_t* pair_pic, unsigned c
           vf->index |= pair_pic->index;
           vf->canvas0Addr = spec2canvas(pair_pic);
           pair_pic->vf_ref++;
+          vf->type_original = vf->type;
+
           kfifo_put(&display_q, (const vframe_t **)&vf);
         }
       }
@@ -3712,6 +3743,8 @@ static int prepare_display_buf(hevc_stru_t* hevc, PIC_t* pic)
             vf->type = VIDTYPE_INTERLACE_BOTTOM | VIDTYPE_VIU_NV21;
             vf2->type = VIDTYPE_INTERLACE_TOP | VIDTYPE_VIU_NV21;
           }
+          vf->type_original = vf->type;
+
             kfifo_put(&display_q, (const vframe_t **)&vf);
             kfifo_put(&display_q, (const vframe_t **)&vf2);
           }
@@ -3740,6 +3773,8 @@ static int prepare_display_buf(hevc_stru_t* hevc, PIC_t* pic)
             vf2->type = VIDTYPE_INTERLACE_TOP | VIDTYPE_VIU_NV21;
             vf3->type = VIDTYPE_INTERLACE_BOTTOM | VIDTYPE_VIU_NV21;
           }
+          vf->type_original = vf->type;
+
           kfifo_put(&display_q, (const vframe_t **)&vf);
             kfifo_put(&display_q, (const vframe_t **)&vf2);
           kfifo_put(&display_q, (const vframe_t **)&vf3);
@@ -3753,6 +3788,7 @@ static int prepare_display_buf(hevc_stru_t* hevc, PIC_t* pic)
           vf->height <<= 1;
           if (pic->pic_struct == 9) {
             vf->type = VIDTYPE_INTERLACE_TOP | VIDTYPE_VIU_NV21 | VIDTYPE_VIU_FIELD;
+
             process_pending_vframe(hevc, pre_bot_pic, 0);
         }
         else{
@@ -3779,6 +3815,8 @@ static int prepare_display_buf(hevc_stru_t* hevc, PIC_t* pic)
             vf->type = VIDTYPE_INTERLACE_BOTTOM | VIDTYPE_VIU_NV21 | VIDTYPE_VIU_FIELD;
             vf->index = (pic->index << 8) | 0xff;
           }
+          vf->type_original = vf->type;
+
           kfifo_put(&pending_q, (const vframe_t **)&vf);
 
           /**/
@@ -3809,13 +3847,15 @@ static int prepare_display_buf(hevc_stru_t* hevc, PIC_t* pic)
               pre_bot_pic = pic;
               break;
           }
+          vf->type_original = vf->type;
+
           kfifo_put(&display_q, (const vframe_t **)&vf);
         }
 #else
+        vf->type_original = vf->type;
         pic->vf_ref = 1;
         kfifo_put(&display_q, (const vframe_t **)&vf);
 #endif
-
         vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL);
     }
 

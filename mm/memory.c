@@ -834,20 +834,20 @@ copy_one_pte(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 		if (!pte_file(pte)) {
 			swp_entry_t entry = pte_to_swp_entry(pte);
 
-			if (likely(!non_swap_entry(entry))) {
-				if (swap_duplicate(entry) < 0)
-					return entry.val;
+			if (swap_duplicate(entry) < 0)
+				return entry.val;
 
-				/* make sure dst_mm is on swapoff's mmlist. */
-				if (unlikely(list_empty(&dst_mm->mmlist))) {
-					spin_lock(&mmlist_lock);
-					if (list_empty(&dst_mm->mmlist))
-						list_add(&dst_mm->mmlist,
-							 &src_mm->mmlist);
-					spin_unlock(&mmlist_lock);
-				}
+			/* make sure dst_mm is on swapoff's mmlist. */
+			if (unlikely(list_empty(&dst_mm->mmlist))) {
+				spin_lock(&mmlist_lock);
+				if (list_empty(&dst_mm->mmlist))
+					list_add(&dst_mm->mmlist,
+						 &src_mm->mmlist);
+				spin_unlock(&mmlist_lock);
+			}
+			if (likely(!non_swap_entry(entry)))
 				rss[MM_SWAPENTS]++;
-			} else if (is_migration_entry(entry)) {
+			else if (is_migration_entry(entry)) {
 				page = migration_entry_to_page(entry);
 
 				if (PageAnon(page))
@@ -1089,6 +1089,8 @@ int copy_page_range(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	return ret;
 }
 
+extern bool has_cma_page(struct page *page);
+extern void wakeup_wq(bool has_cma);
 static unsigned long zap_pte_range(struct mmu_gather *tlb,
 				struct vm_area_struct *vma, pmd_t *pmd,
 				unsigned long addr, unsigned long end,
@@ -1096,6 +1098,7 @@ static unsigned long zap_pte_range(struct mmu_gather *tlb,
 {
 	struct mm_struct *mm = tlb->mm;
 	int force_flush = 0;
+	bool has_cma = false;
 	int rss[NR_MM_COUNTERS];
 	spinlock_t *ptl;
 	pte_t *start_pte;
@@ -1155,6 +1158,9 @@ again:
 				rss[MM_FILEPAGES]--;
 			}
 			page_remove_rmap(page);
+			if (!has_cma) {
+				has_cma = has_cma_page(page);
+			}
 			if (unlikely(page_mapcount(page) < 0))
 				print_bad_pte(vma, addr, ptent, page);
 			force_flush = !__tlb_remove_page(tlb, page);
@@ -1201,7 +1207,7 @@ again:
 	 * the PTE lock to avoid doing the potential expensive TLB invalidate
 	 * and page-free while holding it.
 	 */
-	if (force_flush) {
+	if (force_flush || has_cma) {
 		unsigned long old_end;
 
 		force_flush = 0;
@@ -1215,10 +1221,12 @@ again:
 		tlb->end = addr;
 
 		tlb_flush_mmu(tlb);
+		wakeup_wq(has_cma);
 
 		tlb->start = addr;
 		tlb->end = old_end;
 
+		has_cma = false;
 		if (addr != end)
 			goto again;
 	}
@@ -1713,7 +1721,7 @@ long __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 
 	VM_BUG_ON(!!pages != !!(gup_flags & FOLL_GET));
 
-	/* 
+	/*
 	 * Require read or write permissions.
 	 * If FOLL_FORCE is set, we only require the "MAY" flags.
 	 */
@@ -1844,8 +1852,7 @@ long __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 						else
 							return -EFAULT;
 					}
-					if (ret & (VM_FAULT_SIGBUS |
-						   VM_FAULT_SIGSEGV))
+					if (ret & VM_FAULT_SIGBUS)
 						return i ? i : -EFAULT;
 					BUG();
 				}
@@ -1938,15 +1945,10 @@ int fixup_user_fault(struct task_struct *tsk, struct mm_struct *mm,
 		     unsigned long address, unsigned int fault_flags)
 {
 	struct vm_area_struct *vma;
-	vm_flags_t vm_flags;
 	int ret;
 
 	vma = find_extend_vma(mm, address);
 	if (!vma || address < vma->vm_start)
-		return -EFAULT;
-
-	vm_flags = (fault_flags & FAULT_FLAG_WRITE) ? VM_WRITE : VM_READ;
-	if (!(vm_flags & vma->vm_flags))
 		return -EFAULT;
 
 	ret = handle_mm_fault(mm, vma, address, fault_flags);
@@ -1955,7 +1957,7 @@ int fixup_user_fault(struct task_struct *tsk, struct mm_struct *mm,
 			return -ENOMEM;
 		if (ret & (VM_FAULT_HWPOISON | VM_FAULT_HWPOISON_LARGE))
 			return -EHWPOISON;
-		if (ret & (VM_FAULT_SIGBUS | VM_FAULT_SIGSEGV))
+		if (ret & VM_FAULT_SIGBUS)
 			return -EFAULT;
 		BUG();
 	}
@@ -2759,7 +2761,7 @@ reuse:
 			set_page_dirty_balance(dirty_page, page_mkwrite);
 			/* file_update_time outside page_lock */
 			if (vma->vm_file)
-				vma_file_update_time(vma);
+				file_update_time(vma->vm_file);
 		}
 		put_page(dirty_page);
 		if (page_mkwrite) {
@@ -3015,6 +3017,7 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	struct mem_cgroup *ptr;
 	int exclusive = 0;
 	int ret = 0;
+	bool has_cma = false;
 
 	if (!pte_unmap_same(mm, pmd, page_table, orig_pte))
 		goto out;
@@ -3062,6 +3065,8 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		swapcache = page;
 		goto out_release;
 	}
+	if (!has_cma)
+		has_cma = has_cma_page(page);
 
 	swapcache = page;
 	locked = lock_page_or_retry(page, mm, flags);
@@ -3166,6 +3171,7 @@ static int do_swap_page(struct mm_struct *mm, struct vm_area_struct *vma,
 unlock:
 	pte_unmap_unlock(page_table, ptl);
 out:
+	wakeup_wq(has_cma);
 	return ret;
 out_nomap:
 	mem_cgroup_cancel_charge_swapin(ptr);
@@ -3178,6 +3184,7 @@ out_release:
 		unlock_page(swapcache);
 		page_cache_release(swapcache);
 	}
+	wakeup_wq(has_cma);
 	return ret;
 }
 
@@ -3201,7 +3208,7 @@ static inline int check_stack_guard_page(struct vm_area_struct *vma, unsigned lo
 		if (prev && prev->vm_end == address)
 			return prev->vm_flags & VM_GROWSDOWN ? 0 : -ENOMEM;
 
-		return expand_downwards(vma, address - PAGE_SIZE);
+		expand_downwards(vma, address - PAGE_SIZE);
 	}
 	if ((vma->vm_flags & VM_GROWSUP) && address + PAGE_SIZE == vma->vm_end) {
 		struct vm_area_struct *next = vma->vm_next;
@@ -3210,7 +3217,7 @@ static inline int check_stack_guard_page(struct vm_area_struct *vma, unsigned lo
 		if (next && next->vm_start == address + PAGE_SIZE)
 			return next->vm_flags & VM_GROWSUP ? 0 : -ENOMEM;
 
-		return expand_upwards(vma, address + PAGE_SIZE);
+		expand_upwards(vma, address + PAGE_SIZE);
 	}
 	return 0;
 }
@@ -3230,13 +3237,9 @@ static int do_anonymous_page(struct mm_struct *mm, struct vm_area_struct *vma,
 
 	pte_unmap(page_table);
 
-	/* File mapping without ->vm_ops ? */
-	if (vma->vm_flags & VM_SHARED)
-		return VM_FAULT_SIGBUS;
-
 	/* Check if we need to add a guard page to the stack */
 	if (check_stack_guard_page(vma, address) < 0)
-		return VM_FAULT_SIGSEGV;
+		return VM_FAULT_SIGBUS;
 
 	/* Use the zero-page for reads */
 	if (!(flags & FAULT_FLAG_WRITE)) {
@@ -3319,7 +3322,7 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	struct vm_fault vmf;
 	int ret;
 	int page_mkwrite = 0;
-
+	bool has_cma = false;
 	/*
 	 * If we do COW later, allocate page befor taking lock_page()
 	 * on the file cache page. This will reduce lock holding time.
@@ -3356,6 +3359,8 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		ret = VM_FAULT_HWPOISON;
 		goto uncharge_out;
 	}
+	if (!has_cma)
+		has_cma = has_cma_page(vmf.page);
 
 	/*
 	 * For consistency in subsequent calls, make the faulted page always
@@ -3470,17 +3475,19 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 
 		/* file_update_time outside page_lock */
 		if (vma->vm_file && !page_mkwrite)
-			vma_file_update_time(vma);
+			file_update_time(vma->vm_file);
 	} else {
 		unlock_page(vmf.page);
 		if (anon)
 			page_cache_release(vmf.page);
 	}
 
+	wakeup_wq(has_cma);
 	return ret;
 
 unwritable_page:
 	page_cache_release(page);
+	wakeup_wq(has_cma);
 	return ret;
 uncharge_out:
 	/* fs's fault handler get error */
@@ -3499,9 +3506,6 @@ static int do_linear_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 			- vma->vm_start) >> PAGE_SHIFT) + vma->vm_pgoff;
 
 	pte_unmap(page_table);
-	/* The VMA was not fully populated on mmap() or missing VM_DONTEXPAND */
-	if (!vma->vm_ops->fault)
-		return VM_FAULT_SIGBUS;
 	return __do_fault(mm, vma, address, pmd, pgoff, flags, orig_pte);
 }
 
@@ -3713,9 +3717,11 @@ int handle_pte_fault(struct mm_struct *mm,
 	entry = *pte;
 	if (!pte_present(entry)) {
 		if (pte_none(entry)) {
-			if (vma->vm_ops)
-				return do_linear_fault(mm, vma, address,
+			if (vma->vm_ops) {
+				if (likely(vma->vm_ops->fault))
+					return do_linear_fault(mm, vma, address,
 						pte, pmd, flags, entry);
+			}
 			return do_anonymous_page(mm, vma, address,
 						 pte, pmd, flags);
 		}
@@ -3760,13 +3766,21 @@ unlock:
 /*
  * By the time we get here, we already hold the mm semaphore
  */
-static int __handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
-			     unsigned long address, unsigned int flags)
+int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
+		unsigned long address, unsigned int flags)
 {
 	pgd_t *pgd;
 	pud_t *pud;
 	pmd_t *pmd;
 	pte_t *pte;
+
+	__set_current_state(TASK_RUNNING);
+
+	count_vm_event(PGFAULT);
+	mem_cgroup_count_vm_event(mm, PGFAULT);
+
+	/* do counter updates before entering really critical section. */
+	check_sync_rss_stat(current);
 
 	if (unlikely(is_vm_hugetlb_page(vma)))
 		return hugetlb_fault(mm, vma, address, flags);
@@ -3846,43 +3860,6 @@ retry:
 	pte = pte_offset_map(pmd, address);
 
 	return handle_pte_fault(mm, vma, address, pte, pmd, flags);
-}
-
-int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
-		    unsigned long address, unsigned int flags)
-{
-	int ret;
-
-	__set_current_state(TASK_RUNNING);
-
-	count_vm_event(PGFAULT);
-	mem_cgroup_count_vm_event(mm, PGFAULT);
-
-	/* do counter updates before entering really critical section. */
-	check_sync_rss_stat(current);
-
-	/*
-	 * Enable the memcg OOM handling for faults triggered in user
-	 * space.  Kernel faults are handled more gracefully.
-	 */
-	if (flags & FAULT_FLAG_USER)
-		mem_cgroup_oom_enable();
-
-	ret = __handle_mm_fault(mm, vma, address, flags);
-
-	if (flags & FAULT_FLAG_USER) {
-		mem_cgroup_oom_disable();
-                /*
-                 * The task may have entered a memcg OOM situation but
-                 * if the allocation error was handled gracefully (no
-                 * VM_FAULT_OOM), there is no need to kill anything.
-                 * Just clean up the OOM state peacefully.
-                 */
-                if (task_in_memcg_oom(current) && !(ret & VM_FAULT_OOM))
-                        mem_cgroup_oom_synchronize(false);
-	}
-
-	return ret;
 }
 
 #ifndef __PAGETABLE_PUD_FOLDED
@@ -4094,7 +4071,7 @@ int generic_access_phys(struct vm_area_struct *vma, unsigned long addr,
 	if (follow_phys(vma, addr, write, &prot, &phys_addr))
 		return -EINVAL;
 
-	maddr = ioremap_prot(phys_addr, PAGE_ALIGN(len + offset), prot);
+	maddr = ioremap_prot(phys_addr, PAGE_SIZE, prot);
 	if (write)
 		memcpy_toio(maddr + offset, buf, len);
 	else

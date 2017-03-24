@@ -117,6 +117,13 @@ config GRAVITY_MXC6255XC
 	  If you say yes here you get support for Memsic's 2-Axis
 	  acceleration sensors MXC6255XC.
 
+config GRAVITY_STK8BAXX
+       tristate "STK8BAXX 3-Axis acceleration sensor driver"
+       depends on I2C=y
+       help
+         If you say yes here you get support for Sensortek
+         acceleration sensors STK8BAXX.
+
 config GYROSCOPE_L3GD20
 	tristate "L3GD20 3-Axis gyroscope sensor driver"
 	depends on I2C=y

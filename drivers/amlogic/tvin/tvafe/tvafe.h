@@ -22,7 +22,7 @@
 // ***************************************************************************
 // *** macro definitions *********************************************
 // ***************************************************************************
-#define TVAFE_VER "Ref.2013/10/23"
+#define TVAFE_VER "Ref.2015/04/21"
 
 /* used to set the flag of tvafe_dev_s */
 #define TVAFE_FLAG_DEV_OPENED       0x00000010
@@ -71,6 +71,12 @@ typedef struct tvafe_dev_s {
 	struct tvafe_cvd2_mem_s     mem;
 
 	struct tvafe_info_s         tvafe;
+	unsigned int			cma_config_en;
+#ifdef CONFIG_CMA
+	struct platform_device	*this_pdev;
+	struct page 			*venc_pages;
+	unsigned int			cma_mem_size;//MBYTE
+#endif
 
 } tvafe_dev_t;
 

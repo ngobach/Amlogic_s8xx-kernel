@@ -256,6 +256,9 @@ static ssize_t sii9233a_debug_store(struct class *class, struct class_attribute 
 	int ret = 0;
 
 	p = kstrdup(buf, GFP_KERNEL);
+	if (p == NULL)
+		goto MALLOC_FAILED;
+
 	for( argn=0; argn<4; argn++ )
 	{
 		para = strsep(&p, " ");
@@ -281,15 +284,14 @@ static ssize_t sii9233a_debug_store(struct class *class, struct class_attribute 
 	else
 	{
 		printk("invalid cmd = %s\n", argv[0]);
-		return count;
+		goto PROCESS_END;
 	}
 
 	printk(" cmd = %d - \"%s\"\n", cmd, argv[0]);
 	if( (argn<1) || ((cmd==0)&&argn!=3) || ((cmd==1)&&(argn!=4)) || ((cmd==2)&&(argn!=4)) )
 	{
 		printk("invalid command format!\n");
-		kfree(p);
-		return count;
+		goto PROCESS_END;
 	}
 
 	if( cmd < 4 )
@@ -406,7 +408,12 @@ static ssize_t sii9233a_debug_store(struct class *class, struct class_attribute 
 		}
 	}
 
+PROCESS_END:
 	kfree(p);
+	return count;
+
+MALLOC_FAILED:
+	printk("[%s] kstrdup failed!\n", __FUNCTION__);
 	return count;
 }
 #if 0
@@ -469,6 +476,9 @@ static ssize_t sii9233a_enable_store(struct class *class, struct class_attribute
 	int i = 0;
 
 	p = kstrdup(buf, GFP_KERNEL);
+	if (p == NULL)
+		goto MALLOC_FAILED;
+
 	for( argn=0; argn<4; argn++ )
 	{
 		para = strsep(&p, " ");
@@ -505,7 +515,7 @@ static ssize_t sii9233a_enable_store(struct class *class, struct class_attribute
 	if( (enable==1) && (argn!=5) && (argn!=1) )
 	{
 		printk("invalid parameters to enable cmd !\n");
-		return count;
+		goto PROCESS_END;
 	}
 
 	if( (enable==0) && (sii9233a_info.vdin_started==1) )
@@ -551,6 +561,12 @@ static ssize_t sii9233a_enable_store(struct class *class, struct class_attribute
 		printk("sii9233a enable(0x%x) dvin !\n", enable);
 	}
 
+PROCESS_END:
+	kfree(p);
+	return count;
+
+MALLOC_FAILED:
+	printk("[%s] kstrdup failed!\n", __FUNCTION__);
 	return count;
 }
 
@@ -592,7 +608,9 @@ static ssize_t sii9233a_input_mode_show(struct class *class, struct class_attrib
 static ssize_t sii9233a_cable_status_show(struct class *class, struct class_attribute *attr, char *buf)
 {
 	sii9233a_info.cable_status = sii_get_pwr5v_status();
-	return sprintf(buf, "%d\n", sii9233a_info.cable_status);
+	sii9233a_info.cable_status_all = sii_get_pwr5v_status_all();
+
+	return sprintf(buf, "cable status active:all = %d:%.4d\n", sii9233a_info.cable_status, sii9233a_info.cable_status_all);
 }
 
 static ssize_t sii9233a_signal_status_show(struct class *class, struct class_attribute *attr, char *buf)

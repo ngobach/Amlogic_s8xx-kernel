@@ -70,7 +70,6 @@ enum {
 
 #define AUDIO_CLK_256FS             0
 #define AUDIO_CLK_384FS             1
-#define AUDIO_CLK_128FS             2
 
 #define AUDIO_CLK_FREQ_192  0
 #define AUDIO_CLK_FREQ_1764 1
@@ -86,8 +85,7 @@ enum {
 #define AUDIO_CLK_FREQ_16		10
 #define AUDIO_CLK_FREQ_22		11
 #define AUDIO_CLK_FREQ_24		12
-#define AUDIO_CLK_FREQ_3528     13
-#define AUDIO_CLK_FREQ_384      14
+
 
 #define AIU_958_MODE_RAW    0
 #define AIU_958_MODE_PCM16  1
@@ -103,9 +101,11 @@ enum {
 #define AUDIO_ALGOUT_DAC_FORMAT_LEFT_JUSTIFY    1
 
 extern unsigned ENABLE_IEC958;
+extern unsigned IEC958_MODE;
+extern unsigned I2S_MODE;
 
 void audio_set_aiubuf(u32 addr, u32 size, unsigned int channel);
-void audio_set_958outbuf(u32 addr, u32 size, int channels, int flag);
+void audio_set_958outbuf(u32 addr, u32 size, int flag);
 void audio_in_i2s_set_buf(u32 addr, u32 size,u32 i2s_mode, u32 i2s_sync);
 void audio_in_spdif_set_buf(u32 addr, u32 size);
 void audio_in_i2s_enable(int flag);
@@ -140,13 +140,15 @@ unsigned int read_iec958_rd_ptr(void);
 void audio_in_spdif_enable(int flag);
 unsigned audio_spdifout_pg_enable(unsigned char enable);
 unsigned audio_aiu_pg_enable(unsigned char enable);
+void audio_mute_left_right(unsigned flag);
+void set_i2s_source(int source);
 
 #include "mach/cpu.h"
 
 /*OVERCLOCK == 1,our SOC privide 512fs mclk,OVERCLOCK == 0 ,256fs*/
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6TV
 #define OVERCLOCK 0
-#define IEC958_OVERCLOCK 0
+#define IEC958_OVERCLOCK 1
 #else
 #define OVERCLOCK 1
 #endif

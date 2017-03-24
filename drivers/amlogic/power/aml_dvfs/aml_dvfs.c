@@ -127,9 +127,11 @@ int aml_dvfs_do_voltage_change(struct aml_dvfs_master *master, uint32_t new_freq
     int      ret = 0;
 
     if (master->table == NULL) {
+        DVFS_WARN("%s, no dvfs table\n", __func__);
         goto error;
     }
     if (master->driver == NULL) {
+        DVFS_WARN("%s, no dvfs driver\n", __func__);
         goto error;
     }
     /*
