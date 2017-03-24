@@ -1,4 +1,4 @@
-dtb-$(CONFIG_ARCH_MESON8B) += meson8b_m201_1G_old.dtb meson8b_m201C_512M_old.dtb meson8b_m201.dtb \
+dtb-$(CONFIG_ARCH_MESON8B) += meson8b_m201_1G_old.dtb meson8b_m201C_512M_old.dtb \
 				meson8b_mxq.dtb meson8b_hd180.dtb meson8b_mk808.dtb \
 				meson8b_i5.dtb meson8b_i5_console.dtb \
 				meson8b_m100_1G.dtb meson8b_m101_512M.dtb \
