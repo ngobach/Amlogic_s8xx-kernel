@@ -13,12 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301, USA
- * Or, point your browser to http://www.gnu.org/copyleft/gpl.html
+ * To obtain the license, point your browser to
+ * http://www.gnu.org/copyleft/gpl.html
  */
 
 #ifndef _DDBRIDGE_H_
@@ -156,7 +152,7 @@ struct ddb_port {
 
 struct ddb {
 	struct pci_dev        *pdev;
-	unsigned char         *regs;
+	unsigned char __iomem *regs;
 	struct ddb_port        port[DDB_MAX_PORT];
 	struct ddb_i2c         i2c[DDB_MAX_I2C];
 	struct ddb_input       input[DDB_MAX_INPUT];
@@ -173,12 +169,10 @@ struct ddb {
 /****************************************************************************/
 
 #define ddbwritel(_val, _adr)        writel((_val), \
-				     (char *) (dev->regs+(_adr)))
-#define ddbreadl(_adr)               readl((char *) (dev->regs+(_adr)))
-#define ddbcpyto(_adr, _src, _count) memcpy_toio((char *)	\
-				     (dev->regs+(_adr)), (_src), (_count))
-#define ddbcpyfrom(_dst, _adr, _count) memcpy_fromio((_dst), (char *) \
-				       (dev->regs+(_adr)), (_count))
+				     dev->regs+(_adr))
+#define ddbreadl(_adr)               readl(dev->regs+(_adr))
+#define ddbcpyto(_adr, _src, _count) memcpy_toio(dev->regs+(_adr), (_src), (_count))
+#define ddbcpyfrom(_dst, _adr, _count) memcpy_fromio((_dst), dev->regs+(_adr), (_count))
 
 /****************************************************************************/
 

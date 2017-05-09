@@ -987,7 +987,7 @@ out_unlock:
 	spin_unlock(&priv->lock);
 
 out:
-	dev_kfree_skb(skb);
+	dev_consume_skb_any(skb);
 
 	return NETDEV_TX_OK;
 }
@@ -1386,7 +1386,6 @@ static const struct net_device_ops sc92031_netdev_ops = {
 	.ndo_open		= sc92031_open,
 	.ndo_stop		= sc92031_stop,
 	.ndo_set_rx_mode	= sc92031_set_multicast_list,
-	.ndo_change_mtu		= eth_change_mtu,
 	.ndo_validate_addr	= eth_validate_addr,
 	.ndo_set_mac_address 	= eth_mac_addr,
 	.ndo_tx_timeout		= sc92031_tx_timeout,
@@ -1561,7 +1560,7 @@ out:
 	return 0;
 }
 
-static DEFINE_PCI_DEVICE_TABLE(sc92031_pci_device_id_table) = {
+static const struct pci_device_id sc92031_pci_device_id_table[] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_SILAN, 0x2031) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_SILAN, 0x8139) },
 	{ PCI_DEVICE(0x1088, 0x2031) },
@@ -1578,19 +1577,7 @@ static struct pci_driver sc92031_pci_driver = {
 	.resume		= sc92031_resume,
 };
 
-static int __init sc92031_init(void)
-{
-	return pci_register_driver(&sc92031_pci_driver);
-}
-
-static void __exit sc92031_exit(void)
-{
-	pci_unregister_driver(&sc92031_pci_driver);
-}
-
-module_init(sc92031_init);
-module_exit(sc92031_exit);
-
+module_pci_driver(sc92031_pci_driver);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Cesar Eduardo Barros <cesarb@cesarb.net>");
 MODULE_DESCRIPTION("Silan SC92031 PCI Fast Ethernet Adapter driver");

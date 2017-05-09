@@ -65,9 +65,7 @@ MODULE_DESCRIPTION("NetEffect RNIC Low-level iWARP Driver");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_VERSION(DRV_VERSION);
 
-int max_mtu = 9000;
 int interrupt_mod_interval = 0;
-
 
 /* Interoperability */
 int mpa_version = 1;
@@ -517,7 +515,6 @@ static int nes_probe(struct pci_dev *pcidev, const struct pci_device_id *ent)
 	/* Allocate hardware structure */
 	nesdev = kzalloc(sizeof(struct nes_device), GFP_KERNEL);
 	if (!nesdev) {
-		printk(KERN_ERR PFX "%s: Unable to alloc hardware struct\n", pci_name(pcidev));
 		ret = -ENOMEM;
 		goto bail2;
 	}
@@ -675,8 +672,11 @@ static int nes_probe(struct pci_dev *pcidev, const struct pci_device_id *ent)
 	INIT_DELAYED_WORK(&nesdev->work, nes_recheck_link_status);
 
 	/* Initialize network devices */
-	if ((netdev = nes_netdev_init(nesdev, mmio_regs)) == NULL)
+	netdev = nes_netdev_init(nesdev, mmio_regs);
+	if (netdev == NULL) {
+		ret = -ENOMEM;
 		goto bail7;
+	}
 
 	/* Register network device */
 	ret = register_netdev(netdev);

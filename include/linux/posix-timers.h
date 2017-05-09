@@ -7,14 +7,10 @@
 #include <linux/timex.h>
 #include <linux/alarmtimer.h>
 
-union cpu_time_count {
-	cputime_t cpu;
-	unsigned long long sched;
-};
 
 struct cpu_timer_list {
 	struct list_head entry;
-	union cpu_time_count expires, incr;
+	u64 expires, incr;
 	struct task_struct *task;
 	int firing;
 };
@@ -122,11 +118,8 @@ void posix_cpu_timer_schedule(struct k_itimer *timer);
 void run_posix_cpu_timers(struct task_struct *task);
 void posix_cpu_timers_exit(struct task_struct *task);
 void posix_cpu_timers_exit_group(struct task_struct *task);
-
-bool posix_cpu_timers_can_stop_tick(struct task_struct *tsk);
-
 void set_process_cpu_timer(struct task_struct *task, unsigned int clock_idx,
-			   cputime_t *newval, cputime_t *oldval);
+			   u64 *newval, u64 *oldval);
 
 long clock_nanosleep_restart(struct restart_block *restart_block);
 

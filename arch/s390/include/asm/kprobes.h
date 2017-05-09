@@ -27,23 +27,30 @@
  * 2005-Dec	Used as a template for s390 by Mike Grundy
  *		<grundym@us.ibm.com>
  */
+#include <asm-generic/kprobes.h>
+
+#define BREAKPOINT_INSTRUCTION	0x0002
+
+#ifdef CONFIG_KPROBES
 #include <linux/types.h>
 #include <linux/ptrace.h>
 #include <linux/percpu.h>
+#include <linux/sched/task_stack.h>
+
+#define __ARCH_WANT_KPROBES_INSN_SLOT
 
 struct pt_regs;
 struct kprobe;
 
 typedef u16 kprobe_opcode_t;
-#define BREAKPOINT_INSTRUCTION	0x0002
 
 /* Maximum instruction size is 3 (16bit) halfwords: */
 #define MAX_INSN_SIZE		0x0003
 #define MAX_STACK_SIZE		64
 #define MIN_STACK_SIZE(ADDR) (((MAX_STACK_SIZE) < \
-	(((unsigned long)current_thread_info()) + THREAD_SIZE - (ADDR))) \
+	(((unsigned long)task_stack_page(current)) + THREAD_SIZE - (ADDR))) \
 	? (MAX_STACK_SIZE) \
-	: (((unsigned long)current_thread_info()) + THREAD_SIZE - (ADDR)))
+	: (((unsigned long)task_stack_page(current)) + THREAD_SIZE - (ADDR)))
 
 #define kretprobe_blacklist_size 0
 
@@ -57,7 +64,8 @@ typedef u16 kprobe_opcode_t;
 /* Architecture specific copy of original instruction */
 struct arch_specific_insn {
 	/* copy of original instruction */
-	kprobe_opcode_t insn[MAX_INSN_SIZE];
+	kprobe_opcode_t *insn;
+	unsigned int is_ftrace_insn : 1;
 };
 
 struct prev_kprobe {
@@ -82,6 +90,11 @@ int kprobe_fault_handler(struct pt_regs *regs, int trapnr);
 int kprobe_exceptions_notify(struct notifier_block *self,
 	unsigned long val, void *data);
 
+int probe_is_prohibited_opcode(u16 *insn);
+int probe_get_fixup_type(u16 *insn);
+int probe_is_insn_relative_long(u16 *insn);
+
 #define flush_insn_slot(p)	do { } while (0)
 
+#endif /* CONFIG_KPROBES */
 #endif	/* _ASM_S390_KPROBES_H */

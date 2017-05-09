@@ -37,11 +37,15 @@
 
     Jeremy Fitzhardinge <jeremy@goop.org> 2006
  */
+
+#define pr_fmt(fmt) fmt
+
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/bug.h>
 #include <linux/sched.h>
+#include <linux/rculist.h>
 
 extern const struct bug_entry __start___bug_table[], __stop___bug_table[];
 
@@ -61,16 +65,22 @@ static LIST_HEAD(module_bug_list);
 static const struct bug_entry *module_find_bug(unsigned long bugaddr)
 {
 	struct module *mod;
+	const struct bug_entry *bug = NULL;
 
-	list_for_each_entry(mod, &module_bug_list, bug_list) {
-		const struct bug_entry *bug = mod->bug_table;
+	rcu_read_lock_sched();
+	list_for_each_entry_rcu(mod, &module_bug_list, bug_list) {
 		unsigned i;
 
+		bug = mod->bug_table;
 		for (i = 0; i < mod->num_bugs; ++i, ++bug)
 			if (bugaddr == bug_addr(bug))
-				return bug;
+				goto out;
 	}
-	return NULL;
+	bug = NULL;
+out:
+	rcu_read_unlock_sched();
+
+	return bug;
 }
 
 void module_bug_finalize(const Elf_Ehdr *hdr, const Elf_Shdr *sechdrs,
@@ -78,6 +88,8 @@ void module_bug_finalize(const Elf_Ehdr *hdr, const Elf_Shdr *sechdrs,
 {
 	char *secstrings;
 	unsigned int i;
+
+	lockdep_assert_held(&module_mutex);
 
 	mod->bug_table = NULL;
 	mod->num_bugs = 0;
@@ -96,13 +108,16 @@ void module_bug_finalize(const Elf_Ehdr *hdr, const Elf_Shdr *sechdrs,
 	 * Strictly speaking this should have a spinlock to protect against
 	 * traversals, but since we only traverse on BUG()s, a spinlock
 	 * could potentially lead to deadlock and thus be counter-productive.
+	 * Thus, this uses RCU to safely manipulate the bug list, since BUG
+	 * must run in non-interruptive state.
 	 */
-	list_add(&mod->bug_list, &module_bug_list);
+	list_add_rcu(&mod->bug_list, &module_bug_list);
 }
 
 void module_bug_cleanup(struct module *mod)
 {
-	list_del(&mod->bug_list);
+	lockdep_assert_held(&module_mutex);
+	list_del_rcu(&mod->bug_list);
 }
 
 #else
@@ -153,33 +168,18 @@ enum bug_trap_type report_bug(unsigned long bugaddr, struct pt_regs *regs)
 
 	if (warning) {
 		/* this is a WARN_ON rather than BUG/BUG_ON */
-		printk(KERN_WARNING "------------[ cut here ]------------\n");
-
-		if (file)
-			printk(KERN_WARNING "WARNING: at %s:%u\n",
-			       file, line);
-		else
-			printk(KERN_WARNING "WARNING: at %p "
-			       "[verbose debug info unavailable]\n",
-			       (void *)bugaddr);
-
-		print_modules();
-		show_regs(regs);
-		print_oops_end_marker();
-		/* Just a warning, don't kill lockdep. */
-		add_taint(BUG_GET_TAINT(bug), LOCKDEP_STILL_OK);
+		__warn(file, line, (void *)bugaddr, BUG_GET_TAINT(bug), regs,
+		       NULL);
 		return BUG_TRAP_TYPE_WARN;
 	}
 
 	printk(KERN_DEFAULT "------------[ cut here ]------------\n");
 
 	if (file)
-		printk(KERN_CRIT "kernel BUG at %s:%u!\n",
-		       file, line);
+		pr_crit("kernel BUG at %s:%u!\n", file, line);
 	else
-		printk(KERN_CRIT "Kernel BUG at %p "
-		       "[verbose debug info unavailable]\n",
-		       (void *)bugaddr);
+		pr_crit("Kernel BUG at %p [verbose debug info unavailable]\n",
+			(void *)bugaddr);
 
 	return BUG_TRAP_TYPE_BUG;
 }

@@ -12,7 +12,17 @@
  * Very basic string functions
  */
 
-#include "boot.h"
+#include <linux/types.h>
+#include "ctype.h"
+#include "string.h"
+
+int memcmp(const void *s1, const void *s2, size_t len)
+{
+	bool diff;
+	asm("repe; cmpsb; setnz %0"
+	    : "=qm" (diff), "+D" (s1), "+S" (s2), "+c" (len));
+	return diff;
+}
 
 int strcmp(const char *str1, const char *str2)
 {
@@ -21,7 +31,7 @@ int strcmp(const char *str1, const char *str2)
 	int delta = 0;
 
 	while (*s1 || *s2) {
-		delta = *s2 - *s1;
+		delta = *s1 - *s2;
 		if (delta)
 			return delta;
 		s1++;
@@ -145,4 +155,17 @@ char *strstr(const char *s1, const char *s2)
 		s1++;
 	}
 	return NULL;
+}
+
+/**
+ * strchr - Find the first occurrence of the character c in the string s.
+ * @s: the string to be searched
+ * @c: the character to search for
+ */
+char *strchr(const char *s, int c)
+{
+	while (*s != (char)c)
+		if (*s++ == '\0')
+			return NULL;
+	return (char *)s;
 }

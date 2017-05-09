@@ -28,6 +28,8 @@
 #include <linux/elfcore.h>
 #include <linux/pm.h>
 #include <linux/rcupdate.h>
+#include <linux/sched/task.h>
+#include <linux/sched/task_stack.h>
 
 void (*pm_power_off)(void);
 EXPORT_SYMBOL(pm_power_off);
@@ -56,8 +58,6 @@ void start_thread(struct pt_regs *regs, unsigned long pc, unsigned long sp)
 	regs->regs[0] = sp;
 }
 
-void exit_thread(void) {}
-
 /*
  * When a process does an "exec", machine state like FPU and debug
  * registers need to be reset.  This is a hook function for that.
@@ -78,8 +78,8 @@ int copy_thread(unsigned long clone_flags, unsigned long usp,
 	p->thread.reg0 = (unsigned long) childregs;
 	if (unlikely(p->flags & PF_KTHREAD)) {
 		memset(childregs, 0, sizeof(struct pt_regs));
-		p->thread->reg12 = usp;
-		p->thread->reg13 = arg;
+		p->thread.reg12 = usp;
+		p->thread.reg13 = arg;
 		p->thread.reg3 = (unsigned long) ret_from_kernel_thread;
 	} else {
 		*childregs = *current_pt_regs();

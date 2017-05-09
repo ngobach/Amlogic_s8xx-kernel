@@ -23,8 +23,7 @@
  * the GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program;  if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * along with this program;  if not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -60,14 +59,7 @@ struct netlbl_domhsh_walk_arg {
 };
 
 /* NetLabel Generic NETLINK CIPSOv4 family */
-static struct genl_family netlbl_cipsov4_gnl_family = {
-	.id = GENL_ID_GENERATE,
-	.hdrsize = 0,
-	.name = NETLBL_NLTYPE_CIPSOV4_NAME,
-	.version = NETLBL_PROTO_VERSION,
-	.maxattr = NLBL_CIPSOV4_A_MAX,
-};
-
+static struct genl_family netlbl_cipsov4_gnl_family;
 /* NetLabel Netlink attribute policy */
 static const struct nla_policy netlbl_cipsov4_genl_policy[NLBL_CIPSOV4_A_MAX + 1] = {
 	[NLBL_CIPSOV4_A_DOI] = { .type = NLA_U32 },
@@ -325,8 +317,7 @@ static int netlbl_cipsov4_add_std(struct genl_info *info,
 	return 0;
 
 add_std_failure:
-	if (doi_def)
-		cipso_v4_doi_free(doi_def);
+	cipso_v4_doi_free(doi_def);
 	return ret_val;
 }
 
@@ -642,7 +633,8 @@ static int netlbl_cipsov4_listall_cb(struct cipso_v4_doi *doi_def, void *arg)
 	if (ret_val != 0)
 		goto listall_cb_failure;
 
-	return genlmsg_end(cb_arg->skb, data);
+	genlmsg_end(cb_arg->skb, data);
+	return 0;
 
 listall_cb_failure:
 	genlmsg_cancel(cb_arg->skb, data);
@@ -691,8 +683,8 @@ static int netlbl_cipsov4_remove_cb(struct netlbl_dom_map *entry, void *arg)
 {
 	struct netlbl_domhsh_walk_arg *cb_arg = arg;
 
-	if (entry->type == NETLBL_NLTYPE_CIPSOV4 &&
-	    entry->type_def.cipsov4->doi == cb_arg->doi)
+	if (entry->def.type == NETLBL_NLTYPE_CIPSOV4 &&
+	    entry->def.cipso->doi == cb_arg->doi)
 		return netlbl_domhsh_remove_entry(entry, cb_arg->audit_info);
 
 	return 0;
@@ -737,7 +729,7 @@ static int netlbl_cipsov4_remove(struct sk_buff *skb, struct genl_info *info)
  * NetLabel Generic NETLINK Command Definitions
  */
 
-static struct genl_ops netlbl_cipsov4_ops[] = {
+static const struct genl_ops netlbl_cipsov4_ops[] = {
 	{
 	.cmd = NLBL_CIPSOV4_C_ADD,
 	.flags = GENL_ADMIN_PERM,
@@ -768,6 +760,16 @@ static struct genl_ops netlbl_cipsov4_ops[] = {
 	},
 };
 
+static struct genl_family netlbl_cipsov4_gnl_family __ro_after_init = {
+	.hdrsize = 0,
+	.name = NETLBL_NLTYPE_CIPSOV4_NAME,
+	.version = NETLBL_PROTO_VERSION,
+	.maxattr = NLBL_CIPSOV4_A_MAX,
+	.module = THIS_MODULE,
+	.ops = netlbl_cipsov4_ops,
+	.n_ops = ARRAY_SIZE(netlbl_cipsov4_ops),
+};
+
 /*
  * NetLabel Generic NETLINK Protocol Functions
  */
@@ -782,6 +784,5 @@ static struct genl_ops netlbl_cipsov4_ops[] = {
  */
 int __init netlbl_cipsov4_genl_init(void)
 {
-	return genl_register_family_with_ops(&netlbl_cipsov4_gnl_family,
-		netlbl_cipsov4_ops, ARRAY_SIZE(netlbl_cipsov4_ops));
+	return genl_register_family(&netlbl_cipsov4_gnl_family);
 }

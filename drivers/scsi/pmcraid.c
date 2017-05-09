@@ -45,6 +45,7 @@
 #include <asm/processor.h>
 #include <linux/libata.h>
 #include <linux/mutex.h>
+#include <linux/ktime.h>
 #include <scsi/scsi.h>
 #include <scsi/scsi_host.h>
 #include <scsi/scsi_device.h>
@@ -237,7 +238,7 @@ static int pmcraid_slave_configure(struct scsi_device *scsi_dev)
 		     scsi_dev->host->unique_id,
 		     scsi_dev->channel,
 		     scsi_dev->id,
-		     scsi_dev->lun);
+		     (u8)scsi_dev->lun);
 
 	if (RES_IS_GSCSI(res->cfg_entry)) {
 		scsi_dev->allow_restart = 1;
@@ -249,15 +250,11 @@ static int pmcraid_slave_configure(struct scsi_device *scsi_dev)
 				      PMCRAID_VSET_MAX_SECTORS);
 	}
 
-	if (scsi_dev->tagged_supported &&
-	    (RES_IS_GSCSI(res->cfg_entry) || RES_IS_VSET(res->cfg_entry))) {
-		scsi_activate_tcq(scsi_dev, scsi_dev->queue_depth);
-		scsi_adjust_queue_depth(scsi_dev, MSG_SIMPLE_TAG,
-					scsi_dev->host->cmd_per_lun);
-	} else {
-		scsi_adjust_queue_depth(scsi_dev, 0,
-					scsi_dev->host->cmd_per_lun);
-	}
+	/*
+	 * We never want to report TCQ support for these types of devices.
+	 */
+	if (!RES_IS_GSCSI(res->cfg_entry) && !RES_IS_VSET(res->cfg_entry))
+		scsi_dev->tagged_supported = 0;
 
 	return 0;
 }
@@ -289,53 +286,16 @@ static void pmcraid_slave_destroy(struct scsi_device *scsi_dev)
  * pmcraid_change_queue_depth - Change the device's queue depth
  * @scsi_dev: scsi device struct
  * @depth: depth to set
- * @reason: calling context
  *
  * Return value
  *	actual depth set
  */
-static int pmcraid_change_queue_depth(struct scsi_device *scsi_dev, int depth,
-				      int reason)
+static int pmcraid_change_queue_depth(struct scsi_device *scsi_dev, int depth)
 {
-	if (reason != SCSI_QDEPTH_DEFAULT)
-		return -EOPNOTSUPP;
-
 	if (depth > PMCRAID_MAX_CMD_PER_LUN)
 		depth = PMCRAID_MAX_CMD_PER_LUN;
-
-	scsi_adjust_queue_depth(scsi_dev, scsi_get_tag_type(scsi_dev), depth);
-
-	return scsi_dev->queue_depth;
+	return scsi_change_queue_depth(scsi_dev, depth);
 }
-
-/**
- * pmcraid_change_queue_type - Change the device's queue type
- * @scsi_dev: scsi device struct
- * @tag: type of tags to use
- *
- * Return value:
- *	actual queue type set
- */
-static int pmcraid_change_queue_type(struct scsi_device *scsi_dev, int tag)
-{
-	struct pmcraid_resource_entry *res;
-
-	res = (struct pmcraid_resource_entry *)scsi_dev->hostdata;
-
-	if ((res) && scsi_dev->tagged_supported &&
-	    (RES_IS_GSCSI(res->cfg_entry) || RES_IS_VSET(res->cfg_entry))) {
-		scsi_set_tag_type(scsi_dev, tag);
-
-		if (tag)
-			scsi_activate_tcq(scsi_dev, scsi_dev->queue_depth);
-		else
-			scsi_deactivate_tcq(scsi_dev, scsi_dev->queue_depth);
-	} else
-		tag = 0;
-
-	return tag;
-}
-
 
 /**
  * pmcraid_init_cmdblk - initializes a command block
@@ -346,7 +306,7 @@ static int pmcraid_change_queue_type(struct scsi_device *scsi_dev, int tag)
  * Return Value
  *	 None
  */
-void pmcraid_init_cmdblk(struct pmcraid_cmd *cmd, int index)
+static void pmcraid_init_cmdblk(struct pmcraid_cmd *cmd, int index)
 {
 	struct pmcraid_ioarcb *ioarcb = &(cmd->ioa_cb->ioarcb);
 	dma_addr_t dma_addr = cmd->ioa_cb_bus_addr;
@@ -441,7 +401,7 @@ static struct pmcraid_cmd *pmcraid_get_free_cmd(
  * Return Value:
  *	nothing
  */
-void pmcraid_return_cmd(struct pmcraid_cmd *cmd)
+static void pmcraid_return_cmd(struct pmcraid_cmd *cmd)
 {
 	struct pmcraid_instance *pinstance = cmd->drv_inst;
 	unsigned long lock_flags;
@@ -1404,11 +1364,17 @@ enum {
 };
 #define PMCRAID_AEN_CMD_MAX (__PMCRAID_AEN_CMD_MAX - 1)
 
-static struct genl_family pmcraid_event_family = {
-	.id = GENL_ID_GENERATE,
+static struct genl_multicast_group pmcraid_mcgrps[] = {
+	{ .name = "events", /* not really used - see ID discussion below */ },
+};
+
+static struct genl_family pmcraid_event_family __ro_after_init = {
+	.module = THIS_MODULE,
 	.name = "pmcraid",
 	.version = 1,
-	.maxattr = PMCRAID_AEN_ATTR_MAX
+	.maxattr = PMCRAID_AEN_ATTR_MAX,
+	.mcgrps = pmcraid_mcgrps,
+	.n_mcgrps = ARRAY_SIZE(pmcraid_mcgrps),
 };
 
 /**
@@ -1418,7 +1384,7 @@ static struct genl_family pmcraid_event_family = {
  *	0 if the pmcraid_event_family is successfully registered
  *	with netlink generic, non-zero otherwise
  */
-static int pmcraid_netlink_init(void)
+static int __init pmcraid_netlink_init(void)
 {
 	int result;
 
@@ -1503,16 +1469,10 @@ static int pmcraid_notify_aen(
 	}
 
 	/* send genetlink multicast message to notify appplications */
-	result = genlmsg_end(skb, msg_header);
+	genlmsg_end(skb, msg_header);
 
-	if (result < 0) {
-		pmcraid_err("genlmsg_end failed\n");
-		nlmsg_free(skb);
-		return result;
-	}
-
-	result =
-		genlmsg_multicast(skb, 0, pmcraid_event_family.id, GFP_ATOMIC);
+	result = genlmsg_multicast(&pmcraid_event_family, skb,
+				   0, 0, GFP_ATOMIC);
 
 	/* If there are no listeners, genlmsg_multicast may return non-zero
 	 * value.
@@ -1745,7 +1705,7 @@ static struct pmcraid_ioasc_error *pmcraid_get_error_info(u32 ioasc)
  * @ioasc: ioasc code
  * @cmd: pointer to command that resulted in 'ioasc'
  */
-void pmcraid_ioasc_logger(u32 ioasc, struct pmcraid_cmd *cmd)
+static void pmcraid_ioasc_logger(u32 ioasc, struct pmcraid_cmd *cmd)
 {
 	struct pmcraid_ioasc_error *error_info = pmcraid_get_error_info(ioasc);
 
@@ -3164,36 +3124,6 @@ static int pmcraid_eh_host_reset_handler(struct scsi_cmnd *scmd)
 }
 
 /**
- * pmcraid_task_attributes - Translate SPI Q-Tags to task attributes
- * @scsi_cmd:   scsi command struct
- *
- * Return value
- *	  number of tags or 0 if the task is not tagged
- */
-static u8 pmcraid_task_attributes(struct scsi_cmnd *scsi_cmd)
-{
-	char tag[2];
-	u8 rc = 0;
-
-	if (scsi_populate_tag_msg(scsi_cmd, tag)) {
-		switch (tag[0]) {
-		case MSG_SIMPLE_TAG:
-			rc = TASK_TAG_SIMPLE;
-			break;
-		case MSG_HEAD_TAG:
-			rc = TASK_TAG_QUEUE_HEAD;
-			break;
-		case MSG_ORDERED_TAG:
-			rc = TASK_TAG_ORDERED;
-			break;
-		};
-	}
-
-	return rc;
-}
-
-
-/**
  * pmcraid_init_ioadls - initializes IOADL related fields in IOARCB
  * @cmd: pmcraid command struct
  * @sgcount: count of scatter-gather elements
@@ -3202,7 +3132,7 @@ static u8 pmcraid_task_attributes(struct scsi_cmnd *scsi_cmd)
  *   returns pointer pmcraid_ioadl_desc, initialized to point to internal
  *   or external IOADLs
  */
-struct pmcraid_ioadl_desc *
+static struct pmcraid_ioadl_desc *
 pmcraid_init_ioadls(struct pmcraid_cmd *cmd, int sgcount)
 {
 	struct pmcraid_ioadl_desc *ioadl;
@@ -3548,7 +3478,9 @@ static int pmcraid_queuecommand_lck(
 		}
 
 		ioarcb->request_flags0 |= NO_LINK_DESCS;
-		ioarcb->request_flags1 |= pmcraid_task_attributes(scsi_cmd);
+
+		if (scsi_cmd->flags & SCMD_TAGGED)
+			ioarcb->request_flags1 |= TASK_TAG_SIMPLE;
 
 		if (RES_IS_GSCSI(res->cfg_entry))
 			ioarcb->request_flags1 |= DELAY_AFTER_RESET;
@@ -3855,11 +3787,11 @@ static long pmcraid_ioctl_passthrough(
 						      direction);
 		if (rc) {
 			pmcraid_err("couldn't build passthrough ioadls\n");
-			goto out_free_buffer;
+			goto out_free_cmd;
 		}
 	} else if (request_size < 0) {
 		rc = -EINVAL;
-		goto out_free_buffer;
+		goto out_free_cmd;
 	}
 
 	/* If data is being written into the device, copy the data from user
@@ -3976,6 +3908,8 @@ out_handle_response:
 
 out_free_sglist:
 	pmcraid_release_passthrough_ioadls(cmd, request_size, direction);
+
+out_free_cmd:
 	pmcraid_return_cmd(cmd);
 
 out_free_buffer:
@@ -4202,9 +4136,9 @@ static ssize_t pmcraid_store_log_level(
 {
 	struct Scsi_Host *shost;
 	struct pmcraid_instance *pinstance;
-	unsigned long val;
+	u8 val;
 
-	if (strict_strtoul(buf, 10, &val))
+	if (kstrtou8(buf, 10, &val))
 		return -EINVAL;
 	/* log-level should be from 0 to 2 */
 	if (val > 2)
@@ -4281,7 +4215,7 @@ static ssize_t pmcraid_show_adapter_id(
 static struct device_attribute pmcraid_adapter_id_attr = {
 	.attr = {
 		 .name = "adapter_id",
-		 .mode = S_IRUGO | S_IWUSR,
+		 .mode = S_IRUGO,
 		 },
 	.show = pmcraid_show_adapter_id,
 };
@@ -4309,7 +4243,6 @@ static struct scsi_host_template pmcraid_host_template = {
 	.slave_configure = pmcraid_slave_configure,
 	.slave_destroy = pmcraid_slave_destroy,
 	.change_queue_depth = pmcraid_change_queue_depth,
-	.change_queue_type  = pmcraid_change_queue_type,
 	.can_queue = PMCRAID_MAX_IO_CMD,
 	.this_id = -1,
 	.sg_tablesize = PMCRAID_MAX_IOADLS,
@@ -4318,7 +4251,7 @@ static struct scsi_host_template pmcraid_host_template = {
 	.cmd_per_lun = PMCRAID_MAX_CMD_PER_LUN,
 	.use_clustering = ENABLE_CLUSTERING,
 	.shost_attrs = pmcraid_host_attrs,
-	.proc_name = PMCRAID_DRIVER_NAME
+	.proc_name = PMCRAID_DRIVER_NAME,
 };
 
 /*
@@ -4654,16 +4587,14 @@ static void pmcraid_tasklet_function(unsigned long instance)
 static
 void pmcraid_unregister_interrupt_handler(struct pmcraid_instance *pinstance)
 {
+	struct pci_dev *pdev = pinstance->pdev;
 	int i;
 
 	for (i = 0; i < pinstance->num_hrrq; i++)
-		free_irq(pinstance->hrrq_vector[i].vector,
-			 &(pinstance->hrrq_vector[i]));
+		free_irq(pci_irq_vector(pdev, i), &pinstance->hrrq_vector[i]);
 
-	if (pinstance->interrupt_mode) {
-		pci_disable_msix(pinstance->pdev);
-		pinstance->interrupt_mode = 0;
-	}
+	pinstance->interrupt_mode = 0;
+	pci_free_irq_vectors(pdev);
 }
 
 /**
@@ -4676,70 +4607,52 @@ void pmcraid_unregister_interrupt_handler(struct pmcraid_instance *pinstance)
 static int
 pmcraid_register_interrupt_handler(struct pmcraid_instance *pinstance)
 {
-	int rc;
 	struct pci_dev *pdev = pinstance->pdev;
+	unsigned int irq_flag = PCI_IRQ_LEGACY, flag;
+	int num_hrrq, rc, i;
+	irq_handler_t isr;
 
-	if ((pmcraid_enable_msix) &&
-		(pci_find_capability(pdev, PCI_CAP_ID_MSIX))) {
-		int num_hrrq = PMCRAID_NUM_MSIX_VECTORS;
-		struct msix_entry entries[PMCRAID_NUM_MSIX_VECTORS];
-		int i;
-		for (i = 0; i < PMCRAID_NUM_MSIX_VECTORS; i++)
-			entries[i].entry = i;
+	if (pmcraid_enable_msix)
+		irq_flag |= PCI_IRQ_MSIX;
 
-		rc = pci_enable_msix(pdev, entries, num_hrrq);
-		if (rc < 0)
-			goto pmcraid_isr_legacy;
+	num_hrrq = pci_alloc_irq_vectors(pdev, 1, PMCRAID_NUM_MSIX_VECTORS,
+			irq_flag);
+	if (num_hrrq < 0)
+		return num_hrrq;
 
-		/* Check how many MSIX vectors are allocated and register
-		 * msi-x handlers for each of them giving appropriate buffer
-		 */
-		if (rc > 0) {
-			num_hrrq = rc;
-			if (pci_enable_msix(pdev, entries, num_hrrq))
-				goto pmcraid_isr_legacy;
-		}
+	if (pdev->msix_enabled) {
+		flag = 0;
+		isr = pmcraid_isr_msix;
+	} else {
+		flag = IRQF_SHARED;
+		isr = pmcraid_isr;
+	}
 
-		for (i = 0; i < num_hrrq; i++) {
-			pinstance->hrrq_vector[i].hrrq_id = i;
-			pinstance->hrrq_vector[i].drv_inst = pinstance;
-			pinstance->hrrq_vector[i].vector = entries[i].vector;
-			rc = request_irq(pinstance->hrrq_vector[i].vector,
-					pmcraid_isr_msix, 0,
-					PMCRAID_DRIVER_NAME,
-					&(pinstance->hrrq_vector[i]));
+	for (i = 0; i < num_hrrq; i++) {
+		struct pmcraid_isr_param *vec = &pinstance->hrrq_vector[i];
 
-			if (rc) {
-				int j;
-				for (j = 0; j < i; j++)
-					free_irq(entries[j].vector,
-						 &(pinstance->hrrq_vector[j]));
-				pci_disable_msix(pdev);
-				goto pmcraid_isr_legacy;
-			}
-		}
+		vec->hrrq_id = i;
+		vec->drv_inst = pinstance;
+		rc = request_irq(pci_irq_vector(pdev, i), isr, flag,
+				PMCRAID_DRIVER_NAME, vec);
+		if (rc)
+			goto out_unwind;
+	}
 
-		pinstance->num_hrrq = num_hrrq;
+	pinstance->num_hrrq = num_hrrq;
+	if (pdev->msix_enabled) {
 		pinstance->interrupt_mode = 1;
 		iowrite32(DOORBELL_INTR_MODE_MSIX,
 			  pinstance->int_regs.host_ioa_interrupt_reg);
 		ioread32(pinstance->int_regs.host_ioa_interrupt_reg);
-		goto pmcraid_isr_out;
 	}
 
-pmcraid_isr_legacy:
-	/* If MSI-X registration failed fallback to legacy mode, where
-	 * only one hrrq entry will be used
-	 */
-	pinstance->hrrq_vector[0].hrrq_id = 0;
-	pinstance->hrrq_vector[0].drv_inst = pinstance;
-	pinstance->hrrq_vector[0].vector = pdev->irq;
-	pinstance->num_hrrq = 1;
-	rc = 0;
+	return 0;
 
-	rc = request_irq(pdev->irq, pmcraid_isr, IRQF_SHARED,
-			 PMCRAID_DRIVER_NAME, &pinstance->hrrq_vector[0]);
-pmcraid_isr_out:
+out_unwind:
+	while (--i > 0)
+		free_irq(pci_irq_vector(pdev, i), &pinstance->hrrq_vector[i]);
+	pci_free_irq_vectors(pdev);
 	return rc;
 }
 
@@ -5637,11 +5550,9 @@ static void pmcraid_set_timestamp(struct pmcraid_cmd *cmd)
 	__be32 time_stamp_len = cpu_to_be32(PMCRAID_TIMESTAMP_LEN);
 	struct pmcraid_ioadl_desc *ioadl = ioarcb->add_data.u.ioadl;
 
-	struct timeval tv;
 	__le64 timestamp;
 
-	do_gettimeofday(&tv);
-	timestamp = tv.tv_sec * 1000;
+	timestamp = ktime_get_real_seconds() * 1000;
 
 	pinstance->timestamp_data->timestamp[0] = (__u8)(timestamp);
 	pinstance->timestamp_data->timestamp[1] = (__u8)((timestamp) >> 8);
@@ -6050,7 +5961,6 @@ out_release_regions:
 
 out_disable_device:
 	atomic_dec(&pmcraid_adapter_count);
-	pci_set_drvdata(pdev, NULL);
 	pci_disable_device(pdev);
 	return -ENODEV;
 }
@@ -6093,15 +6003,17 @@ static int __init pmcraid_init(void)
 
 	if (IS_ERR(pmcraid_class)) {
 		error = PTR_ERR(pmcraid_class);
-		pmcraid_err("failed to register with with sysfs, error = %x\n",
+		pmcraid_err("failed to register with sysfs, error = %x\n",
 			    error);
 		goto out_unreg_chrdev;
 	}
 
 	error = pmcraid_netlink_init();
 
-	if (error)
+	if (error) {
+		class_destroy(pmcraid_class);
 		goto out_unreg_chrdev;
+	}
 
 	error = pci_register_driver(&pmcraid_driver);
 

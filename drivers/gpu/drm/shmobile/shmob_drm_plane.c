@@ -1,7 +1,7 @@
 /*
  * shmob_drm_plane.c  --  SH Mobile DRM Planes
  *
- * Copyright (C) 2012 Renesas Corporation
+ * Copyright (C) 2012 Renesas Electronics Corporation
  *
  * Laurent Pinchart (laurent.pinchart@ideasonboard.com)
  *
@@ -166,7 +166,7 @@ void shmob_drm_plane_setup(struct drm_plane *plane)
 {
 	struct shmob_drm_plane *splane = to_shmob_plane(plane);
 
-	if (plane->fb == NULL || !plane->enabled)
+	if (plane->fb == NULL)
 		return;
 
 	__shmob_drm_plane_setup(splane, plane->fb);
@@ -183,10 +183,10 @@ shmob_drm_plane_update(struct drm_plane *plane, struct drm_crtc *crtc,
 	struct shmob_drm_device *sdev = plane->dev->dev_private;
 	const struct shmob_drm_format_info *format;
 
-	format = shmob_drm_format_info(fb->pixel_format);
+	format = shmob_drm_format_info(fb->format->format);
 	if (format == NULL) {
 		dev_dbg(sdev->dev, "update_plane: unsupported format %08x\n",
-			fb->pixel_format);
+			fb->format->format);
 		return -EINVAL;
 	}
 
@@ -221,11 +221,8 @@ static int shmob_drm_plane_disable(struct drm_plane *plane)
 
 static void shmob_drm_plane_destroy(struct drm_plane *plane)
 {
-	struct shmob_drm_plane *splane = to_shmob_plane(plane);
-
 	shmob_drm_plane_disable(plane);
 	drm_plane_cleanup(plane);
-	kfree(splane);
 }
 
 static const struct drm_plane_funcs shmob_drm_plane_funcs = {
@@ -251,7 +248,7 @@ int shmob_drm_plane_create(struct shmob_drm_device *sdev, unsigned int index)
 	struct shmob_drm_plane *splane;
 	int ret;
 
-	splane = kzalloc(sizeof(*splane), GFP_KERNEL);
+	splane = devm_kzalloc(sdev->dev, sizeof(*splane), GFP_KERNEL);
 	if (splane == NULL)
 		return -ENOMEM;
 
@@ -261,8 +258,6 @@ int shmob_drm_plane_create(struct shmob_drm_device *sdev, unsigned int index)
 	ret = drm_plane_init(sdev->ddev, &splane->plane, 1,
 			     &shmob_drm_plane_funcs, formats,
 			     ARRAY_SIZE(formats), false);
-	if (ret < 0)
-		kfree(splane);
 
 	return ret;
 }

@@ -43,12 +43,12 @@ nfnl_userspace_cthelper(struct sk_buff *skb, unsigned int protoff,
 	if (help == NULL)
 		return NF_DROP;
 
-	/* rcu_read_lock()ed by nf_hook_slow */
+	/* rcu_read_lock()ed by nf_hook_thresh */
 	helper = rcu_dereference(help->helper);
 	if (helper == NULL)
 		return NF_DROP;
 
-	/* This is an user-space helper not yet configured, skip. */
+	/* This is a user-space helper not yet configured, skip. */
 	if ((helper->flags &
 	    (NF_CT_HELPER_F_USERSPACE | NF_CT_HELPER_F_CONFIGURED)) ==
 	     NF_CT_HELPER_F_USERSPACE)
@@ -67,12 +67,18 @@ static int
 nfnl_cthelper_parse_tuple(struct nf_conntrack_tuple *tuple,
 			  const struct nlattr *attr)
 {
+	int err;
 	struct nlattr *tb[NFCTH_TUPLE_MAX+1];
 
-	nla_parse_nested(tb, NFCTH_TUPLE_MAX, attr, nfnl_cthelper_tuple_pol);
+	err = nla_parse_nested(tb, NFCTH_TUPLE_MAX, attr, nfnl_cthelper_tuple_pol);
+	if (err < 0)
+		return err;
 
 	if (!tb[NFCTH_TUPLE_L3PROTONUM] || !tb[NFCTH_TUPLE_L4PROTONUM])
 		return -EINVAL;
+
+	/* Not all fields are initialized so first zero the tuple */
+	memset(tuple, 0, sizeof(struct nf_conntrack_tuple));
 
 	tuple->src.l3num = ntohs(nla_get_be16(tb[NFCTH_TUPLE_L3PROTONUM]));
 	tuple->dst.protonum = nla_get_u8(tb[NFCTH_TUPLE_L4PROTONUM]);
@@ -83,7 +89,7 @@ nfnl_cthelper_parse_tuple(struct nf_conntrack_tuple *tuple,
 static int
 nfnl_cthelper_from_nlattr(struct nlattr *attr, struct nf_conn *ct)
 {
-	const struct nf_conn_help *help = nfct_help(ct);
+	struct nf_conn_help *help = nfct_help(ct);
 
 	if (attr == NULL)
 		return -EINVAL;
@@ -91,7 +97,7 @@ nfnl_cthelper_from_nlattr(struct nlattr *attr, struct nf_conn *ct)
 	if (help->helper->data_len == 0)
 		return -EINVAL;
 
-	memcpy(&help->data, nla_data(attr), help->helper->data_len);
+	memcpy(help->data, nla_data(attr), help->helper->data_len);
 	return 0;
 }
 
@@ -121,9 +127,12 @@ static int
 nfnl_cthelper_expect_policy(struct nf_conntrack_expect_policy *expect_policy,
 			    const struct nlattr *attr)
 {
+	int err;
 	struct nlattr *tb[NFCTH_POLICY_MAX+1];
 
-	nla_parse_nested(tb, NFCTH_POLICY_MAX, attr, nfnl_cthelper_expect_pol);
+	err = nla_parse_nested(tb, NFCTH_POLICY_MAX, attr, nfnl_cthelper_expect_pol);
+	if (err < 0)
+		return err;
 
 	if (!tb[NFCTH_POLICY_NAME] ||
 	    !tb[NFCTH_POLICY_EXPECT_MAX] ||
@@ -153,8 +162,10 @@ nfnl_cthelper_parse_expect_policy(struct nf_conntrack_helper *helper,
 	struct nf_conntrack_expect_policy *expect_policy;
 	struct nlattr *tb[NFCTH_POLICY_SET_MAX+1];
 
-	nla_parse_nested(tb, NFCTH_POLICY_SET_MAX, attr,
-					nfnl_cthelper_expect_policy_set);
+	ret = nla_parse_nested(tb, NFCTH_POLICY_SET_MAX, attr,
+			       nfnl_cthelper_expect_policy_set);
+	if (ret < 0)
+		return ret;
 
 	if (!tb[NFCTH_POLICY_SET_NUM])
 		return -EINVAL;
@@ -275,9 +286,9 @@ nfnl_cthelper_update(const struct nlattr * const tb[],
 	return 0;
 }
 
-static int
-nfnl_cthelper_new(struct sock *nfnl, struct sk_buff *skb,
-		  const struct nlmsghdr *nlh, const struct nlattr * const tb[])
+static int nfnl_cthelper_new(struct net *net, struct sock *nfnl,
+			     struct sk_buff *skb, const struct nlmsghdr *nlh,
+			     const struct nlattr * const tb[])
 {
 	const char *helper_name;
 	struct nf_conntrack_helper *cur, *helper = NULL;
@@ -487,9 +498,9 @@ out:
 	return skb->len;
 }
 
-static int
-nfnl_cthelper_get(struct sock *nfnl, struct sk_buff *skb,
-		  const struct nlmsghdr *nlh, const struct nlattr * const tb[])
+static int nfnl_cthelper_get(struct net *net, struct sock *nfnl,
+			     struct sk_buff *skb, const struct nlmsghdr *nlh,
+			     const struct nlattr * const tb[])
 {
 	int ret = -ENOENT, i;
 	struct nf_conntrack_helper *cur;
@@ -559,9 +570,9 @@ nfnl_cthelper_get(struct sock *nfnl, struct sk_buff *skb,
 	return ret;
 }
 
-static int
-nfnl_cthelper_del(struct sock *nfnl, struct sk_buff *skb,
-	     const struct nlmsghdr *nlh, const struct nlattr * const tb[])
+static int nfnl_cthelper_del(struct net *net, struct sock *nfnl,
+			     struct sk_buff *skb, const struct nlmsghdr *nlh,
+			     const struct nlattr * const tb[])
 {
 	char *helper_name = NULL;
 	struct nf_conntrack_helper *cur;
