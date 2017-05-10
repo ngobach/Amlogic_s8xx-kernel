@@ -77,10 +77,17 @@
 		pwms = <&pwm_ef 0 30518 0>; /* PWM_E at 32.768KHz */
 	};
 
-    rtc{
-		compatible = "amlogic,aml_rtc";
-		status = "okay";
+	usb_vbus: regulator-usb0-vbus {
+		compatible = "regulator-fixed";
+		regulator-name = "USB0_VBUS";
+
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+
+		gpio = <&gpio GPIOZ_1 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
 	};
+
 };
 
 &ethmac {
