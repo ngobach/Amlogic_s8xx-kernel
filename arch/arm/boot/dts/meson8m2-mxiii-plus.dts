@@ -12,8 +12,8 @@
 #include <dt-bindings/input/input.h>
 
 / {
-	model = "Akaso M8s";
-	compatible = "akaso,m8s", "amlogic,meson8m2";
+	model = "Tronsmart MXIII Plus";
+	compatible = "tronsmart,mxiii-plus", "amlogic,meson8m2";
 
 	aliases {
 		serial0 = &uart_AO;
@@ -85,29 +85,24 @@
 		regulator-max-microvolt = <5000000>;
 
 		gpio = <&gpio GPIOZ_1 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
+//		enable-active-high;
 	};
 
 };
 
 &ethmac {
 	status = "okay";
-
 	pinctrl-0 = <&eth_pins>;
 	pinctrl-names = "default";
-
 	phy-handle = <&eth_phy0>;
 	phy-mode = "rgmii";
-
 	snps,reset-gpio = <&gpio GPIOH_4 0>;
 	snps,reset-delays-us = <0 10000 1000000>;
 	snps,reset-active-low;
-
 	mdio {
 		compatible = "snps,dwmac-mdio";
 		#address-cells = <1>;
 		#size-cells = <0>;
-
 		eth_phy0: ethernet-phy@0 {
 			/* IC Plus IP101GR (0x02430c54) */
 			reg = <0>;
