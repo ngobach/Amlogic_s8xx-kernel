@@ -225,6 +225,8 @@ void _8051Reset8723(struct adapter *padapter)
 	DBG_8192C("%s: Finish\n", __func__);
 }
 
+u8 g_fwdl_chksum_fail = 0;
+
 static s32 polling_fwdl_chksum(
 	struct adapter *adapter, u32 min_cnt, u32 timeout_ms
 )
@@ -267,6 +269,8 @@ exit:
 
 	return ret;
 }
+
+u8 g_fwdl_wintint_rdy_fail = 0;
 
 static s32 _FWFreeToGo(struct adapter *adapter, u32 min_cnt, u32 timeout_ms)
 {
@@ -377,13 +381,13 @@ s32 rtl8723b_FirmwareDownload(struct adapter *padapter, bool  bUsedWoWLANFw)
 	RT_TRACE(_module_hal_init_c_, _drv_notice_, ("+%s, bUsedWoWLANFw:%d\n", __func__, bUsedWoWLANFw));
 #endif
 	pFirmware = kzalloc(sizeof(struct rt_firmware), GFP_KERNEL);
+	if (!pFirmware)
+		return _FAIL;
 	pBTFirmware = kzalloc(sizeof(struct rt_firmware), GFP_KERNEL);
-
-	if (!pFirmware || !pBTFirmware) {
-		rtStatus = _FAIL;
-		goto exit;
+	if (!pBTFirmware) {
+		kfree(pFirmware);
+		return _FAIL;
 	}
-
 	tmp_ps = rtw_read8(padapter, 0xa3);
 	tmp_ps &= 0xf8;
 	tmp_ps |= 0x02;
@@ -404,7 +408,7 @@ s32 rtl8723b_FirmwareDownload(struct adapter *padapter, bool  bUsedWoWLANFw)
 #endif /*  CONFIG_WOWLAN */
 		fwfilepath = "rtlwifi/rtl8723bs_nic.bin";
 
-	pr_info("rtl8723bs: accquire FW from file:%s\n", fwfilepath);
+	pr_info("rtl8723bs: acquire FW from file:%s\n", fwfilepath);
 
 	rtStatus = request_firmware(&fw, fwfilepath, device);
 	if (rtStatus) {
@@ -441,7 +445,7 @@ s32 rtl8723b_FirmwareDownload(struct adapter *padapter, bool  bUsedWoWLANFw)
 	if (pFirmware->ulFwLength > FW_8723B_SIZE) {
 		rtStatus = _FAIL;
 		DBG_871X_LEVEL(_drv_emerg_, "Firmware size:%u exceed %u\n", pFirmware->ulFwLength, FW_8723B_SIZE);
-		goto exit;
+		goto release_fw1;
 	}
 
 	pFirmwareBuf = pFirmware->szFwBuffer;
@@ -517,6 +521,7 @@ fwdl_stat:
 exit:
 	kfree(pFirmware->szFwBuffer);
 	kfree(pFirmware);
+release_fw1:
 	kfree(pBTFirmware);
 	DBG_871X(" <=== rtl8723b_FirmwareDownload()\n");
 	return rtStatus;
@@ -895,7 +900,7 @@ static void hal_ReadEFuse_WiFi(
 	memset(efuseTbl, 0xFF, EFUSE_MAX_MAP_LEN);
 
 
-#ifdef CONFIG_DEBUG
+#ifdef DEBUG
 if (0) {
 	for (i = 0; i < 256; i++)
 		efuse_OneByteRead(padapter, i, &efuseTbl[i], false);
@@ -968,7 +973,7 @@ if (0) {
 	for (i = 0; i < _size_byte; i++)
 		pbuf[i] = efuseTbl[_offset+i];
 
-#ifdef CONFIG_DEBUG
+#ifdef DEBUG
 if (1) {
 	DBG_871X("Efuse Realmap:\n");
 	for (i = 0; i < _size_byte; i++) {
@@ -994,8 +999,7 @@ if (1) {
 		rtw_hal_set_hwreg(padapter, HW_VAR_EFUSE_USAGE, (u8 *)&efuse_usage);
 	}
 
-	if (efuseTbl)
-		kfree(efuseTbl);
+	kfree(efuseTbl);
 }
 
 static void hal_ReadEFuse_BT(
@@ -1127,8 +1131,7 @@ static void hal_ReadEFuse_BT(
 	}
 
 exit:
-	if (efuseTbl)
-		kfree(efuseTbl);
+	kfree(efuseTbl);
 }
 
 static void Hal_ReadEFuse(
@@ -2603,7 +2606,7 @@ void Hal_EfuseParseTxPowerInfo_8723B(
 				pHalData->Index24G_CCK_Base[rfPath][ch] = pwrInfo24G.IndexCCK_Base[rfPath][group];
 				pHalData->Index24G_BW40_Base[rfPath][ch] = pwrInfo24G.IndexBW40_Base[rfPath][group];
 			}
-#ifdef CONFIG_DEBUG
+#ifdef DEBUG
 			RT_TRACE(_module_hci_hal_init_c_, _drv_info_, ("======= Path %d, ChannelIndex %d, Group %d =======\n", rfPath, ch, group));
 			RT_TRACE(_module_hci_hal_init_c_, _drv_info_, ("Index24G_CCK_Base[%d][%d] = 0x%x\n", rfPath, ch, pHalData->Index24G_CCK_Base[rfPath][ch]));
 			RT_TRACE(_module_hci_hal_init_c_, _drv_info_, ("Index24G_BW40_Base[%d][%d] = 0x%x\n", rfPath, ch, pHalData->Index24G_BW40_Base[rfPath][ch]));
@@ -2616,7 +2619,7 @@ void Hal_EfuseParseTxPowerInfo_8723B(
 			pHalData->BW20_24G_Diff[rfPath][TxCount] = pwrInfo24G.BW20_Diff[rfPath][TxCount];
 			pHalData->BW40_24G_Diff[rfPath][TxCount] = pwrInfo24G.BW40_Diff[rfPath][TxCount];
 
-#ifdef CONFIG_DEBUG
+#ifdef DEBUG
 			RT_TRACE(_module_hci_hal_init_c_, _drv_info_, ("--------------------------------------- 2.4G ---------------------------------------\n"));
 			RT_TRACE(_module_hci_hal_init_c_, _drv_info_, ("CCK_24G_Diff[%d][%d]= %d\n", rfPath, TxCount, pHalData->CCK_24G_Diff[rfPath][TxCount]));
 			RT_TRACE(_module_hci_hal_init_c_, _drv_info_, ("OFDM_24G_Diff[%d][%d]= %d\n", rfPath, TxCount, pHalData->OFDM_24G_Diff[rfPath][TxCount]));

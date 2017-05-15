@@ -248,11 +248,9 @@ void _rtw_free_evt_priv(struct	evt_priv *pevtpriv)
 void _rtw_free_cmd_priv(struct	cmd_priv *pcmdpriv)
 {
 	if (pcmdpriv) {
-		if (pcmdpriv->cmd_allocated_buf)
-			kfree(pcmdpriv->cmd_allocated_buf);
+		kfree(pcmdpriv->cmd_allocated_buf);
 
-		if (pcmdpriv->rsp_allocated_buf)
-			kfree(pcmdpriv->rsp_allocated_buf);
+		kfree(pcmdpriv->rsp_allocated_buf);
 
 		mutex_destroy(&pcmdpriv->sctx_mutex);
 	}
@@ -1745,6 +1743,8 @@ u8 rtw_ps_cmd(struct adapter *padapter)
 exit:
 	return res;
 }
+
+u32 g_wait_hiq_empty = 0;
 
 static void rtw_chk_hi_queue_hdl(struct adapter *padapter)
 {

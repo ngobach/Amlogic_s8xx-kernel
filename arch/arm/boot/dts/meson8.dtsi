@@ -60,6 +60,9 @@
 			compatible = "arm,cortex-a9";
 			next-level-cache = <&L2>;
 			reg = <0x200>;
+			resets = <&clkc 0>;
+			operating-points-v2 = <&cpu_opp_table>;
+			clocks = <&clkc CLKID_CPUCLK>;
 		};
 
 		cpu@201 {
@@ -67,6 +70,9 @@
 			compatible = "arm,cortex-a9";
 			next-level-cache = <&L2>;
 			reg = <0x201>;
+			resets = <&clkc 1>;
+			operating-points-v2 = <&cpu_opp_table>;
+			clocks = <&clkc CLKID_CPUCLK>;
 		};
 
 		cpu@202 {
@@ -74,6 +80,9 @@
 			compatible = "arm,cortex-a9";
 			next-level-cache = <&L2>;
 			reg = <0x202>;
+			resets = <&clkc 2>;
+			operating-points-v2 = <&cpu_opp_table>;
+			clocks = <&clkc CLKID_CPUCLK>;
 		};
 
 		cpu@203 {
@@ -81,9 +90,87 @@
 			compatible = "arm,cortex-a9";
 			next-level-cache = <&L2>;
 			reg = <0x203>;
+			resets = <&clkc 3>;
+			operating-points-v2 = <&cpu_opp_table>;
+			clocks = <&clkc CLKID_CPUCLK>;
 		};
 	};
 
+	cpu_opp_table: opp-table {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		opp@96000 {
+			opp-hz = /bits/ 64 <96000>;
+			opp-microvolt = <825000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@192000 {
+			opp-hz = /bits/ 64 <192000>;
+			opp-microvolt = <825000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@312000 {
+			opp-hz = /bits/ 64 <312000>;
+			opp-microvolt = <825000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@408000 {
+			opp-hz = /bits/ 64 <408000>;
+			opp-microvolt = <825000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@504000 {
+			opp-hz = /bits/ 64 <504000>;
+			opp-microvolt = <825000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@600000 {
+			opp-hz = /bits/ 64 <600000>;
+			opp-microvolt = <850000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@720000 {
+			opp-hz = /bits/ 64 <720000>;
+			opp-microvolt = <850000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@816000 {
+			opp-hz = /bits/ 64 <816000>;
+			opp-microvolt = <875000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@1008000 {
+			opp-hz = /bits/ 64 <1008000>;
+			opp-microvolt = <925000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@1200000 {
+			opp-hz = /bits/ 64 <1200000>;
+			opp-microvolt = <975000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@1416000 {
+			opp-hz = /bits/ 64 <1416000>;
+			opp-microvolt = <1025000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@1608000 {
+			opp-hz = /bits/ 64 <1608000>;
+			opp-microvolt = <1100000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@1800000 {
+			opp-hz = /bits/ 64 <1800000>;
+			opp-microvolt = <1125000>;
+			clock-latency-ns = <8300000>;
+		};
+		opp@1992000 {
+			opp-hz = /bits/ 64 <1992000>;
+			opp-microvolt = <1150000>;
+			clock-latency-ns = <8300000>;
+		};
+	};
 
 	reserved-memory {
 		#address-cells = <1>;
@@ -106,7 +193,7 @@
 		 * simply the power key) and re-starts the ARM core once it
 		 * detects a wakeup request.
 		 */
-		suspend_firmware: secmon@6100000 {
+		suspend_firmware: secmon@4f00000 {
 			reg = <0x4f00000 0x100000>;
 			no-map;
 		};
@@ -182,6 +269,7 @@
 &cbus {
 	clkc: clock-controller@4000 {
 		#clock-cells = <1>;
+		#reset-cells = <1>;
 		compatible = "amlogic,meson8-clkc";
 		reg = <0x8000 0x4>, <0x4000 0x460>;
 	};

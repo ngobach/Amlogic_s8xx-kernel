@@ -1079,7 +1079,7 @@ static int  ips_netdrv_open(struct adapter *padapter)
 
 	_set_timer(&padapter->mlmepriv.dynamic_chk_timer, 2000);
 
-	 return _SUCCESS;
+	return _SUCCESS;
 
 netdev_open_error:
 	/* padapter->bup = false; */
@@ -1275,7 +1275,8 @@ void rtw_dev_unload(struct adapter *padapter)
 			}
 			padapter->bSurpriseRemoved = true;
 		}
-		RT_TRACE(_module_hci_intfs_c_, _drv_notice_, ("@ %s: deinit hal complelt!\n", __func__));
+		RT_TRACE(_module_hci_intfs_c_, _drv_notice_,
+			 ("@ %s: deinit hal complete!\n", __func__));
 
 		padapter->bup = false;
 

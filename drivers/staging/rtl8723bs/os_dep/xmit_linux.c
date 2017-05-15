@@ -39,7 +39,7 @@ uint _rtw_pktfile_read (struct pkt_file *pfile, u8 *rmem, uint rlen)
 	len =  rtw_remainder_len(pfile);
 	len = (rlen > len)? len: rlen;
 
-       if (rmem)
+	if (rmem)
 		skb_copy_bits(pfile->pkt, pfile->buf_len-pfile->pkt_len, rmem, len);
 
 	pfile->cur_addr += len;
@@ -76,10 +76,8 @@ int rtw_os_xmit_resource_alloc(struct adapter *padapter, struct xmit_buf *pxmitb
 
 void rtw_os_xmit_resource_free(struct adapter *padapter, struct xmit_buf *pxmitbuf, u32 free_sz, u8 flag)
 {
-	if (free_sz > 0) {
-		if (pxmitbuf->pallocated_buf)
-			kfree(pxmitbuf->pallocated_buf);
-	}
+	if (free_sz > 0)
+		kfree(pxmitbuf->pallocated_buf);
 }
 
 #define WMM_XMIT_THRESHOLD	(NR_XMITFRAME*2/5)
