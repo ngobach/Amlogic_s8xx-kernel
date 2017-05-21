@@ -12,7 +12,6 @@
  * License.
  */
 
-#include <linux/ctype.h>
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <linux/string.h>
@@ -20,8 +19,7 @@
 
 #include "include/audit.h"
 #include "include/apparmor.h"
-#include "include/lib.h"
-#include "include/policy.h"
+
 
 /**
  * aa_split_fqname - split a fqname into a profile and namespace name
@@ -47,65 +45,11 @@ char *aa_split_fqname(char *fqname, char **ns_name)
 		*ns_name = skip_spaces(&name[1]);
 		if (split) {
 			/* overwrite ':' with \0 */
-			*split++ = 0;
-			if (strncmp(split, "//", 2) == 0)
-				split += 2;
-			name = skip_spaces(split);
+			*split = 0;
+			name = skip_spaces(split + 1);
 		} else
 			/* a ns name without a following profile is allowed */
 			name = NULL;
-	}
-	if (name && *name == 0)
-		name = NULL;
-
-	return name;
-}
-
-/**
- * skipn_spaces - Removes leading whitespace from @str.
- * @str: The string to be stripped.
- *
- * Returns a pointer to the first non-whitespace character in @str.
- * if all whitespace will return NULL
- */
-
-static const char *skipn_spaces(const char *str, size_t n)
-{
-	for (; n && isspace(*str); --n)
-		++str;
-	if (n)
-		return (char *)str;
-	return NULL;
-}
-
-const char *aa_splitn_fqname(const char *fqname, size_t n, const char **ns_name,
-			     size_t *ns_len)
-{
-	const char *end = fqname + n;
-	const char *name = skipn_spaces(fqname, n);
-
-	if (!name)
-		return NULL;
-	*ns_name = NULL;
-	*ns_len = 0;
-	if (name[0] == ':') {
-		char *split = strnchr(&name[1], end - &name[1], ':');
-		*ns_name = skipn_spaces(&name[1], end - &name[1]);
-		if (!*ns_name)
-			return NULL;
-		if (split) {
-			*ns_len = split - *ns_name;
-			if (*ns_len == 0)
-				*ns_name = NULL;
-			split++;
-			if (end - split > 1 && strncmp(split, "//", 2) == 0)
-				split += 2;
-			name = skipn_spaces(split, end - split);
-		} else {
-			/* a ns name without a following profile is allowed */
-			name = NULL;
-			*ns_len = end - *ns_name;
-		}
 	}
 	if (name && *name == 0)
 		name = NULL;
@@ -120,54 +64,74 @@ const char *aa_splitn_fqname(const char *fqname, size_t n, const char **ns_name,
 void aa_info_message(const char *str)
 {
 	if (audit_enabled) {
-		DEFINE_AUDIT_DATA(sa, LSM_AUDIT_DATA_NONE, NULL);
-
-		aad(&sa)->info = str;
+		struct common_audit_data sa;
+		struct apparmor_audit_data aad = {0,};
+		sa.type = LSM_AUDIT_DATA_NONE;
+		sa.aad = &aad;
+		aad.info = str;
 		aa_audit_msg(AUDIT_APPARMOR_STATUS, &sa, NULL);
 	}
 	printk(KERN_INFO "AppArmor: %s\n", str);
 }
 
 /**
- * aa_policy_init - initialize a policy structure
- * @policy: policy to initialize  (NOT NULL)
- * @prefix: prefix name if any is required.  (MAYBE NULL)
- * @name: name of the policy, init will make a copy of it  (NOT NULL)
+ * kvmalloc - do allocation preferring kmalloc but falling back to vmalloc
+ * @size: size of allocation
  *
- * Note: this fn creates a copy of strings passed in
+ * Return: allocated buffer or NULL if failed
  *
- * Returns: true if policy init successful
+ * It is possible that policy being loaded from the user is larger than
+ * what can be allocated by kmalloc, in those cases fall back to vmalloc.
  */
-bool aa_policy_init(struct aa_policy *policy, const char *prefix,
-		    const char *name, gfp_t gfp)
+void *kvmalloc(size_t size)
 {
-	/* freed by policy_free */
-	if (prefix) {
-		policy->hname = kmalloc(strlen(prefix) + strlen(name) + 3,
-					gfp);
-		if (policy->hname)
-			sprintf((char *)policy->hname, "%s//%s", prefix, name);
-	} else
-		policy->hname = kstrdup(name, gfp);
-	if (!policy->hname)
-		return false;
-	/* base.name is a substring of fqname */
-	policy->name = basename(policy->hname);
-	INIT_LIST_HEAD(&policy->list);
-	INIT_LIST_HEAD(&policy->profiles);
+	void *buffer = NULL;
 
-	return true;
+	if (size == 0)
+		return NULL;
+
+	/* do not attempt kmalloc if we need more than 16 pages at once */
+	if (size <= (16*PAGE_SIZE))
+		buffer = kmalloc(size, GFP_NOIO | __GFP_NOWARN);
+	if (!buffer) {
+		/* see kvfree for why size must be at least work_struct size
+		 * when allocated via vmalloc
+		 */
+		if (size < sizeof(struct work_struct))
+			size = sizeof(struct work_struct);
+		buffer = vmalloc(size);
+	}
+	return buffer;
 }
 
 /**
- * aa_policy_destroy - free the elements referenced by @policy
- * @policy: policy that is to have its elements freed  (NOT NULL)
+ * do_vfree - workqueue routine for freeing vmalloced memory
+ * @work: data to be freed
+ *
+ * The work_struct is overlaid to the data being freed, as at the point
+ * the work is scheduled the data is no longer valid, be its freeing
+ * needs to be delayed until safe.
  */
-void aa_policy_destroy(struct aa_policy *policy)
+static void do_vfree(struct work_struct *work)
 {
-	AA_BUG(on_list_rcu(&policy->profiles));
-	AA_BUG(on_list_rcu(&policy->list));
+	vfree(work);
+}
 
-	/* don't free name as its a subset of hname */
-	kzfree(policy->hname);
+/**
+ * kvfree - free an allocation do by kvmalloc
+ * @buffer: buffer to free (MAYBE_NULL)
+ *
+ * Free a buffer allocated by kvmalloc
+ */
+void kvfree(void *buffer)
+{
+	if (is_vmalloc_addr(buffer)) {
+		/* Data is no longer valid so just use the allocated space
+		 * as the work_struct
+		 */
+		struct work_struct *work = (struct work_struct *) buffer;
+		INIT_WORK(work, do_vfree);
+		schedule_work(work);
+	} else
+		kfree(buffer);
 }

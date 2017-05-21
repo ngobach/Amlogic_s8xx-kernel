@@ -21,10 +21,6 @@ static inline void native_set_pmd(pmd_t *pmdp, pmd_t pmd)
 	*pmdp = pmd;
 }
 
-static inline void native_set_pud(pud_t *pudp, pud_t pud)
-{
-}
-
 static inline void native_set_pte_atomic(pte_t *ptep, pte_t pte)
 {
 	native_set_pte(ptep, pte);
@@ -33,10 +29,6 @@ static inline void native_set_pte_atomic(pte_t *ptep, pte_t pte)
 static inline void native_pmd_clear(pmd_t *pmdp)
 {
 	native_set_pmd(pmdp, __pmd(0));
-}
-
-static inline void native_pud_clear(pud_t *pudp)
-{
 }
 
 static inline void native_pte_clear(struct mm_struct *mm,
@@ -63,25 +55,47 @@ static inline pmd_t native_pmdp_get_and_clear(pmd_t *xp)
 #define native_pmdp_get_and_clear(xp) native_local_pmdp_get_and_clear(xp)
 #endif
 
-#ifdef CONFIG_SMP
-static inline pud_t native_pudp_get_and_clear(pud_t *xp)
-{
-	return __pud(xchg((pudval_t *)xp, 0));
-}
+/*
+ * Bits _PAGE_BIT_PRESENT, _PAGE_BIT_FILE and _PAGE_BIT_PROTNONE are taken,
+ * split up the 29 bits of offset into this range:
+ */
+#define PTE_FILE_MAX_BITS	29
+#define PTE_FILE_SHIFT1		(_PAGE_BIT_PRESENT + 1)
+#if _PAGE_BIT_FILE < _PAGE_BIT_PROTNONE
+#define PTE_FILE_SHIFT2		(_PAGE_BIT_FILE + 1)
+#define PTE_FILE_SHIFT3		(_PAGE_BIT_PROTNONE + 1)
 #else
-#define native_pudp_get_and_clear(xp) native_local_pudp_get_and_clear(xp)
+#define PTE_FILE_SHIFT2		(_PAGE_BIT_PROTNONE + 1)
+#define PTE_FILE_SHIFT3		(_PAGE_BIT_FILE + 1)
 #endif
+#define PTE_FILE_BITS1		(PTE_FILE_SHIFT2 - PTE_FILE_SHIFT1 - 1)
+#define PTE_FILE_BITS2		(PTE_FILE_SHIFT3 - PTE_FILE_SHIFT2 - 1)
 
-/* Bit manipulation helper on pte/pgoff entry */
-static inline unsigned long pte_bitop(unsigned long value, unsigned int rightshift,
-				      unsigned long mask, unsigned int leftshift)
-{
-	return ((value >> rightshift) & mask) << leftshift;
-}
+#define pte_to_pgoff(pte)						\
+	((((pte).pte_low >> PTE_FILE_SHIFT1)				\
+	  & ((1U << PTE_FILE_BITS1) - 1))				\
+	 + ((((pte).pte_low >> PTE_FILE_SHIFT2)				\
+	     & ((1U << PTE_FILE_BITS2) - 1)) << PTE_FILE_BITS1)		\
+	 + (((pte).pte_low >> PTE_FILE_SHIFT3)				\
+	    << (PTE_FILE_BITS1 + PTE_FILE_BITS2)))
+
+#define pgoff_to_pte(off)						\
+	((pte_t) { .pte_low =						\
+	 (((off) & ((1U << PTE_FILE_BITS1) - 1)) << PTE_FILE_SHIFT1)	\
+	 + ((((off) >> PTE_FILE_BITS1) & ((1U << PTE_FILE_BITS2) - 1))	\
+	    << PTE_FILE_SHIFT2)						\
+	 + (((off) >> (PTE_FILE_BITS1 + PTE_FILE_BITS2))		\
+	    << PTE_FILE_SHIFT3)						\
+	 + _PAGE_FILE })
 
 /* Encode and de-code a swap entry */
-#define SWP_TYPE_BITS 5
+#if _PAGE_BIT_FILE < _PAGE_BIT_PROTNONE
+#define SWP_TYPE_BITS (_PAGE_BIT_FILE - _PAGE_BIT_PRESENT - 1)
 #define SWP_OFFSET_SHIFT (_PAGE_BIT_PROTNONE + 1)
+#else
+#define SWP_TYPE_BITS (_PAGE_BIT_PROTNONE - _PAGE_BIT_PRESENT - 1)
+#define SWP_OFFSET_SHIFT (_PAGE_BIT_FILE + 1)
+#endif
 
 #define MAX_SWAPFILES_CHECK() BUILD_BUG_ON(MAX_SWAPFILES_SHIFT > SWP_TYPE_BITS)
 

@@ -6,8 +6,7 @@
 #include <linux/selection.h>
 #include <linux/workqueue.h>
 #include <linux/tty.h>
-#include <linux/tty_flip.h>
-#include <linux/atomic.h>
+#include <asm/cmpxchg.h>
 
 #include "speakup.h"
 
@@ -66,7 +65,6 @@ int speakup_set_selection(struct tty_struct *tty)
 	if (ps > pe) {
 		/* make sel_start <= sel_end */
 		int tmp = ps;
-
 		ps = pe;
 		pe = tmp;
 	}
@@ -75,7 +73,7 @@ int speakup_set_selection(struct tty_struct *tty)
 		speakup_clear_selection();
 		spk_sel_cons = vc_cons[fg_console].d;
 		dev_warn(tty->dev,
-			 "Selection: mark console not the same as cut\n");
+			"Selection: mark console not the same as cut\n");
 		return -EINVAL;
 	}
 
@@ -99,7 +97,7 @@ int speakup_set_selection(struct tty_struct *tty)
 	sel_start = new_sel_start;
 	sel_end = new_sel_end;
 	/* Allocate a new buffer before freeing the old one ... */
-	bp = kmalloc((sel_end - sel_start) / 2 + 1, GFP_ATOMIC);
+	bp = kmalloc((sel_end-sel_start)/2+1, GFP_ATOMIC);
 	if (!bp) {
 		speakup_clear_selection();
 		return -ENOMEM;
@@ -114,8 +112,7 @@ int speakup_set_selection(struct tty_struct *tty)
 			obp = bp;
 		if (!((i + 2) % vc->vc_size_row)) {
 			/* strip trailing blanks from line and add newline,
-			 * unless non-space at end of line.
-			 */
+			   unless non-space at end of line. */
 			if (obp != bp) {
 				bp = obp;
 				*bp++ = '\r';
@@ -137,7 +134,7 @@ static void __speakup_paste_selection(struct work_struct *work)
 	struct speakup_paste_work *spw =
 		container_of(work, struct speakup_paste_work, work);
 	struct tty_struct *tty = xchg(&spw->tty, NULL);
-	struct vc_data *vc = (struct vc_data *)tty->driver_data;
+	struct vc_data *vc = (struct vc_data *) tty->driver_data;
 	int pasted = 0, count;
 	struct tty_ldisc *ld;
 	DECLARE_WAITQUEUE(wait, current);
@@ -145,24 +142,23 @@ static void __speakup_paste_selection(struct work_struct *work)
 	ld = tty_ldisc_ref(tty);
 	if (!ld)
 		goto tty_unref;
-	tty_buffer_lock_exclusive(&vc->port);
 
+	/* FIXME: this is completely unsafe */
 	add_wait_queue(&vc->paste_wait, &wait);
 	while (sel_buffer && sel_buffer_lth > pasted) {
 		set_current_state(TASK_INTERRUPTIBLE);
-		if (tty_throttled(tty)) {
+		if (test_bit(TTY_THROTTLED, &tty->flags)) {
 			schedule();
 			continue;
 		}
 		count = sel_buffer_lth - pasted;
-		count = tty_ldisc_receive_buf(ld, sel_buffer + pasted, NULL,
-					      count);
+		count = min_t(int, count, tty->receive_room);
+		ld->ops->receive_buf(tty, sel_buffer + pasted, NULL, count);
 		pasted += count;
 	}
 	remove_wait_queue(&vc->paste_wait, &wait);
-	__set_current_state(TASK_RUNNING);
+	current->state = TASK_RUNNING;
 
-	tty_buffer_unlock_exclusive(&vc->port);
 	tty_ldisc_deref(ld);
 tty_unref:
 	tty_kref_put(tty);
@@ -175,7 +171,7 @@ static struct speakup_paste_work speakup_paste_work = {
 
 int speakup_paste_selection(struct tty_struct *tty)
 {
-	if (cmpxchg(&speakup_paste_work.tty, NULL, tty))
+	if (cmpxchg(&speakup_paste_work.tty, NULL, tty) != NULL)
 		return -EBUSY;
 
 	tty_kref_get(tty);

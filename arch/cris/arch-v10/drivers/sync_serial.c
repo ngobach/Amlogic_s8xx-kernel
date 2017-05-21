@@ -16,18 +16,17 @@
 #include <linux/types.h>
 #include <linux/errno.h>
 #include <linux/major.h>
-#include <linux/sched/signal.h>
+#include <linux/sched.h>
 #include <linux/interrupt.h>
 #include <linux/poll.h>
 #include <linux/init.h>
 #include <linux/mutex.h>
 #include <linux/timer.h>
-#include <linux/wait.h>
 #include <asm/irq.h>
 #include <asm/dma.h>
 #include <asm/io.h>
 #include <arch/svinto.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 #include <asm/sync_serial.h>
 #include <arch/io_interface_mux.h>
 
@@ -581,7 +580,7 @@ static int sync_serial_open(struct inode *inode, struct file *file)
 			if (port == &ports[0]) {
 				if (request_irq(8,
 						manual_interrupt,
-						IRQF_SHARED,
+						IRQF_SHARED | IRQF_DISABLED,
 						"synchronous serial manual irq",
 						&ports[0])) {
 					printk(KERN_CRIT "Can't alloc "
@@ -591,7 +590,7 @@ static int sync_serial_open(struct inode *inode, struct file *file)
 			} else if (port == &ports[1]) {
 				if (request_irq(8,
 						manual_interrupt,
-						IRQF_SHARED,
+						IRQF_SHARED | IRQF_DISABLED,
 						"synchronous serial manual irq",
 						&ports[1])) {
 					printk(KERN_CRIT "Can't alloc "
@@ -1086,6 +1085,7 @@ static ssize_t sync_serial_write(struct file *file, const char *buf,
 	}
 	local_irq_restore(flags);
 	schedule();
+	set_current_state(TASK_RUNNING);
 	remove_wait_queue(&port->out_wait_q, &wait);
 	if (signal_pending(current))
 		return -EINTR;
@@ -1136,8 +1136,7 @@ static ssize_t sync_serial_read(struct file *file, char *buf,
 		if (file->f_flags & O_NONBLOCK)
 			return -EAGAIN;
 
-		wait_event_interruptible(port->in_wait_q,
-					 !(start == end && !port->full));
+		interruptible_sleep_on(&port->in_wait_q);
 		if (signal_pending(current))
 			return -EINTR;
 

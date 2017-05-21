@@ -3,33 +3,28 @@
 /*
  * Lock-less NULL terminated single linked list
  *
- * Cases where locking is not needed:
- * If there are multiple producers and multiple consumers, llist_add can be
- * used in producers and llist_del_all can be used in consumers simultaneously
- * without locking. Also a single consumer can use llist_del_first while
- * multiple producers simultaneously use llist_add, without any locking.
+ * If there are multiple producers and multiple consumers, llist_add
+ * can be used in producers and llist_del_all can be used in
+ * consumers.  They can work simultaneously without lock.  But
+ * llist_del_first can not be used here.  Because llist_del_first
+ * depends on list->first->next does not changed if list->first is not
+ * changed during its operation, but llist_del_first, llist_add,
+ * llist_add (or llist_del_all, llist_add, llist_add) sequence in
+ * another consumer may violate that.
  *
- * Cases where locking is needed:
- * If we have multiple consumers with llist_del_first used in one consumer, and
- * llist_del_first or llist_del_all used in other consumers, then a lock is
- * needed.  This is because llist_del_first depends on list->first->next not
- * changing, but without lock protection, there's no way to be sure about that
- * if a preemption happens in the middle of the delete operation and on being
- * preempted back, the list->first is the same as before causing the cmpxchg in
- * llist_del_first to succeed. For example, while a llist_del_first operation
- * is in progress in one consumer, then a llist_del_first, llist_add,
- * llist_add (or llist_del_all, llist_add, llist_add) sequence in another
- * consumer may cause violations.
+ * If there are multiple producers and one consumer, llist_add can be
+ * used in producers and llist_del_all or llist_del_first can be used
+ * in the consumer.
  *
- * This can be summarized as follows:
+ * This can be summarized as follow:
  *
  *           |   add    | del_first |  del_all
  * add       |    -     |     -     |     -
  * del_first |          |     L     |     L
  * del_all   |          |           |     -
  *
- * Where, a particular row's operation can happen concurrently with a column's
- * operation, with "-" being no lock needed, while "L" being lock is needed.
+ * Where "-" stands for no lock is needed, while "L" stands for lock
+ * is needed.
  *
  * The list entries deleted via llist_del_all can be traversed with
  * traversing function such as llist_for_each etc.  But the list
@@ -60,8 +55,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include <linux/atomic.h>
 #include <linux/kernel.h>
+#include <asm/cmpxchg.h>
 
 struct llist_head {
 	struct llist_node *first;
@@ -130,29 +125,6 @@ static inline void init_llist_head(struct llist_head *list)
 	     (pos) = llist_entry((pos)->member.next, typeof(*(pos)), member))
 
 /**
- * llist_for_each_entry_safe - iterate over some deleted entries of lock-less list of given type
- *			       safe against removal of list entry
- * @pos:	the type * to use as a loop cursor.
- * @n:		another type * to use as temporary storage
- * @node:	the first entry of deleted list entries.
- * @member:	the name of the llist_node with the struct.
- *
- * In general, some entries of the lock-less list can be traversed
- * safely only after being removed from list, so start with an entry
- * instead of list head.
- *
- * If being used on entries deleted from lock-less list directly, the
- * traverse order is from the newest to the oldest added entry.  If
- * you want to traverse from the oldest to the newest, you must
- * reverse the order by yourself before traversing.
- */
-#define llist_for_each_entry_safe(pos, n, node, member)			       \
-	for (pos = llist_entry((node), typeof(*pos), member);		       \
-	     &pos->member != NULL &&					       \
-	        (n = llist_entry(pos->member.next, typeof(*n), member), true); \
-	     pos = n)
-
-/**
  * llist_empty - tests whether a lock-less list is empty
  * @head:	the list to test
  *
@@ -170,9 +142,6 @@ static inline struct llist_node *llist_next(struct llist_node *node)
 	return node->next;
 }
 
-extern bool llist_add_batch(struct llist_node *new_first,
-			    struct llist_node *new_last,
-			    struct llist_head *head);
 /**
  * llist_add - add a new entry
  * @new:	new entry to be added
@@ -182,7 +151,18 @@ extern bool llist_add_batch(struct llist_node *new_first,
  */
 static inline bool llist_add(struct llist_node *new, struct llist_head *head)
 {
-	return llist_add_batch(new, new, head);
+	struct llist_node *entry, *old_entry;
+
+	entry = head->first;
+	for (;;) {
+		old_entry = entry;
+		new->next = entry;
+		entry = cmpxchg(&head->first, old_entry, new);
+		if (entry == old_entry)
+			break;
+	}
+
+	return old_entry == NULL;
 }
 
 /**
@@ -198,8 +178,9 @@ static inline struct llist_node *llist_del_all(struct llist_head *head)
 	return xchg(&head->first, NULL);
 }
 
+extern bool llist_add_batch(struct llist_node *new_first,
+			    struct llist_node *new_last,
+			    struct llist_head *head);
 extern struct llist_node *llist_del_first(struct llist_head *head);
-
-struct llist_node *llist_reverse_order(struct llist_node *head);
 
 #endif /* LLIST_H */

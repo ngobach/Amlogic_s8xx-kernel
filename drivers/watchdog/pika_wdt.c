@@ -22,7 +22,6 @@
 #include <linux/bitops.h>
 #include <linux/uaccess.h>
 #include <linux/io.h>
-#include <linux/of_address.h>
 #include <linux/of_platform.h>
 
 #define DRV_NAME "PIKA-WDT"
@@ -54,7 +53,7 @@ static struct {
 	struct timer_list timer;	/* The timer that pings the watchdog */
 } pikawdt_private;
 
-static struct watchdog_info ident __ro_after_init = {
+static struct watchdog_info ident = {
 	.identity	= DRV_NAME,
 	.options	= WDIOF_CARDRESET |
 			  WDIOF_SETTIMEOUT |
@@ -299,3 +298,5 @@ module_exit(pikawdt_exit);
 MODULE_AUTHOR("Sean MacLennan <smaclennan@pikatech.com>");
 MODULE_DESCRIPTION("PIKA FPGA based Watchdog Timer");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
+

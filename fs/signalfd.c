@@ -38,7 +38,7 @@ void signalfd_cleanup(struct sighand_struct *sighand)
 	/*
 	 * The lockless check can race with remove_wait_queue() in progress,
 	 * but in this case its caller should run under rcu_read_lock() and
-	 * sighand_cachep is SLAB_TYPESAFE_BY_RCU, we can safely return.
+	 * sighand_cachep is SLAB_DESTROY_BY_RCU, we can safely return.
 	 */
 	if (likely(!waitqueue_active(wqh)))
 		return;
@@ -231,7 +231,7 @@ static ssize_t signalfd_read(struct file *file, char __user *buf, size_t count,
 }
 
 #ifdef CONFIG_PROC_FS
-static void signalfd_show_fdinfo(struct seq_file *m, struct file *f)
+static int signalfd_show_fdinfo(struct seq_file *m, struct file *f)
 {
 	struct signalfd_ctx *ctx = f->private_data;
 	sigset_t sigmask;
@@ -239,6 +239,8 @@ static void signalfd_show_fdinfo(struct seq_file *m, struct file *f)
 	sigmask = ctx->sigmask;
 	signotset(&sigmask);
 	render_sigset_t(m, "sigmask:\t", &sigmask);
+
+	return 0;
 }
 #endif
 

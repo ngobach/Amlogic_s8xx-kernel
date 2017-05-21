@@ -7,6 +7,8 @@
 #include <linux/kernel.h>
 #include <linux/delay.h>
 #include <asm/lasat/lasat.h>
+#include <linux/module.h>
+#include <linux/init.h>
 
 #include "at93c.h"
 

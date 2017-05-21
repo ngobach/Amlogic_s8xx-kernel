@@ -6,9 +6,5 @@
 # instead of duplicating in each module.
 #
 
-# When adding new entries keep the list in alphabetical order
-obj-y += cros_ec_sensors/
 obj-y += hid-sensors/
-obj-y += ms_sensors/
-obj-y += ssp_sensors/
 obj-y += st_sensors/

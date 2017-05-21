@@ -76,8 +76,6 @@ source "sound/isa/Kconfig"
 
 source "sound/pci/Kconfig"
 
-source "sound/hda/Kconfig"
-
 source "sound/ppc/Kconfig"
 
 source "sound/aoa/Kconfig"
@@ -108,14 +106,11 @@ source "sound/parisc/Kconfig"
 
 source "sound/soc/Kconfig"
 
-source "sound/x86/Kconfig"
-
 endif # SND
 
 menuconfig SOUND_PRIME
 	tristate "Open Sound System (DEPRECATED)"
 	select SOUND_OSS_CORE
-	depends on BROKEN
 	help
 	  Say 'Y' or 'M' to enable Open Sound System drivers.
 

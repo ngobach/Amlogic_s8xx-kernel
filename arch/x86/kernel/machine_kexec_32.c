@@ -9,6 +9,7 @@
 #include <linux/mm.h>
 #include <linux/kexec.h>
 #include <linux/delay.h>
+#include <linux/init.h>
 #include <linux/numa.h>
 #include <linux/ftrace.h>
 #include <linux/suspend.h>
@@ -20,10 +21,9 @@
 #include <asm/tlbflush.h>
 #include <asm/mmu_context.h>
 #include <asm/apic.h>
-#include <asm/io_apic.h>
 #include <asm/cpufeature.h>
 #include <asm/desc.h>
-#include <asm/set_memory.h>
+#include <asm/cacheflush.h>
 #include <asm/debugreg.h>
 
 static void set_idt(void *newidt, __u16 limit)
@@ -103,7 +103,6 @@ static void machine_kexec_page_table_set_one(
 	pgd_t *pgd, pmd_t *pmd, pte_t *pte,
 	unsigned long vaddr, unsigned long paddr)
 {
-	p4d_t *p4d;
 	pud_t *pud;
 
 	pgd += pgd_index(vaddr);
@@ -111,8 +110,7 @@ static void machine_kexec_page_table_set_one(
 	if (!(pgd_val(*pgd) & _PAGE_PRESENT))
 		set_pgd(pgd, __pgd(__pa(pmd) | _PAGE_PRESENT));
 #endif
-	p4d = p4d_offset(pgd, vaddr);
-	pud = pud_offset(p4d, vaddr);
+	pud = pud_offset(pgd, vaddr);
 	pmd = pmd_offset(pud, vaddr);
 	if (!(pmd_val(*pmd) & _PAGE_PRESENT))
 		set_pmd(pmd, __pmd(__pa(pte) | _PAGE_TABLE));
@@ -250,8 +248,7 @@ void machine_kexec(struct kimage *image)
 	/* now call it */
 	image->start = relocate_kernel_ptr((unsigned long)image->head,
 					   (unsigned long)page_list,
-					   image->start,
-					   boot_cpu_has(X86_FEATURE_PAE),
+					   image->start, cpu_has_pae,
 					   image->preserve_context);
 
 #ifdef CONFIG_KEXEC_JUMP

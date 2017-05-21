@@ -24,12 +24,10 @@
 #define SIOCINQ		FIONREAD
 #define SIOCOUTQ	TIOCOUTQ        /* output queue size (not sent + not acked) */
 
-#define SOCK_IOC_TYPE	0x89
-
 /* Routing table calls. */
 #define SIOCADDRT	0x890B		/* add routing table entry	*/
 #define SIOCDELRT	0x890C		/* delete routing table entry	*/
-#define SIOCRTMSG	0x890D		/* unused			*/
+#define SIOCRTMSG	0x890D		/* call to routing system	*/
 
 /* Socket configuration controls. */
 #define SIOCGIFNAME	0x8910		/* get iface name		*/
@@ -67,6 +65,7 @@
 #define SIOCDIFADDR	0x8936		/* delete PA address		*/
 #define	SIOCSIFHWBROADCAST	0x8937	/* set hardware broadcast addr	*/
 #define SIOCGIFCOUNT	0x8938		/* get number of devices */
+#define SIOCKILLADDR	0x8939		/* kill sockets with this local addr */
 
 #define SIOCGIFBR	0x8940		/* Bridging support		*/
 #define SIOCSIFBR	0x8941		/* Set bridging options 	*/
@@ -86,7 +85,6 @@
 #define SIOCWANDEV	0x894A		/* get/set netdev parameters	*/
 
 #define SIOCOUTQNSD	0x894B		/* output queue size (not sent only) */
-#define SIOCGSKNS	0x894C		/* get socket network namespace */
 
 /* ARP cache control calls. */
 		    /*  0x8950 - 0x8952  * obsolete calls, don't re-use */
@@ -128,8 +126,7 @@
 #define SIOCBRDELIF	0x89a3		/* remove interface from bridge */
 
 /* hardware time stamping: parameters in linux/net_tstamp.h */
-#define SIOCSHWTSTAMP	0x89b0		/* set and get config		*/
-#define SIOCGHWTSTAMP	0x89b1		/* get config			*/
+#define SIOCSHWTSTAMP   0x89b0
 
 /* Device private ioctl calls */
 

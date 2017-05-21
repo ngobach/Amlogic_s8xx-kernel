@@ -351,7 +351,7 @@ struct l2t_entry *t3_l2t_get(struct t3cdev *cdev, struct dst_entry *dst,
 		e->smt_idx = smt_idx;
 		atomic_set(&e->refcnt, 1);
 		neigh_replace(e, neigh);
-		if (is_vlan_dev(neigh->dev))
+		if (neigh->dev->priv_flags & IFF_802_1Q_VLAN)
 			e->vlan = vlan_dev_vlan_id(neigh->dev);
 		else
 			e->vlan = VLAN_NONE;
@@ -429,7 +429,7 @@ found:
 		} else {
 			e->state = neigh->nud_state & NUD_CONNECTED ?
 			    L2T_STATE_VALID : L2T_STATE_STALE;
-			if (!ether_addr_equal(e->dmac, neigh->ha))
+			if (memcmp(e->dmac, neigh->ha, 6))
 				setup_l2e_send_pending(dev, NULL, e);
 		}
 	}
@@ -444,7 +444,7 @@ struct l2t_data *t3_init_l2t(unsigned int l2t_capacity)
 	struct l2t_data *d;
 	int i, size = sizeof(*d) + l2t_capacity * sizeof(struct l2t_entry);
 
-	d = kvzalloc(size, GFP_KERNEL);
+	d = cxgb_alloc_mem(size);
 	if (!d)
 		return NULL;
 
@@ -462,3 +462,9 @@ struct l2t_data *t3_init_l2t(unsigned int l2t_capacity)
 	}
 	return d;
 }
+
+void t3_free_l2t(struct l2t_data *d)
+{
+	cxgb_free_mem(d);
+}
+

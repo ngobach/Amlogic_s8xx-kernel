@@ -29,6 +29,7 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/timer.h>
@@ -52,7 +53,7 @@
 #include <pcmcia/ss.h>
 
 #include <asm/io.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 
 /*====================================================================*/
 
@@ -113,7 +114,6 @@ struct smc_private {
     struct mii_if_info		mii_if;
     int				duplex;
     int				rx_ovrn;
-    unsigned long		last_rx;
 };
 
 /* Special definitions for Megahertz multifunction cards */
@@ -295,6 +295,7 @@ static const struct net_device_ops smc_netdev_ops = {
 	.ndo_set_config 	= s9k_config,
 	.ndo_set_rx_mode	= set_rx_mode,
 	.ndo_do_ioctl		= smc_ioctl,
+	.ndo_change_mtu		= eth_change_mtu,
 	.ndo_set_mac_address 	= eth_mac_addr,
 	.ndo_validate_addr	= eth_validate_addr,
 };
@@ -318,7 +319,7 @@ static int smc91c92_probe(struct pcmcia_device *link)
 
     /* The SMC91c92-specific entries in the device structure. */
     dev->netdev_ops = &smc_netdev_ops;
-    dev->ethtool_ops = &ethtool_ops;
+    SET_ETHTOOL_OPS(dev, &ethtool_ops);
     dev->watchdog_timeo = TX_TIMEOUT;
 
     smc->mii_if.dev = dev;
@@ -739,7 +740,7 @@ static int smc91c92_resume(struct pcmcia_device *link)
 	     (smc->cardid == PRODID_PSION_NET100))) {
 		i = osi_load_firmware(link);
 		if (i) {
-			netdev_err(dev, "Failed to load firmware\n");
+			pr_err("smc91c92_cs: Failed to load firmware\n");
 			return i;
 		}
 	}
@@ -792,7 +793,7 @@ static int check_sig(struct pcmcia_device *link)
     }
 
     if (width) {
-	    netdev_info(dev, "using 8-bit IO window\n");
+	    pr_info("using 8-bit IO window\n");
 
 	    smc91c92_suspend(link);
 	    pcmcia_fixup_iowidth(link);
@@ -1035,7 +1036,7 @@ static void smc_dump(struct net_device *dev)
     save = inw(ioaddr + BANK_SELECT);
     for (w = 0; w < 4; w++) {
 	SMC_SELECT_BANK(w);
-	netdev_dbg(dev, "bank %d: ", w);
+	netdev_printk(KERN_DEBUG, dev, "bank %d: ", w);
 	for (i = 0; i < 14; i += 2)
 	    pr_cont(" %04x", inw(ioaddr + i));
 	pr_cont("\n");
@@ -1070,8 +1071,11 @@ static int smc_open(struct net_device *dev)
     smc->packets_waiting = 0;
 
     smc_reset(dev);
-    setup_timer(&smc->media, media_check, (u_long)dev);
-    mod_timer(&smc->media, jiffies + HZ);
+    init_timer(&smc->media);
+    smc->media.function = media_check;
+    smc->media.data = (u_long) dev;
+    smc->media.expires = jiffies + HZ;
+    add_timer(&smc->media);
 
     return 0;
 } /* smc_open */
@@ -1172,7 +1176,7 @@ static void smc_hardware_send_packet(struct net_device * dev)
 
     smc->saved_skb = NULL;
     dev_kfree_skb_irq(skb);
-    netif_trans_update(dev);
+    dev->trans_start = jiffies;
     netif_start_queue(dev);
 }
 
@@ -1187,7 +1191,7 @@ static void smc_tx_timeout(struct net_device *dev)
 		  inw(ioaddr)&0xff, inw(ioaddr + 2));
     dev->stats.tx_errors++;
     smc_reset(dev);
-    netif_trans_update(dev); /* prevent tx timeout */
+    dev->trans_start = jiffies; /* prevent tx timeout */
     smc->saved_skb = NULL;
     netif_wake_queue(dev);
 }
@@ -1209,7 +1213,8 @@ static netdev_tx_t smc_start_xmit(struct sk_buff *skb,
     if (smc->saved_skb) {
 	/* THIS SHOULD NEVER HAPPEN. */
 	dev->stats.tx_aborted_errors++;
-	netdev_dbg(dev, "Internal error -- sent packet while busy\n");
+	netdev_printk(KERN_DEBUG, dev,
+		      "Internal error -- sent packet while busy\n");
 	return NETDEV_TX_BUSY;
     }
     smc->saved_skb = skb;
@@ -1249,7 +1254,7 @@ static netdev_tx_t smc_start_xmit(struct sk_buff *skb,
     }
 
     /* Otherwise defer until the Tx-space-allocated interrupt. */
-    netdev_dbg(dev, "memory allocation deferred.\n");
+    pr_debug("%s: memory allocation deferred.\n", dev->name);
     outw((IM_ALLOC_INT << 8) | (ir & 0xff00), ioaddr + INTERRUPT);
     spin_unlock_irqrestore(&smc->lock, flags);
 
@@ -1312,8 +1317,8 @@ static void smc_eph_irq(struct net_device *dev)
 
     SMC_SELECT_BANK(0);
     ephs = inw(ioaddr + EPH);
-    netdev_dbg(dev, "Ethernet protocol handler interrupt, status %4.4x.\n",
-	       ephs);
+    pr_debug("%s: Ethernet protocol handler interrupt, status"
+	  " %4.4x.\n", dev->name, ephs);
     /* Could be a counter roll-over warning: update stats. */
     card_stats = inw(ioaddr + COUNTER);
     /* single collisions */
@@ -1352,8 +1357,8 @@ static irqreturn_t smc_interrupt(int irq, void *dev_id)
 
     ioaddr = dev->base_addr;
 
-    netdev_dbg(dev, "SMC91c92 interrupt %d at %#x.\n",
-	       irq, ioaddr);
+    pr_debug("%s: SMC91c92 interrupt %d at %#x.\n", dev->name,
+	  irq, ioaddr);
 
     spin_lock(&smc->lock);
     smc->watchdog = 0;
@@ -1361,8 +1366,8 @@ static irqreturn_t smc_interrupt(int irq, void *dev_id)
     if ((saved_bank & 0xff00) != 0x3300) {
 	/* The device does not exist -- the card could be off-line, or
 	   maybe it has been ejected. */
-	netdev_dbg(dev, "SMC91c92 interrupt %d for non-existent/ejected device.\n",
-		   irq);
+	pr_debug("%s: SMC91c92 interrupt %d for non-existent"
+	      "/ejected device.\n", dev->name, irq);
 	handled = 0;
 	goto irq_done;
     }
@@ -1375,8 +1380,8 @@ static irqreturn_t smc_interrupt(int irq, void *dev_id)
 
     do { /* read the status flag, and mask it */
 	status = inw(ioaddr + INTERRUPT) & 0xff;
-	netdev_dbg(dev, "Status is %#2.2x (mask %#2.2x).\n",
-		   status, mask);
+	pr_debug("%s: Status is %#2.2x (mask %#2.2x).\n", dev->name,
+	      status, mask);
 	if ((status & mask) == 0) {
 	    if (bogus_cnt == INTR_WORK)
 		handled = 0;
@@ -1420,15 +1425,15 @@ static irqreturn_t smc_interrupt(int irq, void *dev_id)
 	    smc_eph_irq(dev);
     } while (--bogus_cnt);
 
-    netdev_dbg(dev, "  Restoring saved registers mask %2.2x bank %4.4x pointer %4.4x.\n",
-	       mask, saved_bank, saved_pointer);
+    pr_debug("  Restoring saved registers mask %2.2x bank %4.4x"
+	  " pointer %4.4x.\n", mask, saved_bank, saved_pointer);
 
     /* restore state register */
     outw((mask<<8), ioaddr + INTERRUPT);
     outw(saved_pointer, ioaddr + POINTER);
     SMC_SELECT_BANK(saved_bank);
 
-    netdev_dbg(dev, "Exiting interrupt IRQ%d.\n", irq);
+    pr_debug("%s: Exiting interrupt IRQ%d.\n", dev->name, irq);
 
 irq_done:
 
@@ -1486,19 +1491,18 @@ static void smc_rx(struct net_device *dev)
     rx_status = inw(ioaddr + DATA_1);
     packet_length = inw(ioaddr + DATA_1) & 0x07ff;
 
-    netdev_dbg(dev, "Receive status %4.4x length %d.\n",
-	       rx_status, packet_length);
+    pr_debug("%s: Receive status %4.4x length %d.\n",
+	  dev->name, rx_status, packet_length);
 
-    if (!(rx_status & RS_ERRORS)) {
+    if (!(rx_status & RS_ERRORS)) {		
 	/* do stuff to make a new packet */
 	struct sk_buff *skb;
-	struct smc_private *smc = netdev_priv(dev);
 	
 	/* Note: packet_length adds 5 or 6 extra bytes here! */
 	skb = netdev_alloc_skb(dev, packet_length+2);
 	
 	if (skb == NULL) {
-	    netdev_dbg(dev, "Low memory, packet dropped.\n");
+	    pr_debug("%s: Low memory, packet dropped.\n", dev->name);
 	    dev->stats.rx_dropped++;
 	    outw(MC_RELEASE, ioaddr + MMU_CMD);
 	    return;
@@ -1511,7 +1515,7 @@ static void smc_rx(struct net_device *dev)
 	skb->protocol = eth_type_trans(skb, dev);
 	
 	netif_rx(skb);
-	smc->last_rx = jiffies;
+	dev->last_rx = jiffies;
 	dev->stats.rx_packets++;
 	dev->stats.rx_bytes += packet_length;
 	if (rx_status & RS_MULTICAST)
@@ -1639,7 +1643,7 @@ static void smc_reset(struct net_device *dev)
     struct smc_private *smc = netdev_priv(dev);
     int i;
 
-    netdev_dbg(dev, "smc91c92 reset called.\n");
+    pr_debug("%s: smc91c92 reset called.\n", dev->name);
 
     /* The first interaction must be a write to bring the chip out
        of sleep mode. */
@@ -1792,7 +1796,7 @@ static void media_check(u_long arg)
     }
 
     /* Ignore collisions unless we've had no rx's recently */
-    if (time_after(jiffies, smc->last_rx + HZ)) {
+    if (time_after(jiffies, dev->last_rx + HZ)) {
 	if (smc->tx_err || (smc->media_status & EPH_16COL))
 	    media |= EPH_16COL;
     }
@@ -1843,60 +1847,56 @@ static int smc_link_ok(struct net_device *dev)
     }
 }
 
-static int smc_netdev_get_ecmd(struct net_device *dev,
-			       struct ethtool_link_ksettings *ecmd)
+static int smc_netdev_get_ecmd(struct net_device *dev, struct ethtool_cmd *ecmd)
 {
-	u16 tmp;
-	unsigned int ioaddr = dev->base_addr;
-	u32 supported;
+    u16 tmp;
+    unsigned int ioaddr = dev->base_addr;
 
-	supported = (SUPPORTED_TP | SUPPORTED_AUI |
-		     SUPPORTED_10baseT_Half | SUPPORTED_10baseT_Full);
+    ecmd->supported = (SUPPORTED_TP | SUPPORTED_AUI |
+	SUPPORTED_10baseT_Half | SUPPORTED_10baseT_Full);
+		
+    SMC_SELECT_BANK(1);
+    tmp = inw(ioaddr + CONFIG);
+    ecmd->port = (tmp & CFG_AUI_SELECT) ? PORT_AUI : PORT_TP;
+    ecmd->transceiver = XCVR_INTERNAL;
+    ethtool_cmd_speed_set(ecmd, SPEED_10);
+    ecmd->phy_address = ioaddr + MGMT;
 
-	SMC_SELECT_BANK(1);
-	tmp = inw(ioaddr + CONFIG);
-	ecmd->base.port = (tmp & CFG_AUI_SELECT) ? PORT_AUI : PORT_TP;
-	ecmd->base.speed = SPEED_10;
-	ecmd->base.phy_address = ioaddr + MGMT;
+    SMC_SELECT_BANK(0);
+    tmp = inw(ioaddr + TCR);
+    ecmd->duplex = (tmp & TCR_FDUPLX) ? DUPLEX_FULL : DUPLEX_HALF;
 
-	SMC_SELECT_BANK(0);
-	tmp = inw(ioaddr + TCR);
-	ecmd->base.duplex = (tmp & TCR_FDUPLX) ? DUPLEX_FULL : DUPLEX_HALF;
-
-	ethtool_convert_legacy_u32_to_link_mode(ecmd->link_modes.supported,
-						supported);
-
-	return 0;
+    return 0;
 }
 
-static int smc_netdev_set_ecmd(struct net_device *dev,
-			       const struct ethtool_link_ksettings *ecmd)
+static int smc_netdev_set_ecmd(struct net_device *dev, struct ethtool_cmd *ecmd)
 {
-	u16 tmp;
-	unsigned int ioaddr = dev->base_addr;
+    u16 tmp;
+    unsigned int ioaddr = dev->base_addr;
 
-	if (ecmd->base.speed != SPEED_10)
-		return -EINVAL;
-	if (ecmd->base.duplex != DUPLEX_HALF &&
-	    ecmd->base.duplex != DUPLEX_FULL)
-		return -EINVAL;
-	if (ecmd->base.port != PORT_TP && ecmd->base.port != PORT_AUI)
-		return -EINVAL;
+    if (ethtool_cmd_speed(ecmd) != SPEED_10)
+	return -EINVAL;
+    if (ecmd->duplex != DUPLEX_HALF && ecmd->duplex != DUPLEX_FULL)
+    	return -EINVAL;
+    if (ecmd->port != PORT_TP && ecmd->port != PORT_AUI)
+	return -EINVAL;
+    if (ecmd->transceiver != XCVR_INTERNAL)
+    	return -EINVAL;
 
-	if (ecmd->base.port == PORT_AUI)
-		smc_set_xcvr(dev, 1);
-	else
-		smc_set_xcvr(dev, 0);
+    if (ecmd->port == PORT_AUI)
+	smc_set_xcvr(dev, 1);
+    else
+	smc_set_xcvr(dev, 0);
 
-	SMC_SELECT_BANK(0);
-	tmp = inw(ioaddr + TCR);
-	if (ecmd->base.duplex == DUPLEX_FULL)
-		tmp |= TCR_FDUPLX;
-	else
-		tmp &= ~TCR_FDUPLX;
-	outw(tmp, ioaddr + TCR);
-
-	return 0;
+    SMC_SELECT_BANK(0);
+    tmp = inw(ioaddr + TCR);
+    if (ecmd->duplex == DUPLEX_FULL)
+	tmp |= TCR_FDUPLX;
+    else
+	tmp &= ~TCR_FDUPLX;
+    outw(tmp, ioaddr + TCR);
+	
+    return 0;
 }
 
 static int check_if_running(struct net_device *dev)
@@ -1912,8 +1912,7 @@ static void smc_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info
 	strlcpy(info->version, DRV_VERSION, sizeof(info->version));
 }
 
-static int smc_get_link_ksettings(struct net_device *dev,
-				  struct ethtool_link_ksettings *ecmd)
+static int smc_get_settings(struct net_device *dev, struct ethtool_cmd *ecmd)
 {
 	struct smc_private *smc = netdev_priv(dev);
 	unsigned int ioaddr = dev->base_addr;
@@ -1924,7 +1923,7 @@ static int smc_get_link_ksettings(struct net_device *dev,
 	spin_lock_irqsave(&smc->lock, flags);
 	SMC_SELECT_BANK(3);
 	if (smc->cfg & CFG_MII_SELECT)
-		ret = mii_ethtool_get_link_ksettings(&smc->mii_if, ecmd);
+		ret = mii_ethtool_gset(&smc->mii_if, ecmd);
 	else
 		ret = smc_netdev_get_ecmd(dev, ecmd);
 	SMC_SELECT_BANK(saved_bank);
@@ -1932,8 +1931,7 @@ static int smc_get_link_ksettings(struct net_device *dev,
 	return ret;
 }
 
-static int smc_set_link_ksettings(struct net_device *dev,
-				  const struct ethtool_link_ksettings *ecmd)
+static int smc_set_settings(struct net_device *dev, struct ethtool_cmd *ecmd)
 {
 	struct smc_private *smc = netdev_priv(dev);
 	unsigned int ioaddr = dev->base_addr;
@@ -1944,7 +1942,7 @@ static int smc_set_link_ksettings(struct net_device *dev,
 	spin_lock_irqsave(&smc->lock, flags);
 	SMC_SELECT_BANK(3);
 	if (smc->cfg & CFG_MII_SELECT)
-		ret = mii_ethtool_set_link_ksettings(&smc->mii_if, ecmd);
+		ret = mii_ethtool_sset(&smc->mii_if, ecmd);
 	else
 		ret = smc_netdev_set_ecmd(dev, ecmd);
 	SMC_SELECT_BANK(saved_bank);
@@ -1988,10 +1986,10 @@ static int smc_nway_reset(struct net_device *dev)
 static const struct ethtool_ops ethtool_ops = {
 	.begin = check_if_running,
 	.get_drvinfo = smc_get_drvinfo,
+	.get_settings = smc_get_settings,
+	.set_settings = smc_set_settings,
 	.get_link = smc_get_link,
 	.nway_reset = smc_nway_reset,
-	.get_link_ksettings = smc_get_link_ksettings,
-	.set_link_ksettings = smc_set_link_ksettings,
 };
 
 static int smc_ioctl (struct net_device *dev, struct ifreq *rq, int cmd)

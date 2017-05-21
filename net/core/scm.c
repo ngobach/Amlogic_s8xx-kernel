@@ -14,7 +14,6 @@
 #include <linux/capability.h>
 #include <linux/errno.h>
 #include <linux/sched.h>
-#include <linux/sched/user.h>
 #include <linux/mm.h>
 #include <linux/kernel.h>
 #include <linux/stat.h>
@@ -30,7 +29,7 @@
 #include <linux/nsproxy.h>
 #include <linux/slab.h>
 
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 
 #include <net/protocol.h>
 #include <linux/skbuff.h>
@@ -57,9 +56,9 @@ static __inline__ int scm_check_creds(struct ucred *creds)
 	if ((creds->pid == task_tgid_vnr(current) ||
 	     ns_capable(task_active_pid_ns(current)->user_ns, CAP_SYS_ADMIN)) &&
 	    ((uid_eq(uid, cred->uid)   || uid_eq(uid, cred->euid) ||
-	      uid_eq(uid, cred->suid)) || ns_capable(cred->user_ns, CAP_SETUID)) &&
+	      uid_eq(uid, cred->suid)) || nsown_capable(CAP_SETUID)) &&
 	    ((gid_eq(gid, cred->gid)   || gid_eq(gid, cred->egid) ||
-	      gid_eq(gid, cred->sgid)) || ns_capable(cred->user_ns, CAP_SETGID))) {
+	      gid_eq(gid, cred->sgid)) || nsown_capable(CAP_SETGID))) {
 	       return 0;
 	}
 	return -EPERM;
@@ -72,7 +71,7 @@ static int scm_fp_copy(struct cmsghdr *cmsg, struct scm_fp_list **fplp)
 	struct file **fpp;
 	int i, num;
 
-	num = (cmsg->cmsg_len - sizeof(struct cmsghdr))/sizeof(int);
+	num = (cmsg->cmsg_len - CMSG_ALIGN(sizeof(struct cmsghdr)))/sizeof(int);
 
 	if (num <= 0)
 		return 0;
@@ -136,7 +135,8 @@ int __scm_send(struct socket *sock, struct msghdr *msg, struct scm_cookie *p)
 	struct cmsghdr *cmsg;
 	int err;
 
-	for_each_cmsghdr(cmsg, msg) {
+	for (cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg))
+	{
 		err = -EINVAL;
 
 		/* Verify that cmsg_len is at least sizeof(struct cmsghdr) */
@@ -296,8 +296,8 @@ void scm_detach_fds(struct msghdr *msg, struct scm_cookie *scm)
 		/* Bump the usage count and install the file. */
 		sock = sock_from_file(fp[i], &err);
 		if (sock) {
-			sock_update_netprioidx(&sock->sk->sk_cgrp_data);
-			sock_update_classid(&sock->sk->sk_cgrp_data);
+			sock_update_netprioidx(sock->sk);
+			sock_update_classid(sock->sk);
 		}
 		fd_install(new_fd, get_file(fp[i]));
 	}

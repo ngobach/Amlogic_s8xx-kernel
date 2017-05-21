@@ -1,7 +1,7 @@
 /*
  * sched_clock for unstable cpu clocks
  *
- *  Copyright (C) 2008 Red Hat, Inc., Peter Zijlstra
+ *  Copyright (C) 2008 Red Hat, Inc., Peter Zijlstra <pzijlstr@redhat.com>
  *
  *  Updates and enhancements:
  *    Copyright (C) 2008 Red Hat, Inc. Steven Rostedt <srostedt@redhat.com>
@@ -26,9 +26,8 @@
  * at 0 on boot (but people really shouldn't rely on that).
  *
  * cpu_clock(i)       -- can be used from any context, including NMI.
+ * sched_clock_cpu(i) -- must be used with local IRQs disabled (implied by NMI)
  * local_clock()      -- is cpu_clock() on the current cpu.
- *
- * sched_clock_cpu(i)
  *
  * How:
  *
@@ -51,6 +50,15 @@
  * Furthermore, explicit sleep and wakeup hooks allow us to account for time
  * that is otherwise invisible (TSC gets stopped).
  *
+ *
+ * Notes:
+ *
+ * The !IRQ-safetly of sched_clock() and sched_clock_cpu() comes from things
+ * like cpufreq interrupts that can change the base clock (TSC) multiplier
+ * and cause funny jumps in time -- although the filtering provided by
+ * sched_clock_cpu() should mitigate serious artifacts we cannot rely on it
+ * in general since for !CONFIG_HAVE_UNSTABLE_SCHED_CLOCK we fully rely on
+ * sched_clock().
  */
 #include <linux/spinlock.h>
 #include <linux/hardirq.h>
@@ -58,19 +66,13 @@
 #include <linux/percpu.h>
 #include <linux/ktime.h>
 #include <linux/sched.h>
-#include <linux/nmi.h>
-#include <linux/sched/clock.h>
-#include <linux/static_key.h>
-#include <linux/workqueue.h>
-#include <linux/compiler.h>
-#include <linux/tick.h>
 
 /*
  * Scheduler clock - returns current time in nanosec units.
  * This is default implementation.
  * Architectures and sub-architectures can override this.
  */
-unsigned long long __weak sched_clock(void)
+unsigned long long __attribute__((weak)) sched_clock(void)
 {
 	return (unsigned long long)(jiffies - INITIAL_JIFFIES)
 					* (NSEC_PER_SEC / HZ);
@@ -79,27 +81,8 @@ EXPORT_SYMBOL_GPL(sched_clock);
 
 __read_mostly int sched_clock_running;
 
-void sched_clock_init(void)
-{
-	sched_clock_running = 1;
-}
-
 #ifdef CONFIG_HAVE_UNSTABLE_SCHED_CLOCK
-/*
- * We must start with !__sched_clock_stable because the unstable -> stable
- * transition is accurate, while the stable -> unstable transition is not.
- *
- * Similarly we start with __sched_clock_stable_early, thereby assuming we
- * will become stable, such that there's only a single 1 -> 0 transition.
- */
-static DEFINE_STATIC_KEY_FALSE(__sched_clock_stable);
-static int __sched_clock_stable_early = 1;
-
-/*
- * We want: ktime_get_ns() + __gtod_offset == sched_clock() + __sched_clock_offset
- */
-__read_mostly u64 __sched_clock_offset;
-static __read_mostly u64 __gtod_offset;
+__read_mostly int sched_clock_stable;
 
 struct sched_clock_data {
 	u64			tick_raw;
@@ -111,7 +94,7 @@ static DEFINE_PER_CPU_SHARED_ALIGNED(struct sched_clock_data, sched_clock_data);
 
 static inline struct sched_clock_data *this_scd(void)
 {
-	return this_cpu_ptr(&sched_clock_data);
+	return &__get_cpu_var(sched_clock_data);
 }
 
 static inline struct sched_clock_data *cpu_sdc(int cpu)
@@ -119,84 +102,20 @@ static inline struct sched_clock_data *cpu_sdc(int cpu)
 	return &per_cpu(sched_clock_data, cpu);
 }
 
-int sched_clock_stable(void)
+void sched_clock_init(void)
 {
-	return static_branch_likely(&__sched_clock_stable);
-}
+	u64 ktime_now = ktime_to_ns(ktime_get());
+	int cpu;
 
-static void __set_sched_clock_stable(void)
-{
-	struct sched_clock_data *scd = this_scd();
+	for_each_possible_cpu(cpu) {
+		struct sched_clock_data *scd = cpu_sdc(cpu);
 
-	/*
-	 * Attempt to make the (initial) unstable->stable transition continuous.
-	 */
-	__sched_clock_offset = (scd->tick_gtod + __gtod_offset) - (scd->tick_raw);
+		scd->tick_raw = 0;
+		scd->tick_gtod = ktime_now;
+		scd->clock = ktime_now;
+	}
 
-	printk(KERN_INFO "sched_clock: Marking stable (%lld, %lld)->(%lld, %lld)\n",
-			scd->tick_gtod, __gtod_offset,
-			scd->tick_raw,  __sched_clock_offset);
-
-	static_branch_enable(&__sched_clock_stable);
-	tick_dep_clear(TICK_DEP_BIT_CLOCK_UNSTABLE);
-}
-
-static void __sched_clock_work(struct work_struct *work)
-{
-	static_branch_disable(&__sched_clock_stable);
-}
-
-static DECLARE_WORK(sched_clock_work, __sched_clock_work);
-
-static void __clear_sched_clock_stable(void)
-{
-	struct sched_clock_data *scd = this_scd();
-
-	/*
-	 * Attempt to make the stable->unstable transition continuous.
-	 *
-	 * Trouble is, this is typically called from the TSC watchdog
-	 * timer, which is late per definition. This means the tick
-	 * values can already be screwy.
-	 *
-	 * Still do what we can.
-	 */
-	__gtod_offset = (scd->tick_raw + __sched_clock_offset) - (scd->tick_gtod);
-
-	printk(KERN_INFO "sched_clock: Marking unstable (%lld, %lld)<-(%lld, %lld)\n",
-			scd->tick_gtod, __gtod_offset,
-			scd->tick_raw,  __sched_clock_offset);
-
-	tick_dep_set(TICK_DEP_BIT_CLOCK_UNSTABLE);
-
-	if (sched_clock_stable())
-		schedule_work(&sched_clock_work);
-}
-
-void clear_sched_clock_stable(void)
-{
-	__sched_clock_stable_early = 0;
-
-	smp_mb(); /* matches sched_clock_init_late() */
-
-	if (sched_clock_running == 2)
-		__clear_sched_clock_stable();
-}
-
-void sched_clock_init_late(void)
-{
-	sched_clock_running = 2;
-	/*
-	 * Ensure that it is impossible to not do a static_key update.
-	 *
-	 * Either {set,clear}_sched_clock_stable() must see sched_clock_running
-	 * and do the update, or we must see their __sched_clock_stable_early
-	 * and do the update, or both.
-	 */
-	smp_mb(); /* matches {set,clear}_sched_clock_stable() */
-
-	if (__sched_clock_stable_early)
-		__set_sched_clock_stable();
+	sched_clock_running = 1;
 }
 
 /*
@@ -221,7 +140,7 @@ static inline u64 wrap_max(u64 x, u64 y)
  */
 static u64 sched_clock_local(struct sched_clock_data *scd)
 {
-	u64 now, clock, old_clock, min_clock, max_clock, gtod;
+	u64 now, clock, old_clock, min_clock, max_clock;
 	s64 delta;
 
 again:
@@ -238,10 +157,9 @@ again:
 	 *		      scd->tick_gtod + TICK_NSEC);
 	 */
 
-	gtod = scd->tick_gtod + __gtod_offset;
-	clock = gtod + delta;
-	min_clock = wrap_max(gtod, old_clock);
-	max_clock = wrap_max(old_clock, gtod + TICK_NSEC);
+	clock = scd->tick_gtod + delta;
+	min_clock = wrap_max(scd->tick_gtod, old_clock);
+	max_clock = wrap_max(old_clock, scd->tick_gtod + TICK_NSEC);
 
 	clock = wrap_max(clock, min_clock);
 	clock = wrap_min(clock, max_clock);
@@ -324,44 +242,44 @@ u64 sched_clock_cpu(int cpu)
 	struct sched_clock_data *scd;
 	u64 clock;
 
-	if (sched_clock_stable())
-		return sched_clock() + __sched_clock_offset;
+	WARN_ON_ONCE(!irqs_disabled());
+
+	if (sched_clock_stable)
+		return sched_clock();
 
 	if (unlikely(!sched_clock_running))
 		return 0ull;
 
-	preempt_disable_notrace();
 	scd = cpu_sdc(cpu);
 
 	if (cpu != smp_processor_id())
 		clock = sched_clock_remote(scd);
 	else
 		clock = sched_clock_local(scd);
-	preempt_enable_notrace();
 
 	return clock;
 }
-EXPORT_SYMBOL_GPL(sched_clock_cpu);
 
 void sched_clock_tick(void)
 {
 	struct sched_clock_data *scd;
+	u64 now, now_gtod;
+
+	if (sched_clock_stable)
+		return;
+
+	if (unlikely(!sched_clock_running))
+		return;
 
 	WARN_ON_ONCE(!irqs_disabled());
 
-	/*
-	 * Update these values even if sched_clock_stable(), because it can
-	 * become unstable at any point in time at which point we need some
-	 * values to fall back on.
-	 *
-	 * XXX arguably we can skip this if we expose tsc_clocksource_reliable
-	 */
 	scd = this_scd();
-	scd->tick_raw  = sched_clock();
-	scd->tick_gtod = ktime_get_ns();
+	now_gtod = ktime_to_ns(ktime_get());
+	now = sched_clock();
 
-	if (!sched_clock_stable() && likely(sched_clock_running))
-		sched_clock_local(scd);
+	scd->tick_raw = now;
+	scd->tick_gtod = now_gtod;
+	sched_clock_local(scd);
 }
 
 /*
@@ -382,11 +300,57 @@ void sched_clock_idle_wakeup_event(u64 delta_ns)
 		return;
 
 	sched_clock_tick();
-	touch_softlockup_watchdog_sched();
+	touch_softlockup_watchdog();
 }
 EXPORT_SYMBOL_GPL(sched_clock_idle_wakeup_event);
 
+/*
+ * As outlined at the top, provides a fast, high resolution, nanosecond
+ * time source that is monotonic per cpu argument and has bounded drift
+ * between cpus.
+ *
+ * ######################### BIG FAT WARNING ##########################
+ * # when comparing cpu_clock(i) to cpu_clock(j) for i != j, time can #
+ * # go backwards !!                                                  #
+ * ####################################################################
+ */
+u64 cpu_clock(int cpu)
+{
+	u64 clock;
+	unsigned long flags;
+
+	local_irq_save(flags);
+	clock = sched_clock_cpu(cpu);
+	local_irq_restore(flags);
+
+	return clock;
+}
+
+/*
+ * Similar to cpu_clock() for the current cpu. Time will only be observed
+ * to be monotonic if care is taken to only compare timestampt taken on the
+ * same CPU.
+ *
+ * See cpu_clock().
+ */
+u64 local_clock(void)
+{
+	u64 clock;
+	unsigned long flags;
+
+	local_irq_save(flags);
+	clock = sched_clock_cpu(smp_processor_id());
+	local_irq_restore(flags);
+
+	return clock;
+}
+
 #else /* CONFIG_HAVE_UNSTABLE_SCHED_CLOCK */
+
+void sched_clock_init(void)
+{
+	sched_clock_running = 1;
+}
 
 u64 sched_clock_cpu(int cpu)
 {
@@ -396,17 +360,17 @@ u64 sched_clock_cpu(int cpu)
 	return sched_clock();
 }
 
+u64 cpu_clock(int cpu)
+{
+	return sched_clock_cpu(cpu);
+}
+
+u64 local_clock(void)
+{
+	return sched_clock_cpu(0);
+}
+
 #endif /* CONFIG_HAVE_UNSTABLE_SCHED_CLOCK */
 
-/*
- * Running clock - returns the time that has elapsed while a guest has been
- * running.
- * On a guest this value should be local_clock minus the time the guest was
- * suspended by the hypervisor (for any reason).
- * On bare metal this function should return the same as local_clock.
- * Architectures and sub-architectures can override this.
- */
-u64 __weak running_clock(void)
-{
-	return local_clock();
-}
+EXPORT_SYMBOL_GPL(cpu_clock);
+EXPORT_SYMBOL_GPL(local_clock);

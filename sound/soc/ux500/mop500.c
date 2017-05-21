@@ -27,12 +27,13 @@
 #include "mop500_ab8500.h"
 
 /* Define the whole MOP500 soundcard, linking platform to the codec-drivers  */
-static struct snd_soc_dai_link mop500_dai_links[] = {
+struct snd_soc_dai_link mop500_dai_links[] = {
 	{
 		.name = "ab8500_0",
 		.stream_name = "ab8500_0",
 		.cpu_dai_name = "ux500-msp-i2s.1",
 		.codec_dai_name = "ab8500-codec-dai.0",
+		.platform_name = "ux500-msp-i2s.1",
 		.codec_name = "ab8500-codec.0",
 		.init = mop500_ab8500_machine_init,
 		.ops = mop500_ab8500_ops,
@@ -42,6 +43,7 @@ static struct snd_soc_dai_link mop500_dai_links[] = {
 		.stream_name = "ab8500_1",
 		.cpu_dai_name = "ux500-msp-i2s.3",
 		.codec_dai_name = "ab8500-codec-dai.1",
+		.platform_name = "ux500-msp-i2s.3",
 		.codec_name = "ab8500-codec.0",
 		.init = NULL,
 		.ops = mop500_ab8500_ops,
@@ -50,7 +52,6 @@ static struct snd_soc_dai_link mop500_dai_links[] = {
 
 static struct snd_soc_card mop500_card = {
 	.name = "MOP500-card",
-	.owner = THIS_MODULE,
 	.probe = NULL,
 	.dai_link = mop500_dai_links,
 	.num_links = ARRAY_SIZE(mop500_dai_links),
@@ -61,8 +62,12 @@ static void mop500_of_node_put(void)
 	int i;
 
 	for (i = 0; i < 2; i++) {
-		of_node_put(mop500_dai_links[i].cpu_of_node);
-		of_node_put(mop500_dai_links[i].codec_of_node);
+		if (mop500_dai_links[i].cpu_of_node)
+			of_node_put((struct device_node *)
+				mop500_dai_links[i].cpu_of_node);
+		if (mop500_dai_links[i].codec_of_node)
+			of_node_put((struct device_node *)
+				mop500_dai_links[i].codec_of_node);
 	}
 }
 
@@ -148,10 +153,10 @@ static const struct of_device_id snd_soc_mop500_match[] = {
 	{ .compatible = "stericsson,snd-soc-mop500", },
 	{},
 };
-MODULE_DEVICE_TABLE(of, snd_soc_mop500_match);
 
 static struct platform_driver snd_soc_mop500_driver = {
 	.driver = {
+		.owner = THIS_MODULE,
 		.name = "snd-soc-mop500",
 		.of_match_table = snd_soc_mop500_match,
 	},

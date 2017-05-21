@@ -32,13 +32,6 @@ dm_bufio_client_create(struct block_device *bdev, unsigned block_size,
 void dm_bufio_client_destroy(struct dm_bufio_client *c);
 
 /*
- * Set the sector range.
- * When this function is called, there must be no I/O in progress on the bufio
- * client.
- */
-void dm_bufio_set_sector_offset(struct dm_bufio_client *c, sector_t start);
-
-/*
  * WARNING: to avoid deadlocks, these conditions are observed:
  *
  * - At most one thread can hold at most "reserved_buffers" simultaneously.
@@ -114,18 +107,6 @@ int dm_bufio_issue_flush(struct dm_bufio_client *c);
  * block. dm_bufio_write_dirty_buffers is needed to commit the new block.
  */
 void dm_bufio_release_move(struct dm_buffer *b, sector_t new_block);
-
-/*
- * Free the given buffer.
- * This is just a hint, if the buffer is in use or dirty, this function
- * does nothing.
- */
-void dm_bufio_forget(struct dm_bufio_client *c, sector_t block);
-
-/*
- * Set the minimum number of buffers before cleanup happens.
- */
-void dm_bufio_set_minimum_buffers(struct dm_bufio_client *c, unsigned n);
 
 unsigned dm_bufio_get_block_size(struct dm_bufio_client *c);
 sector_t dm_bufio_get_device_size(struct dm_bufio_client *c);

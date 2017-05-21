@@ -17,19 +17,12 @@
 #ifndef __LINUX_PSTORE_RAM_H__
 #define __LINUX_PSTORE_RAM_H__
 
-#include <linux/compiler.h>
 #include <linux/device.h>
-#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/types.h>
-
-/*
- * Choose whether access to the RAM zone requires locking or not.  If a zone
- * can be written to from different CPUs like with ftrace for example, then
- * PRZ_FLAG_NO_LOCK is used. For all other cases, locking is required.
- */
-#define PRZ_FLAG_NO_LOCK	BIT(0)
+#include <linux/init.h>
+#include <linux/pstore.h>
 
 struct persistent_ram_buffer;
 struct rs_control;
@@ -47,8 +40,6 @@ struct persistent_ram_zone {
 	void *vaddr;
 	struct persistent_ram_buffer *buffer;
 	size_t buffer_size;
-	u32 flags;
-	raw_spinlock_t buffer_lock;
 
 	/* ECC correction */
 	char *par_buffer;
@@ -62,16 +53,40 @@ struct persistent_ram_zone {
 	size_t old_log_size;
 };
 
+typedef struct ramoops_context {
+	struct persistent_ram_zone **przs;
+	struct persistent_ram_zone *cprz;
+	struct persistent_ram_zone *fprz;
+	phys_addr_t phys_addr;
+	unsigned long size;
+	size_t record_size;
+	size_t console_size;
+	size_t ftrace_size;
+	int dump_oops;
+	struct persistent_ram_ecc_info ecc_info;
+	unsigned int max_dump_cnt;
+	unsigned int dump_write_cnt;
+	unsigned int dump_read_cnt;
+	unsigned int console_read_cnt;
+	unsigned int ftrace_read_cnt;
+	struct pstore_info pstore;
+}ramoops_context;
+extern unsigned int get_c_pstore_start(ramoops_context *cxt);
+extern void set_c_pstore_start(ramoops_context *cxt, unsigned int val);
+extern void set_c_pstore_size(ramoops_context *cxt, unsigned int val);
+extern void set_c_pstore_full_flag(ramoops_context *cxt, unsigned int val);
+extern unsigned int get_pstore_buffer_size(ramoops_context *cxt);
+//extern void set_pstore_buffer_size(ramoops_context *cxt,unsigned int val);
+
+
 struct persistent_ram_zone *persistent_ram_new(phys_addr_t start, size_t size,
 			u32 sig, struct persistent_ram_ecc_info *ecc_info,
-			unsigned int memtype, u32 flags);
+			unsigned int memtype);
 void persistent_ram_free(struct persistent_ram_zone *prz);
 void persistent_ram_zap(struct persistent_ram_zone *prz);
 
 int persistent_ram_write(struct persistent_ram_zone *prz, const void *s,
-			 unsigned int count);
-int persistent_ram_write_user(struct persistent_ram_zone *prz,
-			      const void __user *s, unsigned int count);
+	unsigned int count);
 
 void persistent_ram_save_old(struct persistent_ram_zone *prz);
 size_t persistent_ram_old_size(struct persistent_ram_zone *prz);
@@ -86,19 +101,16 @@ ssize_t persistent_ram_ecc_string(struct persistent_ram_zone *prz,
  * @mem_address	physical memory address to contain ramoops
  */
 
-#define RAMOOPS_FLAG_FTRACE_PER_CPU	BIT(0)
-
 struct ramoops_platform_data {
 	unsigned long	mem_size;
-	phys_addr_t	mem_address;
+	unsigned long	mem_address;
 	unsigned int	mem_type;
 	unsigned long	record_size;
 	unsigned long	console_size;
 	unsigned long	ftrace_size;
-	unsigned long	pmsg_size;
 	int		dump_oops;
-	u32		flags;
 	struct persistent_ram_ecc_info ecc_info;
 };
+#define PERSISTENT_CON_SIG (0x534e4f43) /* CONS */
 
 #endif

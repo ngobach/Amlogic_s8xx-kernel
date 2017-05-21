@@ -827,6 +827,19 @@ static void mspro_block_start(struct memstick_dev *card)
 	spin_unlock_irqrestore(&msb->q_lock, flags);
 }
 
+static int mspro_block_prepare_req(struct request_queue *q, struct request *req)
+{
+	if (req->cmd_type != REQ_TYPE_FS &&
+	    req->cmd_type != REQ_TYPE_BLOCK_PC) {
+		blk_dump_rq_flags(req, "MSPro unsupported request");
+		return BLKPREP_KILL;
+	}
+
+	req->cmd_flags |= REQ_DONTPREP;
+
+	return BLKPREP_OK;
+}
+
 static void mspro_block_submit_req(struct request_queue *q)
 {
 	struct memstick_dev *card = q->queuedata;
@@ -1011,8 +1024,8 @@ static int mspro_block_read_attributes(struct memstick_dev *card)
 	} else
 		attr_count = attr->count;
 
-	msb->attr_group.attrs = kcalloc(attr_count + 1,
-					sizeof(*msb->attr_group.attrs),
+	msb->attr_group.attrs = kzalloc((attr_count + 1)
+					* sizeof(struct attribute),
 					GFP_KERNEL);
 	if (!msb->attr_group.attrs) {
 		rc = -ENOMEM;
@@ -1020,11 +1033,12 @@ static int mspro_block_read_attributes(struct memstick_dev *card)
 	}
 	msb->attr_group.name = "media_attributes";
 
-	buffer = kmemdup(attr, attr_len, GFP_KERNEL);
+	buffer = kmalloc(attr_len, GFP_KERNEL);
 	if (!buffer) {
 		rc = -ENOMEM;
 		goto out_free_attr;
 	}
+	memcpy(buffer, (char *)attr, attr_len);
 
 	for (cnt = 0; cnt < attr_count; ++cnt) {
 		s_attr = kzalloc(sizeof(struct mspro_sys_attr), GFP_KERNEL);
@@ -1216,6 +1230,7 @@ static int mspro_block_init_disk(struct memstick_dev *card)
 	}
 
 	msb->queue->queuedata = card;
+	blk_queue_prep_rq(msb->queue, mspro_block_prepare_req);
 
 	blk_queue_bounce_limit(msb->queue, limit);
 	blk_queue_max_hw_sectors(msb->queue, MSPRO_BLOCK_MAX_PAGES);
@@ -1229,6 +1244,7 @@ static int mspro_block_init_disk(struct memstick_dev *card)
 	msb->usage_count = 1;
 	msb->disk->private_data = msb;
 	msb->disk->queue = msb->queue;
+	msb->disk->driverfs_dev = &card->dev;
 
 	sprintf(msb->disk->disk_name, "mspblk%d", disk_id);
 
@@ -1240,7 +1256,7 @@ static int mspro_block_init_disk(struct memstick_dev *card)
 	set_capacity(msb->disk, capacity);
 	dev_dbg(&card->dev, "capacity set %ld\n", capacity);
 
-	device_add_disk(&card->dev, msb->disk);
+	add_disk(msb->disk);
 	msb->active = 1;
 	return 0;
 

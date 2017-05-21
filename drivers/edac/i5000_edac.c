@@ -22,7 +22,7 @@
 #include <linux/edac.h>
 #include <asm/mmzone.h>
 
-#include "edac_module.h"
+#include "edac_core.h"
 
 /*
  * Alter this version for the I5000 module when modifications are made
@@ -1293,7 +1293,7 @@ static int i5000_init_csrows(struct mem_ctl_info *mci)
 			dimm->mtype = MEM_FB_DDR2;
 
 			/* ask what device type on this row */
-			if (MTR_DRAM_WIDTH(mtr) == 8)
+			if (MTR_DRAM_WIDTH(mtr))
 				dimm->dtype = DEV_X8;
 			else
 				dimm->dtype = DEV_X4;
@@ -1530,7 +1530,7 @@ static void i5000_remove_one(struct pci_dev *pdev)
  *
  *	The "E500P" device is the first device supported.
  */
-static const struct pci_device_id i5000_pci_tbl[] = {
+static DEFINE_PCI_DEVICE_TABLE(i5000_pci_tbl) = {
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_I5000_DEV16),
 	 .driver_data = I5000P},
 

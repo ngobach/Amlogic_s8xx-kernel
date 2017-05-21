@@ -8,7 +8,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#include <linux/extable.h>
+#include <linux/module.h>
 #include <linux/signal.h>
 #include <linux/mm.h>
 #include <linux/hardirq.h>
@@ -16,8 +16,7 @@
 #include <linux/kprobes.h>
 #include <linux/uaccess.h>
 #include <linux/page-flags.h>
-#include <linux/sched/signal.h>
-#include <linux/sched/debug.h>
+#include <linux/sched.h>
 #include <linux/highmem.h>
 #include <linux/perf_event.h>
 
@@ -57,6 +56,88 @@ static inline int notify_page_fault(struct pt_regs *regs, unsigned int fsr)
  * This is useful to dump out the page tables associated with
  * 'addr' in mm 'mm'.
  */
+int fixup_pte(struct mm_struct *mm, struct vm_area_struct *vma, unsigned long addr, unsigned int fsr)
+{
+	pgd_t *pgd;
+	int ret = 1;
+
+	if (!mm)
+		mm = &init_mm;
+
+	printk(KERN_ALERT "pgd = %p\n", mm->pgd);
+	pgd = pgd_offset(mm, addr);
+	printk(KERN_ALERT "[%08lx] *pgd=%08llx",
+			addr, (long long)pgd_val(*pgd));
+
+	do {
+		pud_t *pud;
+		pmd_t *pmd;
+		pte_t *pte;
+		pte_t entry;
+		spinlock_t *ptl;
+
+		if (pgd_none(*pgd))
+			break;
+
+		if (pgd_bad(*pgd)) {
+			printk("(bad)");
+			break;
+		}
+
+		pud = pud_offset(pgd, addr);
+		if (PTRS_PER_PUD != 1)
+			printk(", *pud=%08llx", (long long)pud_val(*pud));
+
+		if (pud_none(*pud))
+			break;
+
+		if (pud_bad(*pud)) {
+			printk("(bad)");
+			break;
+		}
+
+		pmd = pmd_offset(pud, addr);
+		if (PTRS_PER_PMD != 1)
+			printk(", *pmd=%08llx", (long long)pmd_val(*pmd));
+
+		if (pmd_none(*pmd))
+			break;
+
+		if (pmd_bad(*pmd)) {
+			printk("(bad)");
+			break;
+		}
+
+		/* We must not map this if we have highmem enabled */
+		if (PageHighMem(pfn_to_page(pmd_val(*pmd) >> PAGE_SHIFT)))
+			break;
+		pte = pte_offset_map(pmd, addr);
+		printk(", *pte=%08llx", (long long)pte_val(*pte));
+#ifndef CONFIG_ARM_LPAE
+		printk(", *ppte=%08llx",
+		       (long long)pte_val(pte[PTE_HWTABLE_PTRS]));
+#endif
+		entry = *pte;
+		if(pte_present(entry) && !(fsr & FSR_WRITE) && (fsr_fs(fsr) == 7)){
+			ret = 0;
+			if(!pte_young(entry)){
+				ptl = pte_lockptr(mm, pmd);
+				spin_lock(ptl);
+
+				entry = pte_mkyoung(entry);
+				ptep_set_access_flags(vma, addr, pte, entry, 0);
+
+				pte_unmap_unlock(pte, ptl);
+				break;
+			}
+		}
+
+		pte_unmap(pte);
+	} while(0);
+	printk("\n");
+
+	return ret;
+}
 void show_pte(struct mm_struct *mm, unsigned long addr)
 {
 	pgd_t *pgd;
@@ -64,9 +145,9 @@ void show_pte(struct mm_struct *mm, unsigned long addr)
 	if (!mm)
 		mm = &init_mm;
 
-	pr_alert("pgd = %p\n", mm->pgd);
+	printk(KERN_ALERT "pgd = %p\n", mm->pgd);
 	pgd = pgd_offset(mm, addr);
-	pr_alert("[%08lx] *pgd=%08llx",
+	printk(KERN_ALERT "[%08lx] *pgd=%08llx",
 			addr, (long long)pgd_val(*pgd));
 
 	do {
@@ -78,31 +159,31 @@ void show_pte(struct mm_struct *mm, unsigned long addr)
 			break;
 
 		if (pgd_bad(*pgd)) {
-			pr_cont("(bad)");
+			printk("(bad)");
 			break;
 		}
 
 		pud = pud_offset(pgd, addr);
 		if (PTRS_PER_PUD != 1)
-			pr_cont(", *pud=%08llx", (long long)pud_val(*pud));
+			printk(", *pud=%08llx", (long long)pud_val(*pud));
 
 		if (pud_none(*pud))
 			break;
 
 		if (pud_bad(*pud)) {
-			pr_cont("(bad)");
+			printk("(bad)");
 			break;
 		}
 
 		pmd = pmd_offset(pud, addr);
 		if (PTRS_PER_PMD != 1)
-			pr_cont(", *pmd=%08llx", (long long)pmd_val(*pmd));
+			printk(", *pmd=%08llx", (long long)pmd_val(*pmd));
 
 		if (pmd_none(*pmd))
 			break;
 
 		if (pmd_bad(*pmd)) {
-			pr_cont("(bad)");
+			printk("(bad)");
 			break;
 		}
 
@@ -111,21 +192,23 @@ void show_pte(struct mm_struct *mm, unsigned long addr)
 			break;
 
 		pte = pte_offset_map(pmd, addr);
-		pr_cont(", *pte=%08llx", (long long)pte_val(*pte));
+		printk(", *pte=%08llx", (long long)pte_val(*pte));
 #ifndef CONFIG_ARM_LPAE
-		pr_cont(", *ppte=%08llx",
+		printk(", *ppte=%08llx",
 		       (long long)pte_val(pte[PTE_HWTABLE_PTRS]));
 #endif
 		pte_unmap(pte);
 	} while(0);
 
-	pr_cont("\n");
+	printk("\n");
 }
 #else					/* CONFIG_MMU */
 void show_pte(struct mm_struct *mm, unsigned long addr)
 { }
 #endif					/* CONFIG_MMU */
 
+static int __kprobes
+do_user_fault_inatomic(struct mm_struct *mm, unsigned long addr, unsigned int fsr);
 /*
  * Oops.  The kernel tried to access some page that wasn't present.
  */
@@ -133,19 +216,25 @@ static void
 __do_kernel_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 		  struct pt_regs *regs)
 {
+	int ret;
+
 	/*
 	 * Are we prepared to handle this kernel fault?
 	 */
 	if (fixup_exception(regs))
 		return;
 
+	ret = do_user_fault_inatomic(mm, addr, fsr);
+	if(ret == 0)
+		return;
 	/*
 	 * No handler, we'll have to terminate things with extreme prejudice.
 	 */
 	bust_spinlocks(1);
-	pr_alert("Unable to handle kernel %s at virtual address %08lx\n",
-		 (addr < PAGE_SIZE) ? "NULL pointer dereference" :
-		 "paging request", addr);
+	printk(KERN_ALERT
+		"Unable to handle kernel %s at virtual address %08lx\n",
+		(addr < PAGE_SIZE) ? "NULL pointer dereference" :
+		"paging request", addr);
 
 	show_pte(mm, addr);
 	die("Oops", regs, fsr);
@@ -221,6 +310,42 @@ static inline bool access_error(unsigned int fsr, struct vm_area_struct *vma)
 }
 
 static int __kprobes
+do_user_fault_inatomic(struct mm_struct *mm, unsigned long addr, unsigned int fsr)
+{
+	struct vm_area_struct *vma;
+	int fault;
+
+	if(!mm)
+		return 1;
+
+	vma = find_vma(mm, addr);
+	fault = VM_FAULT_BADMAP;
+	if (unlikely(!vma))
+		goto out;
+	if (unlikely(vma->vm_start > addr))
+		goto check_stack;
+
+	/*
+	 * Ok, we have a good vm_area for this
+	 * memory access, so we can handle it.
+	 */
+good_area:
+	if (access_error(fsr, vma)) {
+		fault = VM_FAULT_BADACCESS;
+		goto out;
+	}
+
+	return fixup_pte(mm, vma, addr & PAGE_MASK, fsr);
+
+check_stack:
+	/* Don't allow expansion below FIRST_USER_ADDRESS */
+	if (vma->vm_flags & VM_GROWSDOWN &&
+	    addr >= FIRST_USER_ADDRESS && !expand_stack(vma, addr))
+		goto good_area;
+out:
+	return fault;
+}
+static int __kprobes
 __do_page_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 		unsigned int flags, struct task_struct *tsk)
 {
@@ -244,7 +369,7 @@ good_area:
 		goto out;
 	}
 
-	return handle_mm_fault(vma, addr & PAGE_MASK, flags);
+	return handle_mm_fault(mm, vma, addr & PAGE_MASK, flags);
 
 check_stack:
 	/* Don't allow expansion below FIRST_USER_ADDRESS */
@@ -274,10 +399,10 @@ do_page_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 		local_irq_enable();
 
 	/*
-	 * If we're in an interrupt or have no user
+	 * If we're in an interrupt, or have no irqs, or have no user
 	 * context, we must not take the fault..
 	 */
-	if (faulthandler_disabled() || !mm)
+	if (in_atomic() || irqs_disabled() || !mm)
 		goto no_context;
 
 	if (user_mode(regs))
@@ -347,7 +472,7 @@ retry:
 	up_read(&mm->mmap_sem);
 
 	/*
-	 * Handle the "normal" case first - VM_FAULT_MAJOR
+	 * Handle the "normal" case first - VM_FAULT_MAJOR / VM_FAULT_MINOR
 	 */
 	if (likely(!(fault & (VM_FAULT_ERROR | VM_FAULT_BADMAP | VM_FAULT_BADACCESS))))
 		return 0;
@@ -494,14 +619,12 @@ do_translation_fault(unsigned long addr, unsigned int fsr,
  * Some section permission faults need to be handled gracefully.
  * They can happen due to a __{get,put}_user during an oops.
  */
-#ifndef CONFIG_ARM_LPAE
 static int
 do_sect_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 {
 	do_bad_area(addr, fsr, regs);
 	return 0;
 }
-#endif /* CONFIG_ARM_LPAE */
 
 /*
  * This abort handler always returns "fault".
@@ -551,9 +674,8 @@ do_DataAbort(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 	if (!inf->fn(addr, fsr & ~FSR_LNX_PF, regs))
 		return;
 
-	pr_alert("Unhandled fault: %s (0x%03x) at 0x%08lx\n",
+	printk(KERN_ALERT "Unhandled fault: %s (0x%03x) at 0x%08lx\n",
 		inf->name, fsr, addr);
-	show_pte(current->mm, addr);
 
 	info.si_signo = inf->sig;
 	info.si_errno = 0;
@@ -584,7 +706,7 @@ do_PrefetchAbort(unsigned long addr, unsigned int ifsr, struct pt_regs *regs)
 	if (!inf->fn(addr, ifsr | FSR_LNX_PF, regs))
 		return;
 
-	pr_alert("Unhandled prefetch abort: %s (0x%03x) at 0x%08lx\n",
+	printk(KERN_ALERT "Unhandled prefetch abort: %s (0x%03x) at 0x%08lx\n",
 		inf->name, ifsr, addr);
 
 	info.si_signo = inf->sig;
@@ -592,28 +714,6 @@ do_PrefetchAbort(unsigned long addr, unsigned int ifsr, struct pt_regs *regs)
 	info.si_code  = inf->code;
 	info.si_addr  = (void __user *)addr;
 	arm_notify_die("", regs, &info, ifsr, 0);
-}
-
-/*
- * Abort handler to be used only during first unmasking of asynchronous aborts
- * on the boot CPU. This makes sure that the machine will not die if the
- * firmware/bootloader left an imprecise abort pending for us to trip over.
- */
-static int __init early_abort_handler(unsigned long addr, unsigned int fsr,
-				      struct pt_regs *regs)
-{
-	pr_warn("Hit pending asynchronous external abort (FSR=0x%08x) during "
-		"first unmask, this is most likely caused by a "
-		"firmware/bootloader bug.\n", fsr);
-
-	return 0;
-}
-
-void __init early_abt_enable(void)
-{
-	fsr_info[FSR_FS_AEA].fn = early_abort_handler;
-	local_abt_enable();
-	fsr_info[FSR_FS_AEA].fn = do_bad;
 }
 
 #ifndef CONFIG_ARM_LPAE

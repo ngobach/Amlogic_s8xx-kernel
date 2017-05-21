@@ -15,12 +15,11 @@
 #include <linux/kernel.h>
 #include <linux/notifier.h>
 #include <linux/signal.h>
-#include <linux/sched/signal.h>
+#include <linux/sched.h>
 #include <linux/smp.h>
 #include <linux/init.h>
 #include <linux/uaccess.h>
 #include <linux/user.h>
-#include <linux/export.h>
 
 #include <asm/cp15.h>
 #include <asm/cputype.h>
@@ -34,11 +33,11 @@
 /*
  * Our undef handlers (in entry.S)
  */
-asmlinkage void vfp_testing_entry(void);
-asmlinkage void vfp_support_entry(void);
-asmlinkage void vfp_null_entry(void);
+void vfp_testing_entry(void);
+void vfp_support_entry(void);
+void vfp_null_entry(void);
 
-asmlinkage void (*vfp_vector)(void) = vfp_null_entry;
+void (*vfp_vector)(void) = vfp_null_entry;
 
 /*
  * Dual-use variable.
@@ -156,6 +155,10 @@ static void vfp_thread_copy(struct thread_info *thread)
  *   - we could be preempted if tree preempt rcu is enabled, so
  *	it is unsafe to use thread->cpu.
  *  THREAD_NOTIFY_EXIT
+ *   - the thread (v) will be running on the local CPU, so
+ *	v === current_thread_info()
+ *   - thread->cpu is the local CPU number at the time it is accessed,
+ *	but may change at any time.
  *   - we could be preempted if tree preempt rcu is enabled, so
  *	it is unsafe to use thread->cpu.
  */
@@ -441,19 +444,6 @@ static void vfp_enable(void *unused)
 	set_copro_access(access | CPACC_FULL(10) | CPACC_FULL(11));
 }
 
-/* Called by platforms on which we want to disable VFP because it may not be
- * present on all CPUs within a SMP complex. Needs to be called prior to
- * vfp_init().
- */
-void vfp_disable(void)
-{
-	if (VFP_arch) {
-		pr_debug("%s: should be called prior to vfp_init\n", __func__);
-		return;
-	}
-	VFP_arch = 1;
-}
-
 #ifdef CONFIG_CPU_PM
 static int vfp_pm_suspend(void)
 {
@@ -643,86 +633,20 @@ int vfp_restore_user_hwstate(struct user_vfp __user *ufp,
  * hardware state at every thread switch.  We clear our held state when
  * a CPU has been killed, indicating that the VFP hardware doesn't contain
  * a threads VFP state.  When a CPU starts up, we re-enable access to the
- * VFP hardware. The callbacks below are called on the CPU which
+ * VFP hardware.
+ *
+ * Both CPU_DYING and CPU_STARTING are called on the CPU which
  * is being offlined/onlined.
  */
-static int vfp_dying_cpu(unsigned int cpu)
+static int vfp_hotplug(struct notifier_block *b, unsigned long action,
+	void *hcpu)
 {
-	vfp_force_reload(cpu, current_thread_info());
-	return 0;
+	if (action == CPU_DYING || action == CPU_DYING_FROZEN) {
+		vfp_force_reload((long)hcpu, current_thread_info());
+	} else if (action == CPU_STARTING || action == CPU_STARTING_FROZEN)
+		vfp_enable(NULL);
+	return NOTIFY_OK;
 }
-
-static int vfp_starting_cpu(unsigned int unused)
-{
-	vfp_enable(NULL);
-	return 0;
-}
-
-void vfp_kmode_exception(void)
-{
-	/*
-	 * If we reach this point, a floating point exception has been raised
-	 * while running in kernel mode. If the NEON/VFP unit was enabled at the
-	 * time, it means a VFP instruction has been issued that requires
-	 * software assistance to complete, something which is not currently
-	 * supported in kernel mode.
-	 * If the NEON/VFP unit was disabled, and the location pointed to below
-	 * is properly preceded by a call to kernel_neon_begin(), something has
-	 * caused the task to be scheduled out and back in again. In this case,
-	 * rebuilding and running with CONFIG_DEBUG_ATOMIC_SLEEP enabled should
-	 * be helpful in localizing the problem.
-	 */
-	if (fmrx(FPEXC) & FPEXC_EN)
-		pr_crit("BUG: unsupported FP instruction in kernel mode\n");
-	else
-		pr_crit("BUG: FP instruction issued in kernel mode with FP unit disabled\n");
-}
-
-#ifdef CONFIG_KERNEL_MODE_NEON
-
-/*
- * Kernel-side NEON support functions
- */
-void kernel_neon_begin(void)
-{
-	struct thread_info *thread = current_thread_info();
-	unsigned int cpu;
-	u32 fpexc;
-
-	/*
-	 * Kernel mode NEON is only allowed outside of interrupt context
-	 * with preemption disabled. This will make sure that the kernel
-	 * mode NEON register contents never need to be preserved.
-	 */
-	BUG_ON(in_interrupt());
-	cpu = get_cpu();
-
-	fpexc = fmrx(FPEXC) | FPEXC_EN;
-	fmxr(FPEXC, fpexc);
-
-	/*
-	 * Save the userland NEON/VFP state. Under UP,
-	 * the owner could be a task other than 'current'
-	 */
-	if (vfp_state_in_hw(cpu, thread))
-		vfp_save_state(&thread->vfpstate, fpexc);
-#ifndef CONFIG_SMP
-	else if (vfp_current_hw_state[cpu] != NULL)
-		vfp_save_state(vfp_current_hw_state[cpu], fpexc);
-#endif
-	vfp_current_hw_state[cpu] = NULL;
-}
-EXPORT_SYMBOL(kernel_neon_begin);
-
-void kernel_neon_end(void)
-{
-	/* Disable the NEON/VFP unit. */
-	fmxr(FPEXC, fmrx(FPEXC) & ~FPEXC_EN);
-	put_cpu();
-}
-EXPORT_SYMBOL(kernel_neon_end);
-
-#endif /* CONFIG_KERNEL_MODE_NEON */
 
 /*
  * VFP support code initialisation.
@@ -732,10 +656,6 @@ static int __init vfp_init(void)
 	unsigned int vfpsid;
 	unsigned int cpu_arch = cpu_architecture();
 
-	/*
-	 * Enable the access to the VFP on all online CPUs so the
-	 * following test on FPSID will succeed.
-	 */
 	if (cpu_arch >= CPU_ARCH_ARMv6)
 		on_each_cpu(vfp_enable, NULL, 1);
 
@@ -798,9 +718,7 @@ static int __init vfp_init(void)
 		VFP_arch = (vfpsid & FPSID_ARCH_MASK) >> FPSID_ARCH_BIT;
 	}
 
-	cpuhp_setup_state_nocalls(CPUHP_AP_ARM_VFP_STARTING,
-				  "arm/vfp:starting", vfp_starting_cpu,
-				  vfp_dying_cpu);
+	hotcpu_notifier(vfp_hotplug, 0);
 
 	vfp_vector = vfp_support_entry;
 
@@ -823,4 +741,4 @@ static int __init vfp_init(void)
 	return 0;
 }
 
-core_initcall(vfp_init);
+late_initcall(vfp_init);

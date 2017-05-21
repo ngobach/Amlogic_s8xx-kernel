@@ -413,8 +413,11 @@ static int sp2_remove(struct i2c_client *client)
 	struct sp2 *s = i2c_get_clientdata(client);
 
 	dev_dbg(&client->dev, "\n");
+
 	sp2_exit(client);
-	kfree(s);
+	if (s != NULL)
+		kfree(s);
+
 	return 0;
 }
 
@@ -426,6 +429,7 @@ MODULE_DEVICE_TABLE(i2c, sp2_id);
 
 static struct i2c_driver sp2_driver = {
 	.driver = {
+		.owner	= THIS_MODULE,
 		.name	= "sp2",
 	},
 	.probe		= sp2_probe,

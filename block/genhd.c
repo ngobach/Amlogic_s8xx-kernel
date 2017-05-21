@@ -8,7 +8,6 @@
 #include <linux/kdev_t.h>
 #include <linux/kernel.h>
 #include <linux/blkdev.h>
-#include <linux/backing-dev.h>
 #include <linux/init.h>
 #include <linux/spinlock.h>
 #include <linux/proc_fs.h>
@@ -20,7 +19,6 @@
 #include <linux/idr.h>
 #include <linux/log2.h>
 #include <linux/pm_runtime.h>
-#include <linux/badblocks.h>
 
 #include "blk.h"
 
@@ -271,17 +269,16 @@ void blkdev_show(struct seq_file *seqf, off_t offset)
 /**
  * register_blkdev - register a new block device
  *
- * @major: the requested major device number [1..255]. If @major = 0, try to
+ * @major: the requested major device number [1..255]. If @major=0, try to
  *         allocate any unused major number.
  * @name: the name of the new block device as a zero terminated string
  *
  * The @name must be unique within the system.
  *
- * The return value depends on the @major input parameter:
- *
+ * The return value depends on the @major input parameter.
  *  - if a major device number was requested in range [1..255] then the
  *    function returns zero on success, or a negative error code
- *  - if any unused major number was requested with @major = 0 parameter
+ *  - if any unused major number was requested with @major=0 parameter
  *    then the return value is the allocated major number in range
  *    [1..255] or a negative error code otherwise
  */
@@ -507,7 +504,7 @@ static int exact_lock(dev_t devt, void *data)
 	return 0;
 }
 
-static void register_disk(struct device *parent, struct gendisk *disk)
+static void register_disk(struct gendisk *disk)
 {
 	struct device *ddev = disk_to_dev(disk);
 	struct block_device *bdev;
@@ -515,7 +512,7 @@ static void register_disk(struct device *parent, struct gendisk *disk)
 	struct hd_struct *part;
 	int err;
 
-	ddev->parent = parent;
+	ddev->parent = disk->driverfs_dev;
 
 	dev_set_name(ddev, "%s", disk->disk_name);
 
@@ -574,8 +571,7 @@ exit:
 }
 
 /**
- * device_add_disk - add partitioning information to kernel list
- * @parent: parent device for the disk
+ * add_disk - add partitioning information to kernel list
  * @disk: per-device partitioning information
  *
  * This function registers the partitioning information in @disk
@@ -583,7 +579,7 @@ exit:
  *
  * FIXME: error handling
  */
-void device_add_disk(struct device *parent, struct gendisk *disk)
+void add_disk(struct gendisk *disk)
 {
 	struct backing_dev_info *bdi;
 	dev_t devt;
@@ -614,12 +610,12 @@ void device_add_disk(struct device *parent, struct gendisk *disk)
 	disk_alloc_events(disk);
 
 	/* Register BDI before referencing it from bdev */
-	bdi = disk->queue->backing_dev_info;
-	bdi_register_owner(bdi, disk_to_dev(disk));
+	bdi = &disk->queue->backing_dev_info;
+	bdi_register_dev(bdi, disk_devt(disk));
 
 	blk_register_region(disk_devt(disk), disk->minors, NULL,
 			    exact_match, exact_lock, disk);
-	register_disk(parent, disk);
+	register_disk(disk);
 	blk_register_queue(disk);
 
 	/*
@@ -633,16 +629,14 @@ void device_add_disk(struct device *parent, struct gendisk *disk)
 	WARN_ON(retval);
 
 	disk_add_events(disk);
-	blk_integrity_add(disk);
 }
-EXPORT_SYMBOL(device_add_disk);
+EXPORT_SYMBOL(add_disk);
 
 void del_gendisk(struct gendisk *disk)
 {
 	struct disk_part_iter piter;
 	struct hd_struct *part;
 
-	blk_integrity_del(disk);
 	disk_del_events(disk);
 
 	/* invalidate stuff */
@@ -650,27 +644,17 @@ void del_gendisk(struct gendisk *disk)
 			     DISK_PITER_INCL_EMPTY | DISK_PITER_REVERSE);
 	while ((part = disk_part_iter_next(&piter))) {
 		invalidate_partition(disk, part->partno);
-		bdev_unhash_inode(part_devt(part));
 		delete_partition(disk, part->partno);
 	}
 	disk_part_iter_exit(&piter);
 
 	invalidate_partition(disk, 0);
-	bdev_unhash_inode(disk_devt(disk));
 	set_capacity(disk, 0);
 	disk->flags &= ~GENHD_FL_UP;
 
 	sysfs_remove_link(&disk_to_dev(disk)->kobj, "bdi");
-	if (disk->queue) {
-		/*
-		 * Unregister bdi before releasing device numbers (as they can
-		 * get reused and we'd get clashes in sysfs).
-		 */
-		bdi_unregister(disk->queue->backing_dev_info);
-		blk_unregister_queue(disk);
-	} else {
-		WARN_ON(1);
-	}
+	bdi_unregister(&disk->queue->backing_dev_info);
+	blk_unregister_queue(disk);
 	blk_unregister_region(disk_devt(disk), disk->minors);
 
 	part_stat_set_all(&disk->part0, 0);
@@ -678,37 +662,13 @@ void del_gendisk(struct gendisk *disk)
 
 	kobject_put(disk->part0.holder_dir);
 	kobject_put(disk->slave_dir);
+	disk->driverfs_dev = NULL;
 	if (!sysfs_deprecated)
 		sysfs_remove_link(block_depr, dev_name(disk_to_dev(disk)));
 	pm_runtime_set_memalloc_noio(disk_to_dev(disk), false);
 	device_del(disk_to_dev(disk));
 }
 EXPORT_SYMBOL(del_gendisk);
-
-/* sysfs access to bad-blocks list. */
-static ssize_t disk_badblocks_show(struct device *dev,
-					struct device_attribute *attr,
-					char *page)
-{
-	struct gendisk *disk = dev_to_disk(dev);
-
-	if (!disk->bb)
-		return sprintf(page, "\n");
-
-	return badblocks_show(disk->bb, page, 0);
-}
-
-static ssize_t disk_badblocks_store(struct device *dev,
-					struct device_attribute *attr,
-					const char *page, size_t len)
-{
-	struct gendisk *disk = dev_to_disk(dev);
-
-	if (!disk->bb)
-		return -ENXIO;
-
-	return badblocks_store(disk->bb, page, len, 0);
-}
 
 /**
  * get_gendisk - get partitioning information for a given device
@@ -812,9 +772,10 @@ void __init printk_all_partitions(void)
 			       , disk_name(disk, part->partno, name_buf),
 			       part->info ? part->info->uuid : "");
 			if (is_part0) {
-				if (dev->parent && dev->parent->driver)
+				if (disk->driverfs_dev != NULL &&
+				    disk->driverfs_dev->driver != NULL)
 					printk(" driver: %s\n",
-					      dev->parent->driver->name);
+					      disk->driverfs_dev->driver->name);
 				else
 					printk(" (driver?)\n");
 			} else
@@ -868,7 +829,6 @@ static void disk_seqf_stop(struct seq_file *seqf, void *v)
 	if (iter) {
 		class_dev_iter_exit(iter);
 		kfree(iter);
-		seqf->private = NULL;
 	}
 }
 
@@ -1028,8 +988,6 @@ static DEVICE_ATTR(discard_alignment, S_IRUGO, disk_discard_alignment_show,
 static DEVICE_ATTR(capability, S_IRUGO, disk_capability_show, NULL);
 static DEVICE_ATTR(stat, S_IRUGO, part_stat_show, NULL);
 static DEVICE_ATTR(inflight, S_IRUGO, part_inflight_show, NULL);
-static DEVICE_ATTR(badblocks, S_IRUGO | S_IWUSR, disk_badblocks_show,
-		disk_badblocks_store);
 #ifdef CONFIG_FAIL_MAKE_REQUEST
 static struct device_attribute dev_attr_fail =
 	__ATTR(make-it-fail, S_IRUGO|S_IWUSR, part_fail_show, part_fail_store);
@@ -1051,7 +1009,6 @@ static struct attribute *disk_attrs[] = {
 	&dev_attr_capability.attr,
 	&dev_attr_stat.attr,
 	&dev_attr_inflight.attr,
-	&dev_attr_badblocks.attr,
 #ifdef CONFIG_FAIL_MAKE_REQUEST
 	&dev_attr_fail.attr,
 #endif
@@ -1061,19 +1018,8 @@ static struct attribute *disk_attrs[] = {
 	NULL
 };
 
-static umode_t disk_visible(struct kobject *kobj, struct attribute *a, int n)
-{
-	struct device *dev = container_of(kobj, typeof(*dev), kobj);
-	struct gendisk *disk = dev_to_disk(dev);
-
-	if (a == &dev_attr_badblocks.attr && !disk->bb)
-		return 0;
-	return a->mode;
-}
-
 static struct attribute_group disk_attr_group = {
 	.attrs = disk_attrs,
-	.is_visible = disk_visible,
 };
 
 static const struct attribute_group *disk_attr_groups[] = {
@@ -1164,11 +1110,28 @@ static void disk_release(struct device *dev)
 	disk_release_events(disk);
 	kfree(disk->random);
 	disk_replace_part_tbl(disk, NULL);
-	hd_free_part(&disk->part0);
+	free_part_stats(&disk->part0);
+	free_part_info(&disk->part0);
 	if (disk->queue)
 		blk_put_queue(disk->queue);
 	kfree(disk);
 }
+
+static int disk_uevent(struct device *dev, struct kobj_uevent_env *env)
+{
+	struct gendisk *disk = dev_to_disk(dev);
+	struct disk_part_iter piter;
+	struct hd_struct *part;
+	int cnt = 0;
+
+	disk_part_iter_init(&piter, disk, 0);
+	while((part = disk_part_iter_next(&piter)))
+		cnt++;
+	disk_part_iter_exit(&piter);
+	add_uevent_var(env, "NPARTS=%u", cnt);
+	return 0;
+}
+
 struct class block_class = {
 	.name		= "block",
 };
@@ -1188,6 +1151,7 @@ static struct device_type disk_type = {
 	.groups		= disk_attr_groups,
 	.release	= disk_release,
 	.devnode	= block_devnode,
+	.uevent		= disk_uevent,
 };
 
 #ifdef CONFIG_PROC_FS
@@ -1314,7 +1278,8 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 {
 	struct gendisk *disk;
 
-	disk = kzalloc_node(sizeof(struct gendisk), GFP_KERNEL, node_id);
+	disk = kmalloc_node(sizeof(struct gendisk),
+				GFP_KERNEL | __GFP_ZERO, node_id);
 	if (disk) {
 		if (!init_part_stats(&disk->part0)) {
 			kfree(disk);
@@ -1338,11 +1303,7 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 		 * converted to make use of bd_mutex and sequence counters.
 		 */
 		seqcount_init(&disk->part0.nr_sects_seq);
-		if (hd_ref_init(&disk->part0)) {
-			hd_free_part(&disk->part0);
-			kfree(disk);
-			return NULL;
-		}
+		hd_ref_init(&disk->part0);
 
 		disk->minors = minors;
 		rand_initialize_disk(disk);
@@ -1364,7 +1325,7 @@ struct kobject *get_disk(struct gendisk *disk)
 	owner = disk->fops->owner;
 	if (owner && !try_module_get(owner))
 		return NULL;
-	kobj = kobject_get_unless_zero(&disk_to_dev(disk)->kobj);
+	kobj = kobject_get(&disk_to_dev(disk)->kobj);
 	if (kobj == NULL) {
 		module_put(owner);
 		return NULL;
@@ -1473,7 +1434,7 @@ static DEFINE_MUTEX(disk_events_mutex);
 static LIST_HEAD(disk_events);
 
 /* disable in-kernel polling by default */
-static unsigned long disk_events_dfl_poll_msecs;
+static unsigned long disk_events_dfl_poll_msecs	= 0;
 
 static unsigned long disk_events_poll_jiffies(struct gendisk *disk)
 {
@@ -1547,13 +1508,16 @@ static void __disk_unblock_events(struct gendisk *disk, bool check_now)
 	if (--ev->block)
 		goto out_unlock;
 
+	/*
+	 * Not exactly a latency critical operation, set poll timer
+	 * slack to 25% and kick event check.
+	 */
 	intv = disk_events_poll_jiffies(disk);
+	set_timer_slack(&ev->dwork.timer, intv / 4);
 	if (check_now)
-		queue_delayed_work(system_freezable_power_efficient_wq,
-				&ev->dwork, 0);
+		queue_delayed_work(system_freezable_wq, &ev->dwork, 0);
 	else if (intv)
-		queue_delayed_work(system_freezable_power_efficient_wq,
-				&ev->dwork, intv);
+		queue_delayed_work(system_freezable_wq, &ev->dwork, intv);
 out_unlock:
 	spin_unlock_irqrestore(&ev->lock, flags);
 }
@@ -1596,15 +1560,14 @@ void disk_flush_events(struct gendisk *disk, unsigned int mask)
 	spin_lock_irq(&ev->lock);
 	ev->clearing |= mask;
 	if (!ev->block)
-		mod_delayed_work(system_freezable_power_efficient_wq,
-				&ev->dwork, 0);
+		mod_delayed_work(system_freezable_wq, &ev->dwork, 0);
 	spin_unlock_irq(&ev->lock);
 }
 
 /**
  * disk_clear_events - synchronously check, clear and return pending events
  * @disk: disk to fetch and clear events from
- * @mask: mask of events to be fetched and cleared
+ * @mask: mask of events to be fetched and clearted
  *
  * Disk events are synchronously checked and pending events in @mask
  * are cleared and returned.  This ignores the block count.
@@ -1690,8 +1653,7 @@ static void disk_check_events(struct disk_events *ev,
 
 	intv = disk_events_poll_jiffies(disk);
 	if (!ev->block && intv)
-		queue_delayed_work(system_freezable_power_efficient_wq,
-				&ev->dwork, intv);
+		queue_delayed_work(system_freezable_wq, &ev->dwork, intv);
 
 	spin_unlock_irq(&ev->lock);
 

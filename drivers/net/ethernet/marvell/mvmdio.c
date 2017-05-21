@@ -4,9 +4,11 @@
  * Since the MDIO interface of Marvell network interfaces is shared
  * between all network interfaces, having a single driver allows to
  * handle concurrent accesses properly (you may have four Ethernet
- * ports, but they in fact share the same SMI interface to access
- * the MDIO bus). This driver is currently used by the mvneta and
- * mv643xx_eth drivers.
+ * ports, but they in fact share the same SMI interface to access the
+ * MDIO bus). Moreover, this MDIO interface code is similar between
+ * the mv643xx_eth driver and the mvneta driver. For now, it is only
+ * used by the mvneta driver, but it could later be used by the
+ * mv643xx_eth driver as well.
  *
  * Copyright (C) 2012 Marvell
  *
@@ -17,6 +19,7 @@
  * warranty of any kind, whether express or implied.
  */
 
+#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
@@ -41,19 +44,10 @@
 #define  MVMDIO_ERR_INT_SMI_DONE	   0x00000010
 #define MVMDIO_ERR_INT_MASK		   0x0080
 
-/*
- * SMI Timeout measurements:
- * - Kirkwood 88F6281 (Globalscale Dreamplug): 45us to 95us (Interrupt)
- * - Armada 370       (Globalscale Mirabox):   41us to 43us (Polled)
- */
-#define MVMDIO_SMI_TIMEOUT		   1000 /* 1000us = 1ms */
-#define MVMDIO_SMI_POLL_INTERVAL_MIN	   45
-#define MVMDIO_SMI_POLL_INTERVAL_MAX	   55
-
 struct orion_mdio_dev {
 	struct mutex lock;
 	void __iomem *regs;
-	struct clk *clk[3];
+	struct clk *clk;
 	/*
 	 * If we have access to the error interrupt pin (which is
 	 * somewhat misnamed as it not only reflects internal errors
@@ -74,74 +68,77 @@ static int orion_mdio_smi_is_done(struct orion_mdio_dev *dev)
 static int orion_mdio_wait_ready(struct mii_bus *bus)
 {
 	struct orion_mdio_dev *dev = bus->priv;
-	unsigned long timeout = usecs_to_jiffies(MVMDIO_SMI_TIMEOUT);
-	unsigned long end = jiffies + timeout;
-	int timedout = 0;
+	int count;
 
-	while (1) {
-	        if (orion_mdio_smi_is_done(dev))
-			return 0;
-	        else if (timedout)
-			break;
+	if (dev->err_interrupt <= 0) {
+		count = 0;
+		while (1) {
+			if (orion_mdio_smi_is_done(dev))
+				break;
 
-	        if (dev->err_interrupt <= 0) {
-			usleep_range(MVMDIO_SMI_POLL_INTERVAL_MIN,
-				     MVMDIO_SMI_POLL_INTERVAL_MAX);
+			if (count > 100) {
+				dev_err(bus->parent,
+					"Timeout: SMI busy for too long\n");
+				return -ETIMEDOUT;
+			}
 
-			if (time_is_before_jiffies(end))
-				++timedout;
-	        } else {
-			/* wait_event_timeout does not guarantee a delay of at
-			 * least one whole jiffie, so timeout must be no less
-			 * than two.
-			 */
-			if (timeout < 2)
-				timeout = 2;
+			udelay(10);
+			count++;
+		}
+	} else {
+		if (!orion_mdio_smi_is_done(dev)) {
 			wait_event_timeout(dev->smi_busy_wait,
-				           orion_mdio_smi_is_done(dev),
-				           timeout);
-
-			++timedout;
-	        }
+				orion_mdio_smi_is_done(dev),
+				msecs_to_jiffies(100));
+			if (!orion_mdio_smi_is_done(dev))
+				return -ETIMEDOUT;
+		}
 	}
 
-	dev_err(bus->parent, "Timeout: SMI busy for too long\n");
-	return  -ETIMEDOUT;
+	return 0;
 }
 
 static int orion_mdio_read(struct mii_bus *bus, int mii_id,
 			   int regnum)
 {
 	struct orion_mdio_dev *dev = bus->priv;
+	int count;
 	u32 val;
 	int ret;
 
 	mutex_lock(&dev->lock);
 
 	ret = orion_mdio_wait_ready(bus);
-	if (ret < 0)
-		goto out;
+	if (ret < 0) {
+		mutex_unlock(&dev->lock);
+		return ret;
+	}
 
 	writel(((mii_id << MVMDIO_SMI_PHY_ADDR_SHIFT) |
 		(regnum << MVMDIO_SMI_PHY_REG_SHIFT)  |
 		MVMDIO_SMI_READ_OPERATION),
 	       dev->regs);
 
-	ret = orion_mdio_wait_ready(bus);
-	if (ret < 0)
-		goto out;
+	/* Wait for the value to become available */
+	count = 0;
+	while (1) {
+		val = readl(dev->regs);
+		if (val & MVMDIO_SMI_READ_VALID)
+			break;
 
-	val = readl(dev->regs);
-	if (!(val & MVMDIO_SMI_READ_VALID)) {
-		dev_err(bus->parent, "SMI bus read not valid\n");
-		ret = -ENODEV;
-		goto out;
+		if (count > 100) {
+			dev_err(bus->parent, "Timeout when reading PHY\n");
+			mutex_unlock(&dev->lock);
+			return -ETIMEDOUT;
+		}
+
+		udelay(10);
+		count++;
 	}
 
-	ret = val & 0xFFFF;
-out:
 	mutex_unlock(&dev->lock);
-	return ret;
+
+	return val & 0xFFFF;
 }
 
 static int orion_mdio_write(struct mii_bus *bus, int mii_id,
@@ -153,8 +150,10 @@ static int orion_mdio_write(struct mii_bus *bus, int mii_id,
 	mutex_lock(&dev->lock);
 
 	ret = orion_mdio_wait_ready(bus);
-	if (ret < 0)
-		goto out;
+	if (ret < 0) {
+		mutex_unlock(&dev->lock);
+		return ret;
+	}
 
 	writel(((mii_id << MVMDIO_SMI_PHY_ADDR_SHIFT) |
 		(regnum << MVMDIO_SMI_PHY_REG_SHIFT)  |
@@ -162,9 +161,14 @@ static int orion_mdio_write(struct mii_bus *bus, int mii_id,
 		(value << MVMDIO_SMI_DATA_SHIFT)),
 	       dev->regs);
 
-out:
 	mutex_unlock(&dev->lock);
-	return ret;
+
+	return 0;
+}
+
+static int orion_mdio_reset(struct mii_bus *bus)
+{
+	return 0;
 }
 
 static irqreturn_t orion_mdio_err_irq(int irq, void *dev_id)
@@ -195,42 +199,45 @@ static int orion_mdio_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	bus = devm_mdiobus_alloc_size(&pdev->dev,
-				      sizeof(struct orion_mdio_dev));
-	if (!bus)
+	bus = mdiobus_alloc_size(sizeof(struct orion_mdio_dev));
+	if (!bus) {
+		dev_err(&pdev->dev, "Cannot allocate MDIO bus\n");
 		return -ENOMEM;
+	}
 
 	bus->name = "orion_mdio_bus";
 	bus->read = orion_mdio_read;
 	bus->write = orion_mdio_write;
+	bus->reset = orion_mdio_reset;
 	snprintf(bus->id, MII_BUS_ID_SIZE, "%s-mii",
 		 dev_name(&pdev->dev));
 	bus->parent = &pdev->dev;
+
+	bus->irq = kmalloc(sizeof(int) * PHY_MAX_ADDR, GFP_KERNEL);
+	if (!bus->irq) {
+		mdiobus_free(bus);
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < PHY_MAX_ADDR; i++)
+		bus->irq[i] = PHY_POLL;
 
 	dev = bus->priv;
 	dev->regs = devm_ioremap(&pdev->dev, r->start, resource_size(r));
 	if (!dev->regs) {
 		dev_err(&pdev->dev, "Unable to remap SMI register\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto out_mdio;
 	}
 
 	init_waitqueue_head(&dev->smi_busy_wait);
 
-	for (i = 0; i < ARRAY_SIZE(dev->clk); i++) {
-		dev->clk[i] = of_clk_get(pdev->dev.of_node, i);
-		if (IS_ERR(dev->clk[i]))
-			break;
-		clk_prepare_enable(dev->clk[i]);
-	}
+	dev->clk = devm_clk_get(&pdev->dev, NULL);
+	if (!IS_ERR(dev->clk))
+		clk_prepare_enable(dev->clk);
 
 	dev->err_interrupt = platform_get_irq(pdev, 0);
-	if (dev->err_interrupt > 0 &&
-	    resource_size(r) < MVMDIO_ERR_INT_MASK + 4) {
-		dev_err(&pdev->dev,
-			"disabling interrupt, resource size is too small\n");
-		dev->err_interrupt = 0;
-	}
-	if (dev->err_interrupt > 0) {
+	if (dev->err_interrupt != -ENXIO) {
 		ret = devm_request_irq(&pdev->dev, dev->err_interrupt,
 					orion_mdio_err_irq,
 					IRQF_SHARED, pdev->name, dev);
@@ -239,9 +246,6 @@ static int orion_mdio_probe(struct platform_device *pdev)
 
 		writel(MVMDIO_ERR_INT_SMI_DONE,
 			dev->regs + MVMDIO_ERR_INT_MASK);
-
-	} else if (dev->err_interrupt == -EPROBE_DEFER) {
-		return -EPROBE_DEFER;
 	}
 
 	mutex_init(&dev->lock);
@@ -260,16 +264,10 @@ static int orion_mdio_probe(struct platform_device *pdev)
 	return 0;
 
 out_mdio:
-	if (dev->err_interrupt > 0)
-		writel(0, dev->regs + MVMDIO_ERR_INT_MASK);
-
-	for (i = 0; i < ARRAY_SIZE(dev->clk); i++) {
-		if (IS_ERR(dev->clk[i]))
-			break;
-		clk_disable_unprepare(dev->clk[i]);
-		clk_put(dev->clk[i]);
-	}
-
+	if (!IS_ERR(dev->clk))
+		clk_disable_unprepare(dev->clk);
+	kfree(bus->irq);
+	mdiobus_free(bus);
 	return ret;
 }
 
@@ -277,18 +275,13 @@ static int orion_mdio_remove(struct platform_device *pdev)
 {
 	struct mii_bus *bus = platform_get_drvdata(pdev);
 	struct orion_mdio_dev *dev = bus->priv;
-	int i;
 
-	if (dev->err_interrupt > 0)
-		writel(0, dev->regs + MVMDIO_ERR_INT_MASK);
+	writel(0, dev->regs + MVMDIO_ERR_INT_MASK);
 	mdiobus_unregister(bus);
-
-	for (i = 0; i < ARRAY_SIZE(dev->clk); i++) {
-		if (IS_ERR(dev->clk[i]))
-			break;
-		clk_disable_unprepare(dev->clk[i]);
-		clk_put(dev->clk[i]);
-	}
+	kfree(bus->irq);
+	mdiobus_free(bus);
+	if (!IS_ERR(dev->clk))
+		clk_disable_unprepare(dev->clk);
 
 	return 0;
 }

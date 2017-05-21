@@ -19,6 +19,9 @@
 #include <asm/ptrace.h>
 #include <asm/ustack.h>
 
+#define __ARCH_WANT_UNLOCKED_CTXSW
+#define ARCH_HAS_PREFETCH_SWITCH_STACK
+
 #define IA64_NUM_PHYS_STACK_REG	96
 #define IA64_NUM_DBG_REGS	8
 
@@ -68,7 +71,6 @@
 #include <linux/compiler.h>
 #include <linux/threads.h>
 #include <linux/types.h>
-#include <linux/bitops.h>
 
 #include <asm/fpu.h>
 #include <asm/page.h>

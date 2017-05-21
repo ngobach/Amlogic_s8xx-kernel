@@ -154,7 +154,7 @@ W6692_empty_fifo(struct IsdnCardState *cs, int count)
 
 		t += sprintf(t, "W6692_empty_fifo cnt %d", count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", cs->dlog);
+		debugl1(cs, cs->dlog);
 	}
 }
 
@@ -196,7 +196,7 @@ W6692_fill_fifo(struct IsdnCardState *cs)
 
 		t += sprintf(t, "W6692_fill_fifo cnt %d", count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", cs->dlog);
+		debugl1(cs, cs->dlog);
 	}
 }
 
@@ -226,7 +226,7 @@ W6692B_empty_fifo(struct BCState *bcs, int count)
 		t += sprintf(t, "W6692B_empty_fifo %c cnt %d",
 			     bcs->channel + '1', count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", bcs->blog);
+		debugl1(cs, bcs->blog);
 	}
 }
 
@@ -264,7 +264,7 @@ W6692B_fill_fifo(struct BCState *bcs)
 		t += sprintf(t, "W6692B_fill_fifo %c cnt %d",
 			     bcs->channel + '1', count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", bcs->blog);
+		debugl1(cs, bcs->blog);
 	}
 }
 
@@ -901,8 +901,9 @@ static void initW6692(struct IsdnCardState *cs, int part)
 	if (part & 1) {
 		cs->setstack_d = setstack_W6692;
 		cs->DC_Close = DC_Close_W6692;
-		setup_timer(&cs->dbusytimer, (void *)dbusy_timer_handler,
-			    (long)cs);
+		cs->dbusytimer.function = (void *) dbusy_timer_handler;
+		cs->dbusytimer.data = (long) cs;
+		init_timer(&cs->dbusytimer);
 		resetW6692(cs);
 		ph_command(cs, W_L1CMD_RST);
 		cs->dc.w6692.ph_state = W_L1CMD_RST;

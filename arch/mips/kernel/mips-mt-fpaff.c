@@ -1,5 +1,5 @@
 /*
- * General MIPS MT support routines, usable in AP/SP and SMVP.
+ * General MIPS MT support routines, usable in AP/SP, SMVP, or SMTC kernels
  * Copyright (C) 2005 Mips Technologies, Inc
  */
 #include <linux/cpu.h>
@@ -9,11 +9,9 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/sched.h>
-#include <linux/sched/task.h>
-#include <linux/cred.h>
 #include <linux/security.h>
 #include <linux/types.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 
 /*
  * CPU mask used to set process affinity for MT VPEs/TCs with FPUs
@@ -29,12 +27,12 @@ unsigned long mt_fpemul_threshold;
  * FPU affinity with the user's requested processor affinity.
  * This code is 98% identical with the sys_sched_setaffinity()
  * and sys_sched_getaffinity() system calls, and should be
- * updated when kernel/sched/core.c changes.
+ * updated when kernel/sched.c changes.
  */
 
 /*
  * find_process_by_pid - find a process with a matching PID value.
- * used in sys_sched_set/getaffinity() in kernel/sched/core.c, so
+ * used in sys_sched_set/getaffinity() in kernel/sched.c, so
  * cloned here.
  */
 static inline struct task_struct *find_process_by_pid(pid_t pid)
@@ -101,10 +99,9 @@ asmlinkage long mipsmt_sys_sched_setaffinity(pid_t pid, unsigned int len,
 		retval = -ENOMEM;
 		goto out_free_new_mask;
 	}
-	if (!check_same_owner(p) && !capable(CAP_SYS_NICE)) {
-		retval = -EPERM;
+	retval = -EPERM;
+	if (!check_same_owner(p) && !capable(CAP_SYS_NICE))
 		goto out_unlock;
-	}
 
 	retval = security_task_setscheduler(p);
 	if (retval)
@@ -117,8 +114,8 @@ asmlinkage long mipsmt_sys_sched_setaffinity(pid_t pid, unsigned int len,
 	/* Compute new global allowed CPU set if necessary */
 	ti = task_thread_info(p);
 	if (test_ti_thread_flag(ti, TIF_FPUBOUND) &&
-	    cpumask_intersects(new_mask, &mt_fpu_cpumask)) {
-		cpumask_and(effective_mask, new_mask, &mt_fpu_cpumask);
+	    cpus_intersects(*new_mask, mt_fpu_cpumask)) {
+		cpus_and(*effective_mask, *new_mask, mt_fpu_cpumask);
 		retval = set_cpus_allowed_ptr(p, effective_mask);
 	} else {
 		cpumask_copy(effective_mask, new_mask);

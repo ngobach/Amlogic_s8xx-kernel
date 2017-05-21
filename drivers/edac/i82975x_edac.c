@@ -14,7 +14,7 @@
 #include <linux/pci.h>
 #include <linux/pci_ids.h>
 #include <linux/edac.h>
-#include "edac_module.h"
+#include "edac_core.h"
 
 #define I82975X_REVISION	" Ver: 1.0.0"
 #define EDAC_MOD_STR		"i82975x_edac"
@@ -494,10 +494,6 @@ static int i82975x_probe1(struct pci_dev *pdev, int dev_idx)
 	}
 	mchbar &= 0xffffc000;	/* bits 31:14 used for 16K window */
 	mch_window = ioremap_nocache(mchbar, 0x1000);
-	if (!mch_window) {
-		edac_dbg(3, "error ioremapping MCHBAR!\n");
-		goto fail0;
-	}
 
 #ifdef i82975x_DEBUG_IOMEM
 	i82975x_printk(KERN_INFO, "MCHBAR real = %0x, remapped = %p\n",
@@ -632,7 +628,7 @@ static void i82975x_remove_one(struct pci_dev *pdev)
 	edac_mc_free(mci);
 }
 
-static const struct pci_device_id i82975x_pci_tbl[] = {
+static DEFINE_PCI_DEVICE_TABLE(i82975x_pci_tbl) = {
 	{
 		PCI_VEND_DEV(INTEL, 82975_0), PCI_ANY_ID, PCI_ANY_ID, 0, 0,
 		I82975X
@@ -689,7 +685,9 @@ fail1:
 	pci_unregister_driver(&i82975x_driver);
 
 fail0:
-	pci_dev_put(mci_pdev);
+	if (mci_pdev != NULL)
+		pci_dev_put(mci_pdev);
+
 	return pci_rc;
 }
 

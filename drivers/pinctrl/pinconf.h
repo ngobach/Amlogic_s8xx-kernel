@@ -20,9 +20,6 @@ int pinconf_map_to_setting(struct pinctrl_map const *map,
 void pinconf_free_setting(struct pinctrl_setting const *setting);
 int pinconf_apply_setting(struct pinctrl_setting const *setting);
 
-int pinconf_set_config(struct pinctrl_dev *pctldev, unsigned pin,
-		       unsigned long *configs, size_t nconfigs);
-
 /*
  * You will only be interested in these if you're using PINCONF
  * so don't supply any stubs for these.
@@ -59,12 +56,6 @@ static inline int pinconf_apply_setting(struct pinctrl_setting const *setting)
 	return 0;
 }
 
-static inline int pinconf_set_config(struct pinctrl_dev *pctldev, unsigned pin,
-				     unsigned long *configs, size_t nconfigs)
-{
-	return -ENOTSUPP;
-}
-
 #endif
 
 #if defined(CONFIG_PINCONF) && defined(CONFIG_DEBUG_FS)
@@ -99,34 +90,28 @@ static inline void pinconf_init_device_debugfs(struct dentry *devroot,
  * pin config.
  */
 
-#if defined(CONFIG_GENERIC_PINCONF) && defined(CONFIG_DEBUG_FS)
+#ifdef CONFIG_GENERIC_PINCONF
 
-void pinconf_generic_dump_pins(struct pinctrl_dev *pctldev,
-			       struct seq_file *s, const char *gname,
-			       unsigned pin);
+void pinconf_generic_dump_pin(struct pinctrl_dev *pctldev,
+			      struct seq_file *s, unsigned pin);
 
-void pinconf_generic_dump_config(struct pinctrl_dev *pctldev,
-				 struct seq_file *s, unsigned long config);
+void pinconf_generic_dump_group(struct pinctrl_dev *pctldev,
+			      struct seq_file *s, const char *gname);
+
 #else
 
-static inline void pinconf_generic_dump_pins(struct pinctrl_dev *pctldev,
-					     struct seq_file *s,
-					     const char *gname, unsigned pin)
+static inline void pinconf_generic_dump_pin(struct pinctrl_dev *pctldev,
+					    struct seq_file *s,
+					    unsigned pin)
 {
 	return;
 }
 
-static inline void pinconf_generic_dump_config(struct pinctrl_dev *pctldev,
-					       struct seq_file *s,
-					       unsigned long config)
+static inline void pinconf_generic_dump_group(struct pinctrl_dev *pctldev,
+					      struct seq_file *s,
+					      const char *gname)
 {
 	return;
 }
-#endif
 
-#if defined(CONFIG_GENERIC_PINCONF) && defined(CONFIG_OF)
-int pinconf_generic_parse_dt_config(struct device_node *np,
-				    struct pinctrl_dev *pctldev,
-				    unsigned long **configs,
-				    unsigned int *nconfigs);
 #endif

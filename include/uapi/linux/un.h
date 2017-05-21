@@ -10,6 +10,4 @@ struct sockaddr_un {
 	char sun_path[UNIX_PATH_MAX];	/* pathname */
 };
 
-#define SIOCUNIXFILE (SIOCPROTOPRIVATE + 0) /* open a socket file with O_PATH */
-
 #endif /* _LINUX_UN_H */

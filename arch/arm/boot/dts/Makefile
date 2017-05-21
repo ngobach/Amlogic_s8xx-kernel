@@ -1,20 +1,22 @@
-ifeq ($(CONFIG_OF),y)
+dtb-$(CONFIG_ARM) += meson8m2_n200_2G.dtb meson8m2_n200_1G.dtb \
+		meson8_k200b_1G_emmc_sdio.dtb meson8_k200b_2G_emmc_sdio.dtb \
+		meson8_k200b_1G_emmc_sdhc.dtb meson8_k200b_2G_emmc_sdhc.dtb \
+		meson8m2_n200C_2G.dtb meson8m2_n200C_1G.dtb \
+		meson8m2_n200_2G_1000.dtb meson8_skt.dtb
 
-dtb-$(CONFIG_MACH_MESON6) += \
-	meson6-atv1200.dtb
-dtb-$(CONFIG_MACH_MESON8) += \
-	meson8-minix-neo-x8.dtb
-dtb-$(CONFIG_MACH_MESON8B) += \
-	meson8b-mxq.dtb \
-	meson8b-odroidc1.dtb
-dtb-$(CONFIG_MACH_MESON8M2) += \
-	meson8m2-m8s.dtb \
-	meson8m2-mxiii-plus.dtb
-
+DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
+ifneq ($(DTB_NAMES),)
+DTB_LIST := $(addsuffix .dtb,$(DTB_NAMES))
+else
+DTB_LIST := $(dtb-y)
 endif
 
-dtstree		:= $(srctree)/$(src)
-dtb-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(dtstree)/%.dts,%.dtb, $(wildcard $(dtstree)/*.dts))
+targets += dtbs
+targets += $(DTB_LIST)
 
-always		:= $(dtb-y)
-clean-files	:= *.dtb
+# *.dtb used to be generated in the directory above. Clean out the
+# old build results so people don't accidentally use them.
+dtbs: $(addprefix $(obj)/, $(DTB_LIST))
+	$(Q)rm -f $(obj)/../*.dtb
+
+clean-files := *.dtb

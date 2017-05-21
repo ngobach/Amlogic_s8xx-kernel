@@ -38,14 +38,72 @@
 
 #include "../perf.h"
 #include "trace-event.h"
-#include <api/fs/tracing_path.h>
+#include <lk/debugfs.h>
 #include "evsel.h"
-#include "debug.h"
 
-#define VERSION "0.6"
+#define VERSION "0.5"
 
 static int output_fd;
 
+
+static const char *find_debugfs(void)
+{
+	const char *path = perf_debugfs_mount(NULL);
+
+	if (!path)
+		pr_debug("Your kernel does not support the debugfs filesystem");
+
+	return path;
+}
+
+/*
+ * Finds the path to the debugfs/tracing
+ * Allocates the string and stores it.
+ */
+static const char *find_tracing_dir(void)
+{
+	static char *tracing;
+	static int tracing_found;
+	const char *debugfs;
+
+	if (tracing_found)
+		return tracing;
+
+	debugfs = find_debugfs();
+	if (!debugfs)
+		return NULL;
+
+	tracing = malloc(strlen(debugfs) + 9);
+	if (!tracing)
+		return NULL;
+
+	sprintf(tracing, "%s/tracing", debugfs);
+
+	tracing_found = 1;
+	return tracing;
+}
+
+static char *get_tracing_file(const char *name)
+{
+	const char *tracing;
+	char *file;
+
+	tracing = find_tracing_dir();
+	if (!tracing)
+		return NULL;
+
+	file = malloc(strlen(tracing) + strlen(name) + 2);
+	if (!file)
+		return NULL;
+
+	sprintf(file, "%s/%s", tracing, name);
+	return file;
+}
+
+static void put_tracing_file(char *file)
+{
+	free(file);
+}
 
 int bigendian(void)
 {
@@ -102,7 +160,7 @@ out:
 	return err;
 }
 
-static int record_header_files(void)
+static int read_header_files(void)
 {
 	char *path;
 	struct stat st;
@@ -170,12 +228,6 @@ static bool name_in_tp_list(char *sys, struct tracepoint_path *tps)
 	return false;
 }
 
-#define for_each_event(dir, dent, tps)				\
-	while ((dent = readdir(dir)))				\
-		if (dent->d_type == DT_DIR &&			\
-		    (strcmp(dent->d_name, ".")) &&		\
-		    (strcmp(dent->d_name, "..")))		\
-
 static int copy_event_system(const char *sys, struct tracepoint_path *tps)
 {
 	struct dirent *dent;
@@ -192,14 +244,18 @@ static int copy_event_system(const char *sys, struct tracepoint_path *tps)
 		return -errno;
 	}
 
-	for_each_event(dir, dent, tps) {
-		if (!name_in_tp_list(dent->d_name, tps))
+	while ((dent = readdir(dir))) {
+		if (dent->d_type != DT_DIR ||
+		    strcmp(dent->d_name, ".") == 0 ||
+		    strcmp(dent->d_name, "..") == 0 ||
+		    !name_in_tp_list(dent->d_name, tps))
 			continue;
-
-		if (asprintf(&format, "%s/%s/format", sys, dent->d_name) < 0) {
+		format = malloc(strlen(sys) + strlen(dent->d_name) + 10);
+		if (!format) {
 			err = -ENOMEM;
 			goto out;
 		}
+		sprintf(format, "%s/%s/format", sys, dent->d_name);
 		ret = stat(format, &st);
 		free(format);
 		if (ret < 0)
@@ -214,14 +270,18 @@ static int copy_event_system(const char *sys, struct tracepoint_path *tps)
 	}
 
 	rewinddir(dir);
-	for_each_event(dir, dent, tps) {
-		if (!name_in_tp_list(dent->d_name, tps))
+	while ((dent = readdir(dir))) {
+		if (dent->d_type != DT_DIR ||
+		    strcmp(dent->d_name, ".") == 0 ||
+		    strcmp(dent->d_name, "..") == 0 ||
+		    !name_in_tp_list(dent->d_name, tps))
 			continue;
-
-		if (asprintf(&format, "%s/%s/format", sys, dent->d_name) < 0) {
+		format = malloc(strlen(sys) + strlen(dent->d_name) + 10);
+		if (!format) {
 			err = -ENOMEM;
 			goto out;
 		}
+		sprintf(format, "%s/%s/format", sys, dent->d_name);
 		ret = stat(format, &st);
 
 		if (ret >= 0) {
@@ -239,7 +299,7 @@ out:
 	return err;
 }
 
-static int record_ftrace_files(struct tracepoint_path *tps)
+static int read_ftrace_files(struct tracepoint_path *tps)
 {
 	char *path;
 	int ret;
@@ -268,7 +328,7 @@ static bool system_in_tp_list(char *sys, struct tracepoint_path *tps)
 	return false;
 }
 
-static int record_event_files(struct tracepoint_path *tps)
+static int read_event_files(struct tracepoint_path *tps)
 {
 	struct dirent *dent;
 	struct stat st;
@@ -292,11 +352,13 @@ static int record_event_files(struct tracepoint_path *tps)
 		goto out;
 	}
 
-	for_each_event(dir, dent, tps) {
-		if (strcmp(dent->d_name, "ftrace") == 0 ||
+	while ((dent = readdir(dir))) {
+		if (dent->d_type != DT_DIR ||
+		    strcmp(dent->d_name, ".") == 0 ||
+		    strcmp(dent->d_name, "..") == 0 ||
+		    strcmp(dent->d_name, "ftrace") == 0 ||
 		    !system_in_tp_list(dent->d_name, tps))
 			continue;
-
 		count++;
 	}
 
@@ -307,15 +369,19 @@ static int record_event_files(struct tracepoint_path *tps)
 	}
 
 	rewinddir(dir);
-	for_each_event(dir, dent, tps) {
-		if (strcmp(dent->d_name, "ftrace") == 0 ||
+	while ((dent = readdir(dir))) {
+		if (dent->d_type != DT_DIR ||
+		    strcmp(dent->d_name, ".") == 0 ||
+		    strcmp(dent->d_name, "..") == 0 ||
+		    strcmp(dent->d_name, "ftrace") == 0 ||
 		    !system_in_tp_list(dent->d_name, tps))
 			continue;
-
-		if (asprintf(&sys, "%s/%s", path, dent->d_name) < 0) {
+		sys = malloc(strlen(path) + strlen(dent->d_name) + 2);
+		if (!sys) {
 			err = -ENOMEM;
 			goto out;
 		}
+		sprintf(sys, "%s/%s", path, dent->d_name);
 		ret = stat(sys, &st);
 		if (ret >= 0) {
 			ssize_t size = strlen(dent->d_name) + 1;
@@ -337,19 +403,25 @@ out:
 	return err;
 }
 
-static int record_proc_kallsyms(void)
+static int read_proc_kallsyms(void)
 {
-	unsigned long long size = 0;
-	/*
-	 * Just to keep older perf.data file parsers happy, record a zero
-	 * sized kallsyms file, i.e. do the same thing that was done when
-	 * /proc/kallsyms (or something specified via --kallsyms, in a
-	 * different path) couldn't be read.
-	 */
-	return write(output_fd, &size, 4) != 4 ? -EIO : 0;
+	unsigned int size;
+	const char *path = "/proc/kallsyms";
+	struct stat st;
+	int ret, err = 0;
+
+	ret = stat(path, &st);
+	if (ret < 0) {
+		/* not found */
+		size = 0;
+		if (write(output_fd, &size, 4) != 4)
+			err = -EIO;
+		return err;
+	}
+	return record_file(path, 4);
 }
 
-static int record_ftrace_printk(void)
+static int read_ftrace_printk(void)
 {
 	unsigned int size;
 	char *path;
@@ -377,34 +449,6 @@ out:
 	return err;
 }
 
-static int record_saved_cmdline(void)
-{
-	unsigned int size;
-	char *path;
-	struct stat st;
-	int ret, err = 0;
-
-	path = get_tracing_file("saved_cmdlines");
-	if (!path) {
-		pr_debug("can't get tracing/saved_cmdline");
-		return -ENOMEM;
-	}
-
-	ret = stat(path, &st);
-	if (ret < 0) {
-		/* not found */
-		size = 0;
-		if (write(output_fd, &size, 8) != 8)
-			err = -EIO;
-		goto out;
-	}
-	err = record_file(path, 8);
-
-out:
-	put_tracing_file(path);
-	return err;
-}
-
 static void
 put_tracepoints_path(struct tracepoint_path *tps)
 {
@@ -412,8 +456,8 @@ put_tracepoints_path(struct tracepoint_path *tps)
 		struct tracepoint_path *t = tps;
 
 		tps = tps->next;
-		zfree(&t->name);
-		zfree(&t->system);
+		free(t->name);
+		free(t->system);
 		free(t);
 	}
 }
@@ -429,27 +473,12 @@ get_tracepoints_path(struct list_head *pattrs)
 		if (pos->attr.type != PERF_TYPE_TRACEPOINT)
 			continue;
 		++nr_tracepoints;
-
-		if (pos->name) {
-			ppath->next = tracepoint_name_to_path(pos->name);
-			if (ppath->next)
-				goto next;
-
-			if (strchr(pos->name, ':') == NULL)
-				goto try_id;
-
-			goto error;
-		}
-
-try_id:
 		ppath->next = tracepoint_id_to_path(pos->attr.config);
 		if (!ppath->next) {
-error:
 			pr_debug("No memory to alloc tracepoints list\n");
 			put_tracepoints_path(&path);
 			return NULL;
 		}
-next:
 		ppath = ppath->next;
 	}
 
@@ -490,6 +519,8 @@ static int tracing_data_header(void)
 		buf[0] = 1;
 	else
 		buf[0] = 0;
+
+	read_trace_init(buf[0], buf[0]);
 
 	if (write(output_fd, buf, 1) != 1)
 		return -1;
@@ -552,22 +583,19 @@ struct tracing_data *tracing_data_get(struct list_head *pattrs,
 	err = tracing_data_header();
 	if (err)
 		goto out;
-	err = record_header_files();
+	err = read_header_files();
 	if (err)
 		goto out;
-	err = record_ftrace_files(tps);
+	err = read_ftrace_files(tps);
 	if (err)
 		goto out;
-	err = record_event_files(tps);
+	err = read_event_files(tps);
 	if (err)
 		goto out;
-	err = record_proc_kallsyms();
+	err = read_proc_kallsyms();
 	if (err)
 		goto out;
-	err = record_ftrace_printk();
-	if (err)
-		goto out;
-	err = record_saved_cmdline();
+	err = read_ftrace_printk();
 
 out:
 	/*
@@ -580,8 +608,10 @@ out:
 		output_fd = fd;
 	}
 
-	if (err)
-		zfree(&tdata);
+	if (err) {
+		free(tdata);
+		tdata = NULL;
+	}
 
 	put_tracepoints_path(tps);
 	return tdata;

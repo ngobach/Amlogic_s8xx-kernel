@@ -59,7 +59,6 @@ static int compat_hdio_getgeo(struct gendisk *disk, struct block_device *bdev,
 	if (!disk->fops->getgeo)
 		return -ENOTTY;
 
-	memset(&geo, 0, sizeof(geo));
 	/*
 	 * We need to set the startsect first, the driver may
 	 * want to override it.
@@ -70,7 +69,7 @@ static int compat_hdio_getgeo(struct gendisk *disk, struct block_device *bdev,
 		return ret;
 
 	ret = copy_to_user(ugeo, &geo, 4);
-	ret |= put_user(geo.start, &ugeo->start);
+	ret |= __put_user(geo.start, &ugeo->start);
 	if (ret)
 		ret = -EFAULT;
 
@@ -661,8 +660,8 @@ long compat_blkdev_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	struct block_device *bdev = inode->i_bdev;
 	struct gendisk *disk = bdev->bd_disk;
 	fmode_t mode = file->f_mode;
+	struct backing_dev_info *bdi;
 	loff_t size;
-	unsigned int max_sectors;
 
 	/*
 	 * O_NDELAY can be altered using fcntl(.., F_SETFL, ..), so we have
@@ -685,7 +684,7 @@ long compat_blkdev_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	case BLKALIGNOFF:
 		return compat_put_int(arg, bdev_alignment_offset(bdev));
 	case BLKDISCARDZEROES:
-		return compat_put_uint(arg, 0);
+		return compat_put_uint(arg, bdev_discard_zeroes_data(bdev));
 	case BLKFLSBUF:
 	case BLKROSET:
 	case BLKDISCARD:
@@ -707,8 +706,11 @@ long compat_blkdev_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	case BLKFRAGET:
 		if (!arg)
 			return -EINVAL;
+		bdi = blk_get_backing_dev_info(bdev);
+		if (bdi == NULL)
+			return -ENOTTY;
 		return compat_put_long(arg,
-			       (bdev->bd_bdi->ra_pages * PAGE_SIZE) / 512);
+				       (bdi->ra_pages * PAGE_CACHE_SIZE) / 512);
 	case BLKROGET: /* compatible */
 		return compat_put_int(arg, bdev_read_only(bdev) != 0);
 	case BLKBSZGET_32: /* get the logical block size (cf. BLKSSZGET) */
@@ -716,9 +718,8 @@ long compat_blkdev_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	case BLKSSZGET: /* get block device hardware sector size */
 		return compat_put_int(arg, bdev_logical_block_size(bdev));
 	case BLKSECTGET:
-		max_sectors = min_t(unsigned int, USHRT_MAX,
-				    queue_max_sectors(bdev_get_queue(bdev)));
-		return compat_put_ushort(arg, max_sectors);
+		return compat_put_ushort(arg,
+					 queue_max_sectors(bdev_get_queue(bdev)));
 	case BLKROTATIONAL:
 		return compat_put_ushort(arg,
 					 !blk_queue_nonrot(bdev_get_queue(bdev)));
@@ -726,7 +727,10 @@ long compat_blkdev_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	case BLKFRASET:
 		if (!capable(CAP_SYS_ADMIN))
 			return -EACCES;
-		bdev->bd_bdi->ra_pages = (arg * 512) / PAGE_SIZE;
+		bdi = blk_get_backing_dev_info(bdev);
+		if (bdi == NULL)
+			return -ENOTTY;
+		bdi->ra_pages = (arg * 512) / PAGE_CACHE_SIZE;
 		return 0;
 	case BLKGETSIZE:
 		size = i_size_read(bdev->bd_inode);

@@ -1,7 +1,7 @@
 #ifndef _LINUX_PID_H
 #define _LINUX_PID_H
 
-#include <linux/rculist.h>
+#include <linux/rcupdate.h>
 
 enum pid_type
 {
@@ -86,9 +86,11 @@ extern struct task_struct *get_pid_task(struct pid *pid, enum pid_type);
 extern struct pid *get_task_pid(struct task_struct *task, enum pid_type type);
 
 /*
- * these helpers must be called with the tasklist_lock write-held.
+ * attach_pid() and detach_pid() must be called with the tasklist_lock
+ * write-held.
  */
-extern void attach_pid(struct task_struct *task, enum pid_type);
+extern void attach_pid(struct task_struct *task, enum pid_type type,
+			struct pid *pid);
 extern void detach_pid(struct task_struct *task, enum pid_type);
 extern void change_pid(struct task_struct *task, enum pid_type,
 			struct pid *pid);
@@ -191,10 +193,10 @@ pid_t pid_vnr(struct pid *pid);
 #define do_each_pid_thread(pid, type, task)				\
 	do_each_pid_task(pid, type, task) {				\
 		struct task_struct *tg___ = task;			\
-		for_each_thread(tg___, task) {
+		do {
 
 #define while_each_pid_thread(pid, type, task)				\
-		}							\
+		} while_each_thread(tg___, task);			\
 		task = tg___;						\
 	} while_each_pid_task(pid, type, task)
 #endif /* _LINUX_PID_H */

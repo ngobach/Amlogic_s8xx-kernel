@@ -88,7 +88,7 @@ MODULE_PARM_DESC(isapnp,
 	"When set to 0 driver ISA PnP support will be disabled");
 #endif
 
-module_param_hw(io, int, ioport, 0);
+module_param(io, int, 0);
 MODULE_PARM_DESC(io, "io port");
 module_param(timeout, int, 0);
 MODULE_PARM_DESC(timeout, "range is 0-255 minutes, default is 1");
@@ -477,3 +477,4 @@ MODULE_AUTHOR("Zwane Mwaikambo <zwane@commfireservices.com>");
 MODULE_DESCRIPTION(
 	"Driver for National Semiconductor PC87307/PC97307 watchdog component");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);

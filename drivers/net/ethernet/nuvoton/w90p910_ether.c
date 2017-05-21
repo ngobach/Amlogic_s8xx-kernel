@@ -152,6 +152,7 @@ struct  w90p910_ether {
 	struct tran_pdesc *tdesc;
 	dma_addr_t rdesc_phys;
 	dma_addr_t tdesc_phys;
+	struct net_device_stats stats;
 	struct platform_device *pdev;
 	struct resource *res;
 	struct sk_buff *skb;
@@ -475,7 +476,7 @@ static void w90p910_reset_mac(struct net_device *dev)
 
 	w90p910_init_desc(dev);
 
-	netif_trans_update(dev); /* prevent tx timeout */
+	dev->trans_start = jiffies; /* prevent tx timeout */
 	ether->cur_tx = 0x0;
 	ether->finish_tx = 0x0;
 	ether->cur_rx = 0x0;
@@ -489,7 +490,7 @@ static void w90p910_reset_mac(struct net_device *dev)
 	w90p910_trigger_tx(dev);
 	w90p910_trigger_rx(dev);
 
-	netif_trans_update(dev); /* prevent tx timeout */
+	dev->trans_start = jiffies; /* prevent tx timeout */
 
 	if (netif_queue_stopped(dev))
 		netif_wake_queue(dev);
@@ -583,6 +584,15 @@ static int w90p910_ether_close(struct net_device *dev)
 	return 0;
 }
 
+static struct net_device_stats *w90p910_ether_stats(struct net_device *dev)
+{
+	struct w90p910_ether *ether;
+
+	ether = netdev_priv(dev);
+
+	return &ether->stats;
+}
+
 static int w90p910_send_frame(struct net_device *dev,
 					unsigned char *data, int length)
 {
@@ -661,10 +671,10 @@ static irqreturn_t w90p910_tx_interrupt(int irq, void *dev_id)
 			ether->finish_tx = 0;
 
 		if (txbd->sl & TXDS_TXCP) {
-			dev->stats.tx_packets++;
-			dev->stats.tx_bytes += txbd->sl & 0xFFFF;
+			ether->stats.tx_packets++;
+			ether->stats.tx_bytes += txbd->sl & 0xFFFF;
 		} else {
-			dev->stats.tx_errors++;
+			ether->stats.tx_errors++;
 		}
 
 		txbd->sl = 0x0;
@@ -720,7 +730,7 @@ static void netdev_rx(struct net_device *dev)
 			data = ether->rdesc->recv_buf[ether->cur_rx];
 			skb = netdev_alloc_skb(dev, length + 2);
 			if (!skb) {
-				dev->stats.rx_dropped++;
+				ether->stats.rx_dropped++;
 				return;
 			}
 
@@ -728,24 +738,24 @@ static void netdev_rx(struct net_device *dev)
 			skb_put(skb, length);
 			skb_copy_to_linear_data(skb, data, length);
 			skb->protocol = eth_type_trans(skb, dev);
-			dev->stats.rx_packets++;
-			dev->stats.rx_bytes += length;
+			ether->stats.rx_packets++;
+			ether->stats.rx_bytes += length;
 			netif_rx(skb);
 		} else {
-			dev->stats.rx_errors++;
+			ether->stats.rx_errors++;
 
 			if (status & RXDS_RP) {
 				dev_err(&pdev->dev, "rx runt err\n");
-				dev->stats.rx_length_errors++;
+				ether->stats.rx_length_errors++;
 			} else if (status & RXDS_CRCE) {
 				dev_err(&pdev->dev, "rx crc err\n");
-				dev->stats.rx_crc_errors++;
+				ether->stats.rx_crc_errors++;
 			} else if (status & RXDS_ALIE) {
-				dev_err(&pdev->dev, "rx alignment err\n");
-				dev->stats.rx_frame_errors++;
+				dev_err(&pdev->dev, "rx aligment err\n");
+				ether->stats.rx_frame_errors++;
 			} else if (status & RXDS_PTLE) {
 				dev_err(&pdev->dev, "rx longer err\n");
-				dev->stats.rx_over_errors++;
+				ether->stats.rx_over_errors++;
 			}
 		}
 
@@ -864,18 +874,16 @@ static void w90p910_get_drvinfo(struct net_device *dev,
 	strlcpy(info->version, DRV_MODULE_VERSION, sizeof(info->version));
 }
 
-static int w90p910_get_link_ksettings(struct net_device *dev,
-				      struct ethtool_link_ksettings *cmd)
+static int w90p910_get_settings(struct net_device *dev, struct ethtool_cmd *cmd)
 {
 	struct w90p910_ether *ether = netdev_priv(dev);
-	return mii_ethtool_get_link_ksettings(&ether->mii, cmd);
+	return mii_ethtool_gset(&ether->mii, cmd);
 }
 
-static int w90p910_set_link_ksettings(struct net_device *dev,
-				      const struct ethtool_link_ksettings *cmd)
+static int w90p910_set_settings(struct net_device *dev, struct ethtool_cmd *cmd)
 {
 	struct w90p910_ether *ether = netdev_priv(dev);
-	return mii_ethtool_set_link_ksettings(&ether->mii, cmd);
+	return mii_ethtool_sset(&ether->mii, cmd);
 }
 
 static int w90p910_nway_reset(struct net_device *dev)
@@ -891,28 +899,30 @@ static u32 w90p910_get_link(struct net_device *dev)
 }
 
 static const struct ethtool_ops w90p910_ether_ethtool_ops = {
+	.get_settings	= w90p910_get_settings,
+	.set_settings	= w90p910_set_settings,
 	.get_drvinfo	= w90p910_get_drvinfo,
 	.nway_reset	= w90p910_nway_reset,
 	.get_link	= w90p910_get_link,
-	.get_link_ksettings = w90p910_get_link_ksettings,
-	.set_link_ksettings = w90p910_set_link_ksettings,
 };
 
 static const struct net_device_ops w90p910_ether_netdev_ops = {
 	.ndo_open		= w90p910_ether_open,
 	.ndo_stop		= w90p910_ether_close,
 	.ndo_start_xmit		= w90p910_ether_start_xmit,
+	.ndo_get_stats		= w90p910_ether_stats,
 	.ndo_set_rx_mode	= w90p910_ether_set_multicast_list,
 	.ndo_set_mac_address	= w90p910_set_mac_address,
 	.ndo_do_ioctl		= w90p910_ether_ioctl,
 	.ndo_validate_addr	= eth_validate_addr,
+	.ndo_change_mtu		= eth_change_mtu,
 };
 
 static void __init get_mac_address(struct net_device *dev)
 {
 	struct w90p910_ether *ether = netdev_priv(dev);
 	struct platform_device *pdev;
-	char addr[ETH_ALEN];
+	char addr[6];
 
 	pdev = ether->pdev;
 
@@ -924,7 +934,7 @@ static void __init get_mac_address(struct net_device *dev)
 	addr[5] = 0xa8;
 
 	if (is_valid_ether_addr(addr))
-		memcpy(dev->dev_addr, &addr, ETH_ALEN);
+		memcpy(dev->dev_addr, &addr, 0x06);
 	else
 		dev_err(&pdev->dev, "invalid mac address\n");
 }
@@ -933,6 +943,7 @@ static int w90p910_ether_setup(struct net_device *dev)
 {
 	struct w90p910_ether *ether = netdev_priv(dev);
 
+	ether_setup(dev);
 	dev->netdev_ops = &w90p910_ether_netdev_ops;
 	dev->ethtool_ops = &w90p910_ether_ethtool_ops;
 
@@ -1003,7 +1014,7 @@ static int w90p910_ether_probe(struct platform_device *pdev)
 	if (ether->rxirq < 0) {
 		dev_err(&pdev->dev, "failed to get ether rx irq\n");
 		error = -ENXIO;
-		goto failed_free_io;
+		goto failed_free_txirq;
 	}
 
 	platform_set_drvdata(pdev, dev);
@@ -1012,7 +1023,7 @@ static int w90p910_ether_probe(struct platform_device *pdev)
 	if (IS_ERR(ether->clk)) {
 		dev_err(&pdev->dev, "failed to get ether clock\n");
 		error = PTR_ERR(ether->clk);
-		goto failed_free_io;
+		goto failed_free_rxirq;
 	}
 
 	ether->rmiiclk = clk_get(&pdev->dev, "RMII");
@@ -1028,7 +1039,7 @@ static int w90p910_ether_probe(struct platform_device *pdev)
 
 	error = register_netdev(dev);
 	if (error != 0) {
-		dev_err(&pdev->dev, "Register EMC w90p910 FAILED\n");
+		dev_err(&pdev->dev, "Regiter EMC w90p910 FAILED\n");
 		error = -ENODEV;
 		goto failed_put_rmiiclk;
 	}
@@ -1038,6 +1049,11 @@ failed_put_rmiiclk:
 	clk_put(ether->rmiiclk);
 failed_put_clk:
 	clk_put(ether->clk);
+failed_free_rxirq:
+	free_irq(ether->rxirq, pdev);
+	platform_set_drvdata(pdev, NULL);
+failed_free_txirq:
+	free_irq(ether->txirq, pdev);
 failed_free_io:
 	iounmap(ether->reg);
 failed_free_mem:
@@ -1060,7 +1076,11 @@ static int w90p910_ether_remove(struct platform_device *pdev)
 	iounmap(ether->reg);
 	release_mem_region(ether->res->start, resource_size(ether->res));
 
+	free_irq(ether->txirq, dev);
+	free_irq(ether->rxirq, dev);
+
 	del_timer_sync(&ether->check_timer);
+	platform_set_drvdata(pdev, NULL);
 
 	free_netdev(dev);
 	return 0;
@@ -1071,6 +1091,7 @@ static struct platform_driver w90p910_ether_driver = {
 	.remove		= w90p910_ether_remove,
 	.driver		= {
 		.name	= "nuc900-emc",
+		.owner	= THIS_MODULE,
 	},
 };
 

@@ -15,8 +15,6 @@
  *		(usb_device_id matching changes by Adam J. Richter)
  *	(C) Copyright Greg Kroah-Hartman 2002-2003
  *
- * Released under the GPLv2 only.
- * SPDX-License-Identifier: GPL-2.0
  */
 
 #include <linux/usb.h>
@@ -157,7 +155,6 @@ int usb_choose_configuration(struct usb_device *udev)
 	}
 	return i;
 }
-EXPORT_SYMBOL_GPL(usb_choose_configuration);
 
 static int generic_probe(struct usb_device *udev)
 {

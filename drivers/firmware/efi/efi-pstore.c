@@ -18,27 +18,37 @@ module_param_named(pstore_disable, efivars_pstore_disable, bool, 0644);
 
 static int efi_pstore_open(struct pstore_info *psi)
 {
+	efivar_entry_iter_begin();
 	psi->data = NULL;
 	return 0;
 }
 
 static int efi_pstore_close(struct pstore_info *psi)
 {
+	efivar_entry_iter_end();
 	psi->data = NULL;
 	return 0;
 }
 
+struct pstore_read_data {
+	u64 *id;
+	enum pstore_type_id *type;
+	int *count;
+	struct timespec *timespec;
+	char **buf;
+};
+
 static inline u64 generic_id(unsigned long timestamp,
 			     unsigned int part, int count)
 {
-	return ((u64) timestamp * 100 + part) * 1000 + count;
+	return (timestamp * 100 + part) * 1000 + count;
 }
 
-static int efi_pstore_read_func(struct efivar_entry *entry,
-				struct pstore_record *record)
+static int efi_pstore_read_func(struct efivar_entry *entry, void *data)
 {
 	efi_guid_t vendor = LINUX_EFI_CRASH_GUID;
-	char name[DUMP_NAME_LEN], data_type;
+	struct pstore_read_data *cb_data = data;
+	char name[DUMP_NAME_LEN];
 	int i;
 	int cnt;
 	unsigned int part;
@@ -50,38 +60,23 @@ static int efi_pstore_read_func(struct efivar_entry *entry,
 	for (i = 0; i < DUMP_NAME_LEN; i++)
 		name[i] = entry->var.VariableName[i];
 
-	if (sscanf(name, "dump-type%u-%u-%d-%lu-%c",
-		   &record->type, &part, &cnt, &time, &data_type) == 5) {
-		record->id = generic_id(time, part, cnt);
-		record->count = cnt;
-		record->time.tv_sec = time;
-		record->time.tv_nsec = 0;
-		if (data_type == 'C')
-			record->compressed = true;
-		else
-			record->compressed = false;
-		record->ecc_notice_size = 0;
-	} else if (sscanf(name, "dump-type%u-%u-%d-%lu",
-		   &record->type, &part, &cnt, &time) == 4) {
-		record->id = generic_id(time, part, cnt);
-		record->count = cnt;
-		record->time.tv_sec = time;
-		record->time.tv_nsec = 0;
-		record->compressed = false;
-		record->ecc_notice_size = 0;
+	if (sscanf(name, "dump-type%u-%u-%d-%lu",
+		   cb_data->type, &part, &cnt, &time) == 4) {
+		*cb_data->id = generic_id(time, part, cnt);
+		*cb_data->count = cnt;
+		cb_data->timespec->tv_sec = time;
+		cb_data->timespec->tv_nsec = 0;
 	} else if (sscanf(name, "dump-type%u-%u-%lu",
-			  &record->type, &part, &time) == 3) {
+			  cb_data->type, &part, &time) == 3) {
 		/*
 		 * Check if an old format,
 		 * which doesn't support holding
 		 * multiple logs, remains.
 		 */
-		record->id = generic_id(time, part, 0);
-		record->count = 0;
-		record->time.tv_sec = time;
-		record->time.tv_nsec = 0;
-		record->compressed = false;
-		record->ecc_notice_size = 0;
+		*cb_data->id = generic_id(time, part, 0);
+		*cb_data->count = 0;
+		cb_data->timespec->tv_sec = time;
+		cb_data->timespec->tv_nsec = 0;
 	} else
 		return 0;
 
@@ -89,184 +84,62 @@ static int efi_pstore_read_func(struct efivar_entry *entry,
 	__efivar_entry_get(entry, &entry->var.Attributes,
 			   &entry->var.DataSize, entry->var.Data);
 	size = entry->var.DataSize;
-	memcpy(record->buf, entry->var.Data,
-	       (size_t)min_t(unsigned long, EFIVARS_DATA_SIZE_MAX, size));
 
-	return size;
-}
-
-/**
- * efi_pstore_scan_sysfs_enter
- * @pos: scanning entry
- * @next: next entry
- * @head: list head
- */
-static void efi_pstore_scan_sysfs_enter(struct efivar_entry *pos,
-					struct efivar_entry *next,
-					struct list_head *head)
-{
-	pos->scanning = true;
-	if (&next->list != head)
-		next->scanning = true;
-}
-
-/**
- * __efi_pstore_scan_sysfs_exit
- * @entry: deleting entry
- * @turn_off_scanning: Check if a scanning flag should be turned off
- */
-static inline int __efi_pstore_scan_sysfs_exit(struct efivar_entry *entry,
-						bool turn_off_scanning)
-{
-	if (entry->deleting) {
-		list_del(&entry->list);
-		efivar_entry_iter_end();
-		efivar_unregister(entry);
-		if (efivar_entry_iter_begin())
-			return -EINTR;
-	} else if (turn_off_scanning)
-		entry->scanning = false;
-
-	return 0;
-}
-
-/**
- * efi_pstore_scan_sysfs_exit
- * @pos: scanning entry
- * @next: next entry
- * @head: list head
- * @stop: a flag checking if scanning will stop
- */
-static int efi_pstore_scan_sysfs_exit(struct efivar_entry *pos,
-				       struct efivar_entry *next,
-				       struct list_head *head, bool stop)
-{
-	int ret = __efi_pstore_scan_sysfs_exit(pos, true);
-
-	if (ret)
-		return ret;
-
-	if (stop)
-		ret = __efi_pstore_scan_sysfs_exit(next, &next->list != head);
-	return ret;
-}
-
-/**
- * efi_pstore_sysfs_entry_iter
- *
- * @record: pstore record to pass to callback
- * @pos: entry to begin iterating from
- *
- * You MUST call efivar_enter_iter_begin() before this function, and
- * efivar_entry_iter_end() afterwards.
- *
- * It is possible to begin iteration from an arbitrary entry within
- * the list by passing @pos. @pos is updated on return to point to
- * the next entry of the last one passed to efi_pstore_read_func().
- * To begin iterating from the beginning of the list @pos must be %NULL.
- */
-static int efi_pstore_sysfs_entry_iter(struct pstore_record *record,
-				       struct efivar_entry **pos)
-{
-	struct efivar_entry *entry, *n;
-	struct list_head *head = &efivar_sysfs_list;
-	int size = 0;
-	int ret;
-
-	if (!*pos) {
-		list_for_each_entry_safe(entry, n, head, list) {
-			efi_pstore_scan_sysfs_enter(entry, n, head);
-
-			size = efi_pstore_read_func(entry, record);
-			ret = efi_pstore_scan_sysfs_exit(entry, n, head,
-							 size < 0);
-			if (ret)
-				return ret;
-			if (size)
-				break;
-		}
-		*pos = n;
-		return size;
-	}
-
-	list_for_each_entry_safe_from((*pos), n, head, list) {
-		efi_pstore_scan_sysfs_enter((*pos), n, head);
-
-		size = efi_pstore_read_func((*pos), record);
-		ret = efi_pstore_scan_sysfs_exit((*pos), n, head, size < 0);
-		if (ret)
-			return ret;
-		if (size)
-			break;
-	}
-	*pos = n;
-	return size;
-}
-
-/**
- * efi_pstore_read
- *
- * This function returns a size of NVRAM entry logged via efi_pstore_write().
- * The meaning and behavior of efi_pstore/pstore are as below.
- *
- * size > 0: Got data of an entry logged via efi_pstore_write() successfully,
- *           and pstore filesystem will continue reading subsequent entries.
- * size == 0: Entry was not logged via efi_pstore_write(),
- *            and efi_pstore driver will continue reading subsequent entries.
- * size < 0: Failed to get data of entry logging via efi_pstore_write(),
- *           and pstore will stop reading entry.
- */
-static ssize_t efi_pstore_read(struct pstore_record *record)
-{
-	struct efivar_entry *entry = (struct efivar_entry *)record->psi->data;
-	ssize_t size;
-
-	record->buf = kzalloc(EFIVARS_DATA_SIZE_MAX, GFP_KERNEL);
-	if (!record->buf)
+	*cb_data->buf = kmalloc(size, GFP_KERNEL);
+	if (*cb_data->buf == NULL)
 		return -ENOMEM;
-
-	if (efivar_entry_iter_begin()) {
-		size = -EINTR;
-		goto out;
-	}
-	size = efi_pstore_sysfs_entry_iter(record, &entry);
-	efivar_entry_iter_end();
-
-out:
-	if (size <= 0) {
-		kfree(record->buf);
-		record->buf = NULL;
-	}
+	memcpy(*cb_data->buf, entry->var.Data, size);
 	return size;
 }
 
-static int efi_pstore_write(struct pstore_record *record)
+static ssize_t efi_pstore_read(u64 *id, enum pstore_type_id *type,
+			       int *count, struct timespec *timespec,
+			       char **buf, struct pstore_info *psi)
+{
+	struct pstore_read_data data;
+
+	data.id = id;
+	data.type = type;
+	data.count = count;
+	data.timespec = timespec;
+	data.buf = buf;
+
+	return __efivar_entry_iter(efi_pstore_read_func, &efivar_sysfs_list, &data,
+				   (struct efivar_entry **)&psi->data);
+}
+
+static int efi_pstore_write(enum pstore_type_id type,
+		enum kmsg_dump_reason reason, u64 *id,
+		unsigned int part, int count, size_t size,
+		struct pstore_info *psi)
 {
 	char name[DUMP_NAME_LEN];
 	efi_char16_t efi_name[DUMP_NAME_LEN];
 	efi_guid_t vendor = LINUX_EFI_CRASH_GUID;
 	int i, ret = 0;
 
-	snprintf(name, sizeof(name), "dump-type%u-%u-%d-%lu-%c",
-		 record->type, record->part, record->count,
-		 get_seconds(), record->compressed ? 'C' : 'D');
+	sprintf(name, "dump-type%u-%u-%d-%lu", type, part, count,
+		get_seconds());
 
 	for (i = 0; i < DUMP_NAME_LEN; i++)
 		efi_name[i] = name[i];
 
-	ret = efivar_entry_set_safe(efi_name, vendor, PSTORE_EFI_ATTRIBUTES,
-			      !pstore_cannot_block_path(record->reason),
-			      record->size, record->psi->buf);
+	efivar_entry_set_safe(efi_name, vendor, PSTORE_EFI_ATTRIBUTES,
+			      !pstore_cannot_block_path(reason),
+			      size, psi->buf);
 
-	if (record->reason == KMSG_DUMP_OOPS)
+	if (reason == KMSG_DUMP_OOPS)
 		efivar_run_worker();
 
-	record->id = record->part;
+	*id = part;
 	return ret;
 };
 
 struct pstore_erase_data {
-	struct pstore_record *record;
+	u64 id;
+	enum pstore_type_id type;
+	int count;
+	struct timespec time;
 	efi_char16_t *name;
 };
 
@@ -292,9 +165,8 @@ static int efi_pstore_erase_func(struct efivar_entry *entry, void *data)
 		 * Check if an old format, which doesn't support
 		 * holding multiple logs, remains.
 		 */
-		snprintf(name_old, sizeof(name_old), "dump-type%u-%u-%lu",
-			ed->record->type, (unsigned int)ed->record->id,
-			ed->record->time.tv_sec);
+		sprintf(name_old, "dump-type%u-%u-%lu", ed->type,
+			(unsigned int)ed->id, ed->time.tv_sec);
 
 		for (i = 0; i < DUMP_NAME_LEN; i++)
 			efi_name_old[i] = name_old[i];
@@ -304,22 +176,15 @@ static int efi_pstore_erase_func(struct efivar_entry *entry, void *data)
 			return 0;
 	}
 
-	if (entry->scanning) {
-		/*
-		 * Skip deletion because this entry will be deleted
-		 * after scanning is completed.
-		 */
-		entry->deleting = true;
-	} else
-		list_del(&entry->list);
-
 	/* found */
 	__efivar_entry_delete(entry);
+	list_del(&entry->list);
 
 	return 1;
 }
 
-static int efi_pstore_erase(struct pstore_record *record)
+static int efi_pstore_erase(enum pstore_type_id type, u64 id, int count,
+			    struct timespec time, struct pstore_info *psi)
 {
 	struct pstore_erase_data edata;
 	struct efivar_entry *entry = NULL;
@@ -328,27 +193,25 @@ static int efi_pstore_erase(struct pstore_record *record)
 	int found, i;
 	unsigned int part;
 
-	do_div(record->id, 1000);
-	part = do_div(record->id, 100);
-	snprintf(name, sizeof(name), "dump-type%u-%u-%d-%lu",
-		 record->type, record->part, record->count,
-		 record->time.tv_sec);
+	do_div(id, 1000);
+	part = do_div(id, 100);
+	sprintf(name, "dump-type%u-%u-%d-%lu", type, part, count, time.tv_sec);
 
 	for (i = 0; i < DUMP_NAME_LEN; i++)
 		efi_name[i] = name[i];
 
-	edata.record = record;
+	edata.id = part;
+	edata.type = type;
+	edata.count = count;
+	edata.time = time;
 	edata.name = efi_name;
 
-	if (efivar_entry_iter_begin())
-		return -EINTR;
+	efivar_entry_iter_begin();
 	found = __efivar_entry_iter(efi_pstore_erase_func, &efivar_sysfs_list, &edata, &entry);
+	efivar_entry_iter_end();
 
-	if (found && !entry->scanning) {
-		efivar_entry_iter_end();
+	if (found)
 		efivar_unregister(entry);
-	} else
-		efivar_entry_iter_end();
 
 	return 0;
 }
@@ -356,7 +219,6 @@ static int efi_pstore_erase(struct pstore_record *record)
 static struct pstore_info efi_pstore_info = {
 	.owner		= THIS_MODULE,
 	.name		= "efi",
-	.flags		= PSTORE_FLAGS_DMESG,
 	.open		= efi_pstore_open,
 	.close		= efi_pstore_close,
 	.read		= efi_pstore_read,
@@ -382,24 +244,13 @@ static __init int efivars_pstore_init(void)
 	efi_pstore_info.bufsize = 1024;
 	spin_lock_init(&efi_pstore_info.buf_lock);
 
-	if (pstore_register(&efi_pstore_info)) {
-		kfree(efi_pstore_info.buf);
-		efi_pstore_info.buf = NULL;
-		efi_pstore_info.bufsize = 0;
-	}
+	pstore_register(&efi_pstore_info);
 
 	return 0;
 }
 
 static __exit void efivars_pstore_exit(void)
 {
-	if (!efi_pstore_info.bufsize)
-		return;
-
-	pstore_unregister(&efi_pstore_info);
-	kfree(efi_pstore_info.buf);
-	efi_pstore_info.buf = NULL;
-	efi_pstore_info.bufsize = 0;
 }
 
 module_init(efivars_pstore_init);
@@ -407,4 +258,3 @@ module_exit(efivars_pstore_exit);
 
 MODULE_DESCRIPTION("EFI variable backend for pstore");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:efivars");

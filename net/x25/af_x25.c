@@ -35,13 +35,11 @@
  *					response
  */
 
-#define pr_fmt(fmt) "X25: " fmt
-
 #include <linux/module.h>
 #include <linux/capability.h>
 #include <linux/errno.h>
 #include <linux/kernel.h>
-#include <linux/sched/signal.h>
+#include <linux/sched.h>
 #include <linux/timer.h>
 #include <linux/string.h>
 #include <linux/net.h>
@@ -51,7 +49,7 @@
 #include <linux/slab.h>
 #include <net/sock.h>
 #include <net/tcp_states.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 #include <linux/fcntl.h>
 #include <linux/termios.h>	/* For TIOCINQ/OUTQ */
 #include <linux/notifier.h>
@@ -226,7 +224,7 @@ static void x25_kill_by_device(struct net_device *dev)
 static int x25_device_event(struct notifier_block *this, unsigned long event,
 			    void *ptr)
 {
-	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *dev = ptr;
 	struct x25_neigh *nb;
 
 	if (!net_eq(dev_net(dev), &init_net))
@@ -515,10 +513,10 @@ static struct proto x25_proto = {
 	.obj_size = sizeof(struct x25_sock),
 };
 
-static struct sock *x25_alloc_socket(struct net *net, int kern)
+static struct sock *x25_alloc_socket(struct net *net)
 {
 	struct x25_sock *x25;
-	struct sock *sk = sk_alloc(net, AF_X25, GFP_ATOMIC, &x25_proto, kern);
+	struct sock *sk = sk_alloc(net, AF_X25, GFP_ATOMIC, &x25_proto);
 
 	if (!sk)
 		goto out;
@@ -553,7 +551,7 @@ static int x25_create(struct net *net, struct socket *sock, int protocol,
 		goto out;
 
 	rc = -ENOBUFS;
-	if ((sk = x25_alloc_socket(net, kern)) == NULL)
+	if ((sk = x25_alloc_socket(net)) == NULL)
 		goto out;
 
 	x25 = x25_sk(sk);
@@ -602,7 +600,7 @@ static struct sock *x25_make_new(struct sock *osk)
 	if (osk->sk_type != SOCK_SEQPACKET)
 		goto out;
 
-	if ((sk = x25_alloc_socket(sock_net(osk), 0)) == NULL)
+	if ((sk = x25_alloc_socket(sock_net(osk))) == NULL)
 		goto out;
 
 	x25 = x25_sk(sk);
@@ -852,8 +850,7 @@ static int x25_wait_for_data(struct sock *sk, long timeout)
 	return rc;
 }
 
-static int x25_accept(struct socket *sock, struct socket *newsock, int flags,
-		      bool kern)
+static int x25_accept(struct socket *sock, struct socket *newsock, int flags)
 {
 	struct sock *sk = sock->sk;
 	struct sock *newsk;
@@ -1065,7 +1062,7 @@ int x25_rx_call_request(struct sk_buff *skb, struct x25_neigh *nb,
 	x25_start_heartbeat(make);
 
 	if (!sock_flag(sk, SOCK_DEAD))
-		sk->sk_data_ready(sk);
+		sk->sk_data_ready(sk, skb->len);
 	rc = 1;
 	sock_put(sk);
 out:
@@ -1078,11 +1075,12 @@ out_clear_request:
 	goto out;
 }
 
-static int x25_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
+static int x25_sendmsg(struct kiocb *iocb, struct socket *sock,
+		       struct msghdr *msg, size_t len)
 {
 	struct sock *sk = sock->sk;
 	struct x25_sock *x25 = x25_sk(sk);
-	DECLARE_SOCKADDR(struct sockaddr_x25 *, usx25, msg->msg_name);
+	struct sockaddr_x25 *usx25 = (struct sockaddr_x25 *)msg->msg_name;
 	struct sockaddr_x25 sx25;
 	struct sk_buff *skb;
 	unsigned char *asmptr;
@@ -1170,7 +1168,7 @@ static int x25_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	skb_reset_transport_header(skb);
 	skb_put(skb, len);
 
-	rc = memcpy_from_msg(skb_transport_header(skb), msg, len);
+	rc = memcpy_fromiovec(skb_transport_header(skb), msg->msg_iov, len);
 	if (rc)
 		goto out_kfree_skb;
 
@@ -1252,12 +1250,13 @@ out_kfree_skb:
 }
 
 
-static int x25_recvmsg(struct socket *sock, struct msghdr *msg, size_t size,
+static int x25_recvmsg(struct kiocb *iocb, struct socket *sock,
+		       struct msghdr *msg, size_t size,
 		       int flags)
 {
 	struct sock *sk = sock->sk;
 	struct x25_sock *x25 = x25_sk(sk);
-	DECLARE_SOCKADDR(struct sockaddr_x25 *, sx25, msg->msg_name);
+	struct sockaddr_x25 *sx25 = (struct sockaddr_x25 *)msg->msg_name;
 	size_t copied;
 	int qbit, header_len;
 	struct sk_buff *skb;
@@ -1334,7 +1333,7 @@ static int x25_recvmsg(struct socket *sock, struct msghdr *msg, size_t size,
 	/* Currently, each datagram always contains a complete record */
 	msg->msg_flags |= MSG_EOR;
 
-	rc = skb_copy_datagram_msg(skb, 0, msg, copied);
+	rc = skb_copy_datagram_iovec(skb, 0, msg->msg_iov, copied);
 	if (rc)
 		goto out_free_dgram;
 
@@ -1501,7 +1500,11 @@ out_fac_release:
 			goto out_dtefac_release;
 		if (dtefacs.calling_len > X25_MAX_AE_LEN)
 			goto out_dtefac_release;
+		if (dtefacs.calling_ae == NULL)
+			goto out_dtefac_release;
 		if (dtefacs.called_len > X25_MAX_AE_LEN)
+			goto out_dtefac_release;
+		if (dtefacs.called_ae == NULL)
 			goto out_dtefac_release;
 		x25->dte_facilities = dtefacs;
 		rc = 0;
@@ -1806,7 +1809,7 @@ static int __init x25_init(void)
 	if (rc != 0)
 		goto out_sock;
 
-	pr_info("Linux Version 0.2\n");
+	printk(KERN_INFO "X.25 for Linux Version 0.2\n");
 
 	x25_register_sysctl();
 	rc = x25_proc_init();

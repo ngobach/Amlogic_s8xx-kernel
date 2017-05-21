@@ -8,18 +8,19 @@
 #define IPCMNI 32768  /* <= MAX_INT limit for ipc arrays (including sysctl changes) */
 
 /* used by in-kernel data structures */
-struct kern_ipc_perm {
+struct kern_ipc_perm
+{
 	spinlock_t	lock;
-	bool		deleted;
+	int		deleted;
 	int		id;
 	key_t		key;
 	kuid_t		uid;
 	kgid_t		gid;
 	kuid_t		cuid;
 	kgid_t		cgid;
-	umode_t		mode;
+	umode_t		mode; 
 	unsigned long	seq;
 	void		*security;
-} ____cacheline_aligned_in_smp;
+};
 
 #endif /* _LINUX_IPC_H */

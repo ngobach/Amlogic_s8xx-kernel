@@ -427,7 +427,7 @@ Memhscx_empty_fifo(struct BCState *bcs, int count)
 		t += sprintf(t, "hscx_empty_fifo %c cnt %d",
 			     bcs->hw.hscx.hscx ? 'B' : 'A', count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", bcs->blog);
+		debugl1(cs, bcs->blog);
 	}
 }
 
@@ -469,7 +469,7 @@ Memhscx_fill_fifo(struct BCState *bcs)
 		t += sprintf(t, "hscx_fill_fifo %c cnt %d",
 			     bcs->hw.hscx.hscx ? 'B' : 'A', count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", bcs->blog);
+		debugl1(cs, bcs->blog);
 	}
 }
 
@@ -976,8 +976,9 @@ static int setup_diva_common(struct IsdnCardState *cs)
 		printk(KERN_INFO "Diva: IPACX Design Id: %x\n",
 		       MemReadISAC_IPACX(cs, IPACX_ID) & 0x3F);
 	} else { /* DIVA 2.0 */
-		setup_timer(&cs->hw.diva.tl, (void *)diva_led_handler,
-			    (long)cs);
+		cs->hw.diva.tl.function = (void *) diva_led_handler;
+		cs->hw.diva.tl.data = (long) cs;
+		init_timer(&cs->hw.diva.tl);
 		cs->readisac  = &ReadISAC;
 		cs->writeisac = &WriteISAC;
 		cs->readisacfifo  = &ReadISACfifo;

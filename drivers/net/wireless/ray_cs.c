@@ -17,7 +17,8 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
  *
  * Changes:
  * Arnaldo Carvalho de Melo <acme@conectiva.com.br> - 08/08/2000
@@ -53,7 +54,7 @@
 
 #include <asm/io.h>
 #include <asm/byteorder.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 
 /* Warning : these stuff will slow down the driver... */
 #define WIRELESS_SPY		/* Enable spying addresses */
@@ -143,7 +144,7 @@ static int psm;
 static char *essid;
 
 /* Default to encapsulation unless translation requested */
-static bool translate = true;
+static bool translate = 1;
 
 static int country = USA;
 
@@ -272,6 +273,7 @@ static const struct net_device_ops ray_netdev_ops = {
 	.ndo_set_config		= ray_dev_config,
 	.ndo_get_stats		= ray_get_stats,
 	.ndo_set_rx_mode	= set_multicast_list,
+	.ndo_change_mtu		= eth_change_mtu,
 	.ndo_set_mac_address 	= eth_mac_addr,
 	.ndo_validate_addr	= eth_validate_addr,
 };
@@ -342,7 +344,7 @@ static void ray_detach(struct pcmcia_device *link)
 	ray_release(link);
 
 	local = netdev_priv(dev);
-	del_timer_sync(&local->timer);
+	del_timer(&local->timer);
 
 	if (link->priv) {
 		unregister_netdev(dev);
@@ -807,7 +809,7 @@ static int ray_dev_init(struct net_device *dev)
 
 	/* copy mac and broadcast addresses to linux device */
 	memcpy(dev->dev_addr, &local->sparm.b4.a_mac_addr, ADDRLEN);
-	eth_broadcast_addr(dev->broadcast);
+	memset(dev->broadcast, 0xff, ETH_ALEN);
 
 	dev_dbg(&link->dev, "ray_dev_init ending\n");
 	return 0;

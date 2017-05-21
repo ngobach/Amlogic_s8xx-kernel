@@ -2,7 +2,9 @@
  * This file contains error recovery level two functions used by
  * the iSCSI Target driver.
  *
- * (c) Copyright 2007-2013 Datera, Inc.
+ * \u00a9 Copyright 2007-2011 RisingTide Systems LLC.
+ *
+ * Licensed to the Linux Foundation under the General Public License (GPL) version 2.
  *
  * Author: Nicholas A. Bellinger <nab@linux-iscsi.org>
  *
@@ -17,12 +19,11 @@
  * GNU General Public License for more details.
  ******************************************************************************/
 
-#include <linux/slab.h>
 #include <scsi/iscsi_proto.h>
 #include <target/target_core_base.h>
 #include <target/target_core_fabric.h>
 
-#include <target/iscsi/iscsi_target_core.h>
+#include "iscsi_target_core.h"
 #include "iscsi_target_datain_values.h"
 #include "iscsi_target_util.h"
 #include "iscsi_target_erl0.h"
@@ -312,7 +313,7 @@ int iscsit_discard_unacknowledged_ooo_cmdsns_for_conn(struct iscsi_conn *conn)
 	return 0;
 }
 
-int iscsit_prepare_cmds_for_reallegiance(struct iscsi_conn *conn)
+int iscsit_prepare_cmds_for_realligance(struct iscsi_conn *conn)
 {
 	u32 cmd_count = 0;
 	struct iscsi_cmd *cmd, *cmd_tmp;
@@ -347,7 +348,7 @@ int iscsit_prepare_cmds_for_reallegiance(struct iscsi_conn *conn)
 
 		if ((cmd->iscsi_opcode != ISCSI_OP_SCSI_CMD) &&
 		    (cmd->iscsi_opcode != ISCSI_OP_NOOP_OUT)) {
-			pr_debug("Not performing reallegiance on"
+			pr_debug("Not performing realligence on"
 				" Opcode: 0x%02x, ITT: 0x%08x, CmdSN: 0x%08x,"
 				" CID: %hu\n", cmd->iscsi_opcode,
 				cmd->init_task_tag, cmd->cmd_sn, conn->cid);
@@ -382,7 +383,7 @@ int iscsit_prepare_cmds_for_reallegiance(struct iscsi_conn *conn)
 		cmd_count++;
 		pr_debug("Preparing Opcode: 0x%02x, ITT: 0x%08x,"
 			" CmdSN: 0x%08x, StatSN: 0x%08x, CID: %hu for"
-			" reallegiance.\n", cmd->iscsi_opcode,
+			" realligence.\n", cmd->iscsi_opcode,
 			cmd->init_task_tag, cmd->cmd_sn, cmd->stat_sn,
 			conn->cid);
 

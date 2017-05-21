@@ -1,7 +1,7 @@
 /*
  * DVB USB framework
  *
- * Copyright (C) 2004-6 Patrick Boettcher <patrick.boettcher@posteo.de>
+ * Copyright (C) 2004-6 Patrick Boettcher <patrick.boettcher@desy.de>
  * Copyright (C) 2012 Antti Palosaari <crope@iki.fi>
  *
  *    This program is free software; you can redistribute it and/or modify
@@ -410,3 +410,4 @@ extern int dvb_usbv2_generic_rw_locked(struct dvb_usb_device *,
 extern int dvb_usbv2_generic_write_locked(struct dvb_usb_device *, u8 *, u16);
 
 #endif
+

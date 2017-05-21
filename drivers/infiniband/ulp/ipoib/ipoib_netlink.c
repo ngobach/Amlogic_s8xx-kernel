@@ -31,7 +31,6 @@
  */
 
 #include <linux/netdevice.h>
-#include <linux/if_arp.h>      /* For ARPHRD_xxx */
 #include <linux/module.h>
 #include <net/rtnetlink.h>
 #include "ipoib.h"
@@ -44,7 +43,7 @@ static const struct nla_policy ipoib_policy[IFLA_IPOIB_MAX + 1] = {
 
 static int ipoib_fill_info(struct sk_buff *skb, const struct net_device *dev)
 {
-	struct ipoib_dev_priv *priv = ipoib_priv(dev);
+	struct ipoib_dev_priv *priv = netdev_priv(dev);
 	u16 val;
 
 	if (nla_put_u16(skb, IFLA_IPOIB_PKEY, priv->pkey))
@@ -104,10 +103,10 @@ static int ipoib_new_child_link(struct net *src_net, struct net_device *dev,
 		return -EINVAL;
 
 	pdev = __dev_get_by_index(src_net, nla_get_u32(tb[IFLA_LINK]));
-	if (!pdev || pdev->type != ARPHRD_INFINIBAND)
+	if (!pdev)
 		return -ENODEV;
 
-	ppriv = ipoib_priv(pdev);
+	ppriv = netdev_priv(pdev);
 
 	if (test_bit(IPOIB_FLAG_SUBINTERFACE, &ppriv->flags)) {
 		ipoib_warn(ppriv, "child creation disallowed for child devices\n");
@@ -120,17 +119,7 @@ static int ipoib_new_child_link(struct net *src_net, struct net_device *dev,
 	} else
 		child_pkey  = nla_get_u16(data[IFLA_IPOIB_PKEY]);
 
-	if (child_pkey == 0 || child_pkey == 0x8000)
-		return -EINVAL;
-
-	/*
-	 * Set the full membership bit, so that we join the right
-	 * broadcast group, etc.
-	 */
-	child_pkey |= 0x8000;
-
-	err = __ipoib_vlan_add(ppriv, ipoib_priv(dev),
-			       child_pkey, IPOIB_RTNL_CHILD);
+	err = __ipoib_vlan_add(ppriv, netdev_priv(dev), child_pkey, IPOIB_RTNL_CHILD);
 
 	if (!err && data)
 		err = ipoib_changelink(dev, tb, data);
@@ -141,13 +130,13 @@ static void ipoib_unregister_child_dev(struct net_device *dev, struct list_head 
 {
 	struct ipoib_dev_priv *priv, *ppriv;
 
-	priv = ipoib_priv(dev);
-	ppriv = ipoib_priv(priv->parent);
+	priv = netdev_priv(dev);
+	ppriv = netdev_priv(priv->parent);
 
-	down_write(&ppriv->vlan_rwsem);
+	mutex_lock(&ppriv->vlan_mutex);
 	unregister_netdevice_queue(dev, head);
 	list_del(&priv->list);
-	up_write(&ppriv->vlan_rwsem);
+	mutex_unlock(&ppriv->vlan_mutex);
 }
 
 static size_t ipoib_get_size(const struct net_device *dev)
@@ -162,7 +151,7 @@ static struct rtnl_link_ops ipoib_link_ops __read_mostly = {
 	.maxtype	= IFLA_IPOIB_MAX,
 	.policy		= ipoib_policy,
 	.priv_size	= sizeof(struct ipoib_dev_priv),
-	.setup		= ipoib_setup_common,
+	.setup		= ipoib_setup,
 	.newlink	= ipoib_new_child_link,
 	.changelink	= ipoib_changelink,
 	.dellink	= ipoib_unregister_child_dev,

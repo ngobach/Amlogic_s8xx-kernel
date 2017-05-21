@@ -31,7 +31,7 @@ struct symbol *symbol_hash[SYMBOL_HASHSIZE];
 static struct menu *current_menu, *current_entry;
 
 %}
-%expect 32
+%expect 30
 
 %union
 {
@@ -47,6 +47,7 @@ static struct menu *current_menu, *current_entry;
 %token <id>T_MENU
 %token <id>T_ENDMENU
 %token <id>T_SOURCE
+%token <id>T_ISOURCE
 %token <id>T_CHOICE
 %token <id>T_ENDCHOICE
 %token <id>T_COMMENT
@@ -62,7 +63,6 @@ static struct menu *current_menu, *current_entry;
 %token <id>T_TYPE
 %token <id>T_DEFAULT
 %token <id>T_SELECT
-%token <id>T_IMPLY
 %token <id>T_RANGE
 %token <id>T_VISIBLE
 %token <id>T_OPTION
@@ -70,10 +70,6 @@ static struct menu *current_menu, *current_entry;
 %token <string> T_WORD
 %token <string> T_WORD_QUOTE
 %token T_UNEQUAL
-%token T_LESS
-%token T_LESS_EQUAL
-%token T_GREATER
-%token T_GREATER_EQUAL
 %token T_CLOSE_PAREN
 %token T_OPEN_PAREN
 %token T_EOL
@@ -81,7 +77,6 @@ static struct menu *current_menu, *current_entry;
 %left T_OR
 %left T_AND
 %left T_EQUAL T_UNEQUAL
-%left T_LESS T_LESS_EQUAL T_GREATER T_GREATER_EQUAL
 %nonassoc T_NOT
 
 %type <string> prompt
@@ -125,7 +120,7 @@ stmt_list:
 ;
 
 option_name:
-	T_DEPENDS | T_PROMPT | T_TYPE | T_SELECT | T_IMPLY | T_OPTIONAL | T_RANGE | T_DEFAULT | T_VISIBLE
+	T_DEPENDS | T_PROMPT | T_TYPE | T_SELECT | T_OPTIONAL | T_RANGE | T_DEFAULT | T_VISIBLE
 ;
 
 common_stmt:
@@ -135,6 +130,7 @@ common_stmt:
 	| config_stmt
 	| menuconfig_stmt
 	| source_stmt
+	| isource_stmt
 ;
 
 option_error:
@@ -215,12 +211,6 @@ config_option: T_SELECT T_WORD if_expr T_EOL
 {
 	menu_add_symbol(P_SELECT, sym_lookup($2, 0), $3);
 	printd(DEBUG_PARSE, "%s:%d:select\n", zconf_curname(), zconf_lineno());
-};
-
-config_option: T_IMPLY T_WORD if_expr T_EOL
-{
-	menu_add_symbol(P_IMPLY, sym_lookup($2, 0), $3);
-	printd(DEBUG_PARSE, "%s:%d:imply\n", zconf_curname(), zconf_lineno());
 };
 
 config_option: T_RANGE symbol symbol if_expr T_EOL
@@ -395,6 +385,12 @@ source_stmt: T_SOURCE prompt T_EOL
 	printd(DEBUG_PARSE, "%s:%d:source %s\n", zconf_curname(), zconf_lineno(), $2);
 	zconf_nextfile($2);
 };
+isource_stmt: T_ISOURCE prompt T_EOL
+{
+	printd(DEBUG_PARSE, "%s:%d:source %s\n", zconf_curname(), zconf_lineno(), $2);
+	if(file_exist($2))
+		zconf_nextfile($2);
+}
 
 /* comment entry */
 
@@ -479,10 +475,6 @@ if_expr:  /* empty */			{ $$ = NULL; }
 ;
 
 expr:	  symbol				{ $$ = expr_alloc_symbol($1); }
-	| symbol T_LESS symbol			{ $$ = expr_alloc_comp(E_LTH, $1, $3); }
-	| symbol T_LESS_EQUAL symbol		{ $$ = expr_alloc_comp(E_LEQ, $1, $3); }
-	| symbol T_GREATER symbol		{ $$ = expr_alloc_comp(E_GTH, $1, $3); }
-	| symbol T_GREATER_EQUAL symbol		{ $$ = expr_alloc_comp(E_GEQ, $1, $3); }
 	| symbol T_EQUAL symbol			{ $$ = expr_alloc_comp(E_EQUAL, $1, $3); }
 	| symbol T_UNEQUAL symbol		{ $$ = expr_alloc_comp(E_UNEQUAL, $1, $3); }
 	| T_OPEN_PAREN expr T_CLOSE_PAREN	{ $$ = $2; }
@@ -509,6 +501,9 @@ void conf_parse(const char *name)
 
 	sym_init();
 	_menu_init();
+	modules_sym = sym_lookup(NULL, 0);
+	modules_sym->type = S_BOOLEAN;
+	modules_sym->flags |= SYMBOL_AUTO;
 	rootmenu.prompt = menu_add_prompt(P_MENU, "Linux Kernel Configuration", NULL);
 
 	if (getenv("ZCONF_DEBUG"))
@@ -516,8 +511,12 @@ void conf_parse(const char *name)
 	zconfparse();
 	if (zconfnerrs)
 		exit(1);
-	if (!modules_sym)
-		modules_sym = sym_find( "n" );
+	if (!modules_sym->prop) {
+		struct property *prop;
+
+		prop = prop_alloc(P_DEFAULT, modules_sym);
+		prop->expr = expr_alloc_symbol(sym_lookup("MODULES", 0));
+	}
 
 	rootmenu.prompt->text = _(rootmenu.prompt->text);
 	rootmenu.prompt->text = sym_expand_string_value(rootmenu.prompt->text);
@@ -526,7 +525,7 @@ void conf_parse(const char *name)
 	for_all_symbols(i, sym) {
 		if (sym_check_deps(sym))
 			zconfnerrs++;
-	}
+        }
 	if (zconfnerrs)
 		exit(1);
 	sym_set_change_count(1);
@@ -668,11 +667,6 @@ static void print_symbol(FILE *out, struct menu *menu)
 			break;
 		case P_SELECT:
 			fputs( "  select ", out);
-			expr_fprint(prop->expr, out);
-			fputc('\n', out);
-			break;
-		case P_IMPLY:
-			fputs( "  imply ", out);
 			expr_fprint(prop->expr, out);
 			fputc('\n', out);
 			break;

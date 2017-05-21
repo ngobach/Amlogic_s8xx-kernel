@@ -22,7 +22,7 @@ static int max_rate = 57600;
 static int max_rate = 115200;
 #endif
 
-static void turnaround_delay(int mtt)
+static void turnaround_delay(unsigned long last_jif, int mtt)
 {
 	long ticks;
 
@@ -209,6 +209,7 @@ static void bfin_sir_rx_chars(struct net_device *dev)
 	UART_CLEAR_LSR(port);
 	ch = UART_GET_CHAR(port);
 	async_unwrap_char(dev, &self->stats, &self->rx_buff, ch);
+	dev->last_rx = jiffies;
 }
 
 static irqreturn_t bfin_sir_rx_int(int irq, void *dev_id)
@@ -410,12 +411,12 @@ static int bfin_sir_startup(struct bfin_sir_port *port, struct net_device *dev)
 
 #else
 
-	if (request_irq(port->irq, bfin_sir_rx_int, 0, "BFIN_SIR_RX", dev)) {
+	if (request_irq(port->irq, bfin_sir_rx_int, IRQF_DISABLED, "BFIN_SIR_RX", dev)) {
 		dev_warn(&dev->dev, "Unable to attach SIR RX interrupt\n");
 		return -EBUSY;
 	}
 
-	if (request_irq(port->irq+1, bfin_sir_tx_int, 0, "BFIN_SIR_TX", dev)) {
+	if (request_irq(port->irq+1, bfin_sir_tx_int, IRQF_DISABLED, "BFIN_SIR_TX", dev)) {
 		dev_warn(&dev->dev, "Unable to attach SIR TX interrupt\n");
 		free_irq(port->irq, dev);
 		return -EBUSY;
@@ -509,7 +510,7 @@ static void bfin_sir_send_work(struct work_struct *work)
 	int tx_cnt = 10;
 
 	while (bfin_sir_is_receiving(dev) && --tx_cnt)
-		turnaround_delay(self->mtt);
+		turnaround_delay(dev->last_rx, self->mtt);
 
 	bfin_sir_stop_rx(port);
 
@@ -530,7 +531,7 @@ static void bfin_sir_send_work(struct work_struct *work)
 	bfin_sir_dma_tx_chars(dev);
 #endif
 	bfin_sir_enable_tx(port);
-	netif_trans_update(dev);
+	dev->trans_start = jiffies;
 }
 
 static int bfin_sir_hard_xmit(struct sk_buff *skb, struct net_device *dev)
@@ -793,6 +794,7 @@ static int bfin_sir_remove(struct platform_device *pdev)
 	kfree(self->rx_buff.head);
 	free_netdev(dev);
 	kfree(sir_port);
+	platform_set_drvdata(pdev, NULL);
 
 	return 0;
 }

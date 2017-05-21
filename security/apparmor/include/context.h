@@ -20,45 +20,41 @@
 #include <linux/sched.h>
 
 #include "policy.h"
-#include "policy_ns.h"
 
-#define cred_ctx(X) ((X)->security)
-#define current_ctx() cred_ctx(current_cred())
-
-/* struct aa_file_ctx - the AppArmor context the file was opened in
+/* struct aa_file_cxt - the AppArmor context the file was opened in
  * @perms: the permission the file was opened with
  *
- * The file_ctx could currently be directly stored in file->f_security
+ * The file_cxt could currently be directly stored in file->f_security
  * as the profile reference is now stored in the f_cred.  However the
- * ctx struct will expand in the future so we keep the struct.
+ * cxt struct will expand in the future so we keep the struct.
  */
-struct aa_file_ctx {
+struct aa_file_cxt {
 	u16 allow;
 };
 
 /**
- * aa_alloc_file_context - allocate file_ctx
+ * aa_alloc_file_context - allocate file_cxt
  * @gfp: gfp flags for allocation
  *
- * Returns: file_ctx or NULL on failure
+ * Returns: file_cxt or NULL on failure
  */
-static inline struct aa_file_ctx *aa_alloc_file_context(gfp_t gfp)
+static inline struct aa_file_cxt *aa_alloc_file_context(gfp_t gfp)
 {
-	return kzalloc(sizeof(struct aa_file_ctx), gfp);
+	return kzalloc(sizeof(struct aa_file_cxt), gfp);
 }
 
 /**
- * aa_free_file_context - free a file_ctx
- * @ctx: file_ctx to free  (MAYBE_NULL)
+ * aa_free_file_context - free a file_cxt
+ * @cxt: file_cxt to free  (MAYBE_NULL)
  */
-static inline void aa_free_file_context(struct aa_file_ctx *ctx)
+static inline void aa_free_file_context(struct aa_file_cxt *cxt)
 {
-	if (ctx)
-		kzfree(ctx);
+	if (cxt)
+		kzfree(cxt);
 }
 
 /**
- * struct aa_task_ctx - primary label for confined tasks
+ * struct aa_task_cxt - primary label for confined tasks
  * @profile: the current profile   (NOT NULL)
  * @exec: profile to transition to on next exec  (MAYBE NULL)
  * @previous: profile the task may return to     (MAYBE NULL)
@@ -69,23 +65,38 @@ static inline void aa_free_file_context(struct aa_file_ctx *ctx)
  *
  * TODO: make so a task can be confined by a stack of contexts
  */
-struct aa_task_ctx {
+struct aa_task_cxt {
 	struct aa_profile *profile;
 	struct aa_profile *onexec;
 	struct aa_profile *previous;
 	u64 token;
 };
 
-struct aa_task_ctx *aa_alloc_task_context(gfp_t flags);
-void aa_free_task_context(struct aa_task_ctx *ctx);
-void aa_dup_task_context(struct aa_task_ctx *new,
-			 const struct aa_task_ctx *old);
+struct aa_task_cxt *aa_alloc_task_context(gfp_t flags);
+void aa_free_task_context(struct aa_task_cxt *cxt);
+void aa_dup_task_context(struct aa_task_cxt *new,
+			 const struct aa_task_cxt *old);
 int aa_replace_current_profile(struct aa_profile *profile);
 int aa_set_current_onexec(struct aa_profile *profile);
 int aa_set_current_hat(struct aa_profile *profile, u64 token);
 int aa_restore_previous_profile(u64 cookie);
-struct aa_profile *aa_get_task_profile(struct task_struct *task);
 
+/**
+ * __aa_task_is_confined - determine if @task has any confinement
+ * @task: task to check confinement of  (NOT NULL)
+ *
+ * If @task != current needs to be called in RCU safe critical section
+ */
+static inline bool __aa_task_is_confined(struct task_struct *task)
+{
+	struct aa_task_cxt *cxt = __task_cred(task)->security;
+
+	BUG_ON(!cxt || !cxt->profile);
+	if (unconfined(aa_newest_version(cxt->profile)))
+		return 0;
+
+	return 1;
+}
 
 /**
  * aa_cred_profile - obtain cred's profiles
@@ -97,34 +108,9 @@ struct aa_profile *aa_get_task_profile(struct task_struct *task);
  */
 static inline struct aa_profile *aa_cred_profile(const struct cred *cred)
 {
-	struct aa_task_ctx *ctx = cred_ctx(cred);
-
-	AA_BUG(!ctx || !ctx->profile);
-	return ctx->profile;
-}
-
-/**
- * __aa_task_profile - retrieve another task's profile
- * @task: task to query  (NOT NULL)
- *
- * Returns: @task's profile without incrementing its ref count
- *
- * If @task != current needs to be called in RCU safe critical section
- */
-static inline struct aa_profile *__aa_task_profile(struct task_struct *task)
-{
-	return aa_cred_profile(__task_cred(task));
-}
-
-/**
- * __aa_task_is_confined - determine if @task has any confinement
- * @task: task to check confinement of  (NOT NULL)
- *
- * If @task != current needs to be called in RCU safe critical section
- */
-static inline bool __aa_task_is_confined(struct task_struct *task)
-{
-	return !unconfined(__aa_task_profile(task));
+	struct aa_task_cxt *cxt = cred->security;
+	BUG_ON(!cxt || !cxt->profile);
+	return aa_newest_version(cxt->profile);
 }
 
 /**
@@ -150,37 +136,19 @@ static inline struct aa_profile *__aa_current_profile(void)
  */
 static inline struct aa_profile *aa_current_profile(void)
 {
-	const struct aa_task_ctx *ctx = current_ctx();
+	const struct aa_task_cxt *cxt = current_cred()->security;
 	struct aa_profile *profile;
+	BUG_ON(!cxt || !cxt->profile);
 
-	AA_BUG(!ctx || !ctx->profile);
-
-	if (profile_is_stale(ctx->profile)) {
-		profile = aa_get_newest_profile(ctx->profile);
+	profile = aa_newest_version(cxt->profile);
+	/*
+	 * Whether or not replacement succeeds, use newest profile so
+	 * there is no need to update it after replacement.
+	 */
+	if (unlikely((cxt->profile != profile)))
 		aa_replace_current_profile(profile);
-		aa_put_profile(profile);
-		ctx = current_ctx();
-	}
 
-	return ctx->profile;
-}
-
-static inline struct aa_ns *aa_get_current_ns(void)
-{
-	return aa_get_ns(__aa_current_profile()->ns);
-}
-
-/**
- * aa_clear_task_ctx_trans - clear transition tracking info from the ctx
- * @ctx: task context to clear (NOT NULL)
- */
-static inline void aa_clear_task_ctx_trans(struct aa_task_ctx *ctx)
-{
-	aa_put_profile(ctx->previous);
-	aa_put_profile(ctx->onexec);
-	ctx->previous = NULL;
-	ctx->onexec = NULL;
-	ctx->token = 0;
+	return profile;
 }
 
 #endif /* __AA_CONTEXT_H */
