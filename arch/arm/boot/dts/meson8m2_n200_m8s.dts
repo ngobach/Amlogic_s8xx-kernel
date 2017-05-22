@@ -565,6 +565,16 @@
 		gpu_virtual = <0xb7 0x28 0x28 0x28 0x28 0xfb 0x28 0x2d 0x32 0x37 0x13f 0x32 0x3c 0x41 0x46 0x1aa 0x37 0x41 0x46 0x4b 0x1ff 0x3c 0x46 0x4b 0x50>;
 	};
 
+	led{
+		compatible = "amlogic-led";
+		dev_name = "aml-setio";
+		status = "okay";
+		red_led_gpio = "GPIO_TEST_N";/** if your board just need one gpio,please config red_led_gpio and blue_led_gpio the same */
+		blue_led_gpio = "GPIO_TEST_N";/**  */
+		red_led_mode = <1>; /** 1:H on L off , 0:H off L on */
+		blue_led_mode= <1>; /** 1:H on L off , 0:H off L on */
+	};
+
 	audio_platform {
 		compatible = "amlogic,aml-i2s";
 		dev_name = "aml-i2s.0";
@@ -661,26 +671,6 @@
 	saradc {
 		compatible = "amlogic,saradc";
 		status = "okay";
-	};
-
-	pwmleds {
-		compatible = "pwm-leds";
-
-		power {
-			label = "m8s:blue:power";
-			pwms = <pwm_ef 1 7812500 0>;
-			max-brightness = <255>;
-			active-low;
-			linux,default-trigger = "default-on";
-		};
-	};
-
-	pwm_ef {
-		status = "okay";
-		pinctrl-0 = <pwm_e_pins>, <pwm_f_ao_pins>;
-		pinctrl-names = "default";
-		clocks = <clkc CLKID_FCLK_DIV3>, <clkc CLKID_FCLK_DIV4>;
-		clock-names = "clkin0", "clkin1";
 	};
 
 	meson-remote {
