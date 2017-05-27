@@ -64,6 +64,12 @@
         #address-cells = <1>;
         #size-cells = <1>;
 
+	mem_4k2k_decoder: region@1 {
+		region_name = "cma_4k2k";
+		linux,contiguous-region;
+		reg = <0x00000000 0x0ca00000>;
+	};
+
         cma_0:region@0 {
            region_name = "cma_0";
            reg = <0 0x01200000>;
@@ -123,6 +129,25 @@
                 reserve-memory = <0x10000000>;
                 reserve-iomap = "true";
         };
+
+
+	codec_mm{
+		compatible = "amlogic, codec, mm";
+		dev_name = "codec_mm";
+		status = "okay";
+		reserve-memory = <0x04100000>; // 65M
+		//reserve-iomap = "true";
+		linux,contiguous-region = <&mem_4k2k_decoder>;
+	};
+
+    picdec{
+		compatible = "amlogic,picdec";
+		dev_name = "picdec";
+		status = "okay";
+                share-memory-name = "vdec0";
+                share-memory-offset = <0>;
+                share-memory-size = <0x04000000>; //64M
+	};
 
     ppmgr{
 		compatible = "amlogic,ppmgr";
@@ -904,11 +929,15 @@ sdio{
         status = "okay";
     };
 
-    crypto_device{
-       compatible = "amlogic,crypto-device";
-       dev_name = "crypto_device";
+    aml_aes{
+       compatible = "amlogic,aes";
+       dev_name = "aml_aes";
     };
 
+    aml_tdes{
+       compatible = "amlogic,des,tdes";
+       dev_name = "aml_tdes";
+    };
 	gpio:gpio{
 		compatible = "amlogic,m8-gpio";
 		dev_name = "gpio";
@@ -1258,6 +1287,11 @@ sdio{
 		fe0_dev = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&dvb_fe_pins>;
+	};
+
+	meson-rng{
+		compatible = "amlogic,meson-rng";
+		status = "ok";
 	};
 
 }; /* end of / */

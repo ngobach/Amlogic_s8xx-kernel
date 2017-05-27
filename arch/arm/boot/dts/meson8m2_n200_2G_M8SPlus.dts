@@ -64,6 +64,12 @@
         #address-cells = <1>;
         #size-cells = <1>;
 
+	mem_4k2k_decoder: region@1 {
+		region_name = "cma_4k2k";
+		linux,contiguous-region;
+		reg = <0x00000000 0x0ca00000>;
+	};
+
         cma_0:region@0 {
            region_name = "cma_0";
            reg = <0 0x02400000>;
@@ -181,6 +187,13 @@
 		dev_name = "mesonvout";
 		status = "okay";
 	};
+
+	tvout {
+		compatible = "amlogic,tvout";
+		dev_name = "tvout";
+		status = "okay";
+	};
+
 /*
 	amvideocap{
 		compatible = "amlogic,amvideocap";
@@ -852,7 +865,6 @@ sdio{
        compatible = "amlogic,des,tdes";
        dev_name = "aml_tdes";
     };
-
 	gpio:gpio{
 		compatible = "amlogic,m8-gpio";
 		dev_name = "gpio";

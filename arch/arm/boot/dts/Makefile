@@ -2,7 +2,9 @@ dtb-$(CONFIG_ARM) += meson8m2_n200_2G.dtb meson8m2_n200_1G.dtb \
 		meson8_k200b_1G_emmc_sdio.dtb meson8_k200b_2G_emmc_sdio.dtb \
 		meson8_k200b_1G_emmc_sdhc.dtb meson8_k200b_2G_emmc_sdhc.dtb \
 		meson8m2_n200C_2G.dtb meson8m2_n200C_1G.dtb \
-		meson8m2_n200_2G_1000.dtb meson8_skt.dtb meson8m2_n200_m8s.dtb
+		meson8m2_n200_2G_1000.dtb meson8_skt.dtb meson8m2_n200_m8s.dtb \
+		meson8m2_n200_2G_MXIIIPlus.dtb \
+		meson8m2_n200_2G_M8SPlus.dtb
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)
