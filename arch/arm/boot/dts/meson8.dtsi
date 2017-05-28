@@ -332,15 +332,55 @@
 
 		eth_pins: ethernet {
 			mux {
-				groups = "eth_tx_clk_50m", "eth_tx_en",
-					 "eth_txd1", "eth_txd0",
-					 "eth_rx_clk_in", "eth_rx_dv",
-					 "eth_rxd1", "eth_rxd0", "eth_mdio",
-					 "eth_mdc";
+				groups = "eth_mdio",
+					 "eth_mdc",
+					 "eth_rx_clk_in",
+					 "eth_tx_clk_50m",
+					 "eth_rx_dv",
+					 "eth_rxd0",
+					 "eth_rxd1",
+					 "eth_tx_en",
+					 "eth_txd0",
+					 "eth_txd1";
 				function = "ethernet";
 			};
 		};
+/* 20170528
+		eth_rgmii_pins: eth-rgmii {
+			mux {
+				groups = "eth_mdio",
+				       "eth_mdc",
+				       "eth_clk_rx_clk",
+				       "eth_rx_dv",
+				       "eth_rxd0",
+				       "eth_rxd1",
+				       "eth_rxd2",
+				       "eth_rxd3",
+				       "eth_rgmii_tx_clk",
+				       "eth_tx_en",
+				       "eth_txd0",
+				       "eth_txd1",
+				       "eth_txd2",
+				       "eth_txd3";
+				function = "eth";
+			};
+		};
 
+		eth_rmii_pins: eth-rmii {
+			mux {
+				groups = "eth_mdio",
+				       "eth_mdc",
+				       "eth_clk_rx_clk",
+				       "eth_rx_dv",
+				       "eth_rxd0",
+				       "eth_rxd1",
+				       "eth_tx_en",
+				       "eth_txd0",
+				       "eth_txd1";
+				function = "eth";
+			};
+		};
+*/
 		nand_pins: nand {
 			mux {
 				groups = "nand_io",

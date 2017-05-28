@@ -84,8 +84,8 @@
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 
-		gpio = <&gpio GPIOZ_1 GPIO_ACTIVE_LOW>;
-//		enable-active-high;
+		gpio = <&gpio GPIODV_28 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
 	};
 
 };
@@ -93,22 +93,30 @@
 &ethmac {
 	status = "okay";
 	pinctrl-0 = <&eth_pins>;
+//	pinctrl-0 = <&eth_rgmii_pins>;
 	pinctrl-names = "default";
 	phy-handle = <&eth_phy0>;
 	phy-mode = "rgmii";
-	snps,reset-gpio = <&gpio GPIOH_4 0>;
+	amlogic,tx-delay-ns = <2>;
+//	snps,reset-gpio = <&gpio GPIOH_4 0>;
+	snps,reset-gpio = <&gpio GPIOZ_14 0>;
 	snps,reset-delays-us = <0 10000 1000000>;
 	snps,reset-active-low;
+	interrupts = <0 8 1>;
+	interrupt-names = "macirq";
 	mdio {
-		compatible = "snps,dwmac-mdio";
+//		compatible = "snps,dwmac-mdio";
+		compatible = "amlogic,meson-gxbb-dwmac", "snps,dwmac";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		eth_phy0: ethernet-phy@0 {
-			/* IC Plus IP101GR (0x02430c54) */
+			/* Realtek RTL8211F (0x001cc916) */
 			reg = <0>;
+			eee-broken-1000t;
 		};
 	};
 };
+
 
 &ir_receiver {
 	status = "okay";
