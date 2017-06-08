@@ -25,6 +25,7 @@ Required child nodes:
 A node for each slot provided by the MMC controller is required.
 
 Required properties on each child node (= slot):
+ - compatible : must be "mmc-slot" (see mmc.txt within this directory)
  - reg : the slot (or "port") ID
 
 Optional properties on each child node (= slot):

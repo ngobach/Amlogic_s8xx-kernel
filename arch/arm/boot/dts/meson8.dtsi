@@ -54,6 +54,7 @@
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
+		enable-method = "amlogic,meson8-smp";
 
 		cpu@200 {
 			device_type = "cpu";
@@ -100,77 +101,78 @@
 		compatible = "operating-points-v2";
 		opp-shared;
 
-		opp@96000 {
-			opp-hz = /bits/ 64 <96000>;
+		opp@96000000 {
+			opp-hz = /bits/ 64 <96000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@192000 {
-			opp-hz = /bits/ 64 <192000>;
+		opp@192000000 {
+			opp-hz = /bits/ 64 <192000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@312000 {
-			opp-hz = /bits/ 64 <312000>;
+		opp@312000000 {
+			opp-hz = /bits/ 64 <312000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@408000 {
-			opp-hz = /bits/ 64 <408000>;
+		opp@408000000 {
+			opp-hz = /bits/ 64 <408000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@504000 {
-			opp-hz = /bits/ 64 <504000>;
+		opp@504000000 {
+			opp-hz = /bits/ 64 <504000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@600000 {
-			opp-hz = /bits/ 64 <600000>;
+		opp@600000000 {
+			opp-hz = /bits/ 64 <600000000>;
 			opp-microvolt = <850000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@720000 {
-			opp-hz = /bits/ 64 <720000>;
+		opp@720000000 {
+			opp-hz = /bits/ 64 <720000000>;
 			opp-microvolt = <850000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@816000 {
-			opp-hz = /bits/ 64 <816000>;
+		opp@816000000 {
+			opp-hz = /bits/ 64 <816000000>;
 			opp-microvolt = <875000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@1008000 {
-			opp-hz = /bits/ 64 <1008000>;
+		opp@1008000000 {
+			opp-hz = /bits/ 64 <1008000000>;
 			opp-microvolt = <925000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@1200000 {
-			opp-hz = /bits/ 64 <1200000>;
+		opp@1200000000 {
+			opp-hz = /bits/ 64 <1200000000>;
 			opp-microvolt = <975000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@1416000 {
-			opp-hz = /bits/ 64 <1416000>;
+		opp@1416000000 {
+			opp-hz = /bits/ 64 <1416000000>;
 			opp-microvolt = <1025000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@1608000 {
-			opp-hz = /bits/ 64 <1608000>;
+		opp@1608000000 {
+			opp-hz = /bits/ 64 <1608000000>;
 			opp-microvolt = <1100000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@1800000 {
-			opp-hz = /bits/ 64 <1800000>;
+		opp@1800000000 {
+			opp-hz = /bits/ 64 <1800000000>;
 			opp-microvolt = <1125000>;
 			clock-latency-ns = <8300000>;
 		};
-		opp@1992000 {
-			opp-hz = /bits/ 64 <1992000>;
+		opp@1992000000 {
+			opp-hz = /bits/ 64 <1992000000>;
 			opp-microvolt = <1150000>;
 			clock-latency-ns = <8300000>;
 		};
 	};
+
 
 	reserved-memory {
 		#address-cells = <1>;
@@ -199,6 +201,12 @@
 		};
 	};
 
+
+	scu@c4300000 {
+		compatible = "arm,cortex-a9-scu";
+		reg = <0xc4300000 0x100>;
+	};
+
 	apb: apb@d0040000 {
 		compatible = "simple-bus";
 		reg = <0xd0040000 0x200000>;
@@ -219,6 +227,11 @@
 }; /* end of / */
 
 &aobus {
+	pmu: pmu@e0 {
+		compatible = "amlogic,meson8-pmu", "syscon";
+		reg = <0xce0 0x18>;
+	};
+
 	pinctrl_aobus: pinctrl@84 {
 		compatible = "amlogic,meson8-aobus-pinctrl";
 		reg = <0x84 0xc>;
@@ -332,55 +345,15 @@
 
 		eth_pins: ethernet {
 			mux {
-				groups = "eth_mdio",
-					 "eth_mdc",
-					 "eth_rx_clk_in",
-					 "eth_tx_clk_50m",
-					 "eth_rx_dv",
-					 "eth_rxd0",
-					 "eth_rxd1",
-					 "eth_tx_en",
-					 "eth_txd0",
-					 "eth_txd1";
+				groups = "eth_tx_clk_50m", "eth_tx_en",
+					 "eth_txd1", "eth_txd0",
+					 "eth_rx_clk_in", "eth_rx_dv",
+					 "eth_rxd1", "eth_rxd0", "eth_mdio",
+					 "eth_mdc";
 				function = "ethernet";
 			};
 		};
-/* 20170528
-		eth_rgmii_pins: eth-rgmii {
-			mux {
-				groups = "eth_mdio",
-				       "eth_mdc",
-				       "eth_clk_rx_clk",
-				       "eth_rx_dv",
-				       "eth_rxd0",
-				       "eth_rxd1",
-				       "eth_rxd2",
-				       "eth_rxd3",
-				       "eth_rgmii_tx_clk",
-				       "eth_tx_en",
-				       "eth_txd0",
-				       "eth_txd1",
-				       "eth_txd2",
-				       "eth_txd3";
-				function = "eth";
-			};
-		};
 
-		eth_rmii_pins: eth-rmii {
-			mux {
-				groups = "eth_mdio",
-				       "eth_mdc",
-				       "eth_clk_rx_clk",
-				       "eth_rx_dv",
-				       "eth_rxd0",
-				       "eth_rxd1",
-				       "eth_tx_en",
-				       "eth_txd0",
-				       "eth_txd1";
-				function = "eth";
-			};
-		};
-*/
 		nand_pins: nand {
 			mux {
 				groups = "nand_io",
@@ -407,6 +380,11 @@
 
 &ahb_sram {
 	clocks = <&clkc 90 /* TODO: CLKID_AO_AHB_SRAM*/>;
+
+	smp-sram@1ff80 {
+		compatible = "amlogic,meson8-smp-sram";
+		reg = <0x1ff80 0x8>;
+	};
 };
 
 &ethmac {
@@ -487,7 +465,7 @@
 
 &usb1 {
 	compatible = "amlogic,meson8-usb", "snps,dwc2";
-	clocks = <&clkc CLKID_USB0_DDR_BRIDGE>;
+	clocks = <&clkc CLKID_USB1_DDR_BRIDGE>;
 	clock-names = "otg";
 };
 

@@ -196,6 +196,7 @@
 
 	/* Wireless SDIO Module */
 	slot@0 {
+		compatible = "mmc-slot";
 		reg = <0>;
 		status = "okay";
 
@@ -212,6 +213,7 @@
 
 	/* SD card */
 	slot@1 {
+		compatible = "mmc-slot";
 		reg = <1>;
 		status = "okay";
 

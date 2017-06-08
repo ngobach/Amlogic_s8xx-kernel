@@ -53,6 +53,7 @@
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
+		enable-method = "amlogic,meson8b-smp";
 
 		cpu@200 {
 			device_type = "cpu";
@@ -99,71 +100,77 @@
 		compatible = "operating-points-v2";
 		opp-shared;
 
-		opp@96000 {
-			opp-hz = /bits/ 64 <96000>;
+		opp@96000000 {
+			opp-hz = /bits/ 64 <96000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@192000 {
-			opp-hz = /bits/ 64 <192000>;
+		opp@192000000 {
+			opp-hz = /bits/ 64 <192000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@312000 {
-			opp-hz = /bits/ 64 <312000>;
+		opp@312000000 {
+			opp-hz = /bits/ 64 <312000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@408000 {
-			opp-hz = /bits/ 64 <408000>;
+		opp@408000000 {
+			opp-hz = /bits/ 64 <408000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@504000 {
-			opp-hz = /bits/ 64 <504000>;
+		opp@504000000 {
+			opp-hz = /bits/ 64 <504000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@600000 {
-			opp-hz = /bits/ 64 <600000>;
+		opp@600000000 {
+			opp-hz = /bits/ 64 <600000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@720000 {
-			opp-hz = /bits/ 64 <720000>;
+		opp@720000000 {
+			opp-hz = /bits/ 64 <720000000>;
 			opp-microvolt = <825000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@816000 {
-			opp-hz = /bits/ 64 <816000>;
+		opp@816000000 {
+			opp-hz = /bits/ 64 <816000000>;
 			opp-microvolt = <850000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@1008000 {
-			opp-hz = /bits/ 64 <1008000>;
+		opp@1008000000 {
+			opp-hz = /bits/ 64 <1008000000>;
 			opp-microvolt = <875000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@1200000 {
-			opp-hz = /bits/ 64 <1200000>;
+		opp@1200000000 {
+			opp-hz = /bits/ 64 <1200000000>;
 			opp-microvolt = <925000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@1320000 {
-			opp-hz = /bits/ 64 <1320000>;
+		opp@1320000000 {
+			opp-hz = /bits/ 64 <1320000000>;
 			opp-microvolt = <1100000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@1488000 {
-			opp-hz = /bits/ 64 <1488000>;
+		opp@1488000000 {
+			opp-hz = /bits/ 64 <1488000000>;
 			opp-microvolt = <1100000>;
 			clock-latency-ns = <6400000>;
 		};
-		opp@1536000 {
-			opp-hz = /bits/ 64 <1536000>;
+		opp@1536000000 {
+			opp-hz = /bits/ 64 <1536000000>;
 			opp-microvolt = <1140000>;
 			clock-latency-ns = <6400000>;
 		};
+	};
+
+
+	scu@c4300000 {
+		compatible = "arm,cortex-a5-scu";
+		reg = <0xc4300000 0x100>;
 	};
 
 	apb: apb@d0040000 {
@@ -186,6 +193,11 @@
 }; /* end of / */
 
 &aobus {
+	pmu: pmu@e0 {
+		compatible = "amlogic,meson8b-pmu", "syscon";
+		reg = <0xce0 0x18>;
+	};
+
 	pinctrl_aobus: pinctrl@84 {
 		compatible = "amlogic,meson8b-aobus-pinctrl";
 		reg = <0x84 0xc>;
@@ -261,6 +273,11 @@
 
 &ahb_sram {
 	clocks = <&clkc 90 /* TODO: CLKID_AO_AHB_SRAM*/>;
+
+	smp-sram@1ff80 {
+		compatible = "amlogic,meson8b-smp-sram";
+		reg = <0x1ff80 0x8>;
+	};
 };
 
 &ethmac {
@@ -325,7 +342,7 @@
 
 &usb1 {
 	compatible = "amlogic,meson8b-usb", "snps,dwc2";
-	clocks = <&clkc CLKID_USB0_DDR_BRIDGE>;
+	clocks = <&clkc CLKID_USB1_DDR_BRIDGE>;
 	clock-names = "otg";
 };
 

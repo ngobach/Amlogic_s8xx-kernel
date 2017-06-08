@@ -1,5 +1,6 @@
 /*
- * AmLogic S805 / Meson8b Clock Controller Driver
+ * AmLogic S802 (Meson8) / S805 (Meson8b) / S812 (Meson8m2) Clock Controller
+ * Driver
  *
  * Copyright (c) 2015 Endless Mobile, Inc.
  * Author: Carlo Caione <carlo@endlessm.com>

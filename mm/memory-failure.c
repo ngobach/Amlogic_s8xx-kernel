@@ -539,6 +539,13 @@ static int delete_from_lru_cache(struct page *p)
 		 */
 		ClearPageActive(p);
 		ClearPageUnevictable(p);
+
+		/*
+		 * Poisoned page might never drop its ref count to 0 so we have
+		 * to uncharge it manually from its memcg.
+		 */
+		mem_cgroup_uncharge(p);
+
 		/*
 		 * drop the page count elevated by isolate_lru_page()
 		 */
@@ -1588,12 +1595,8 @@ static int soft_offline_huge_page(struct page *page, int flags)
 	if (ret) {
 		pr_info("soft offline: %#lx: migration failed %d, type %lx (%pGp)\n",
 			pfn, ret, page->flags, &page->flags);
-		/*
-		 * We know that soft_offline_huge_page() tries to migrate
-		 * only one hugepage pointed to by hpage, so we need not
-		 * run through the pagelist here.
-		 */
-		putback_active_hugepage(hpage);
+		if (!list_empty(&pagelist))
+			putback_movable_pages(&pagelist);
 		if (ret > 0)
 			ret = -EIO;
 	} else {

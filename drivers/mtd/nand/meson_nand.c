@@ -118,6 +118,8 @@
 
 #define MESON_NAND_MAX_CHIP_SELECTS				4
 
+#warning "TODO: verify usages of NAND_ECC_NONE vs NAND_ECC_SOFT" // TODO
+
 struct meson_nfc {
 	struct nand_chip		*nand_chip;
 	void __iomem			*io_base;
@@ -670,47 +672,112 @@ static int meson_nand_write_oob(struct mtd_info *mtd, struct nand_chip *chip,
 static int meson_nand_oob_ecc(struct mtd_info *mtd, int section,
 			      struct mtd_oob_region *oobecc)
 {
-#if 0
-	struct nand_chip *chip = mtd_to_nand(mtd);
-	struct nand_ecc_ctrl *ecc = &chip->ecc;
-
-	if (idx >= ecc->steps)
+	if (section)
 		return -ERANGE;
 
-	oobecc->offset = 0;
+	switch (mtd->oobsize) {
+	case 64:
+		oobecc->length = 56;
+		oobecc->offset = 0;
+		break;
+
+	case 128:
+		oobecc->length = 120;
+		oobecc->offset = 0;
+		break;
+
+	case 218:
+		oobecc->length = 200;
+		oobecc->offset = 0;
+		break;
+
+	case 224:
+		oobecc->length = 208;
+		oobecc->offset = 0;
+		break;
+
+	case 256:
+		oobecc->length = 240;
+		oobecc->offset = 0;
+		break;
+
+	case 376:
+		/* fall-through: */
+	case 436:
+		oobecc->length = 352;
+		oobecc->offset = 0;
+		break;
+
+	case 448:
+		oobecc->length = 416;
+		oobecc->offset = 0;
+		break;
+
+	case 640:
+		oobecc->length = 608;
+		oobecc->offset = 0;
+		break;
+
+	case 744:
+		oobecc->length = 700;
+		oobecc->offset = 0;
+		break;
+
+	case 1280:
+		oobecc->length = 1200;
+		oobecc->offset = 0;
+		break;
+
+	case 1664:
+		oobecc->length = 1584;
+		oobecc->offset = 0;
+		break;
+
+	default:
+		dev_err(&mtd->dev, "unsupported OOB size %u\n", mtd->oobsize);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int meson_nand_oob_free(struct mtd_info *mtd, int section,
+			       struct mtd_oob_region *oobfree)
+{
+	if (section)
+		return -ERANGE;
 
 	switch (mtd->oobsize) {
 	case 64:
 	case 128:
 	case 218:
 	case 224:
-		oobecc->length = 8;
+		oobfree->length = 8;
+		oobfree->offset = 0;
 		break;
+
 	case 256:
 	case 376:
 	case 436:
 	case 448:
 	case 640:
 	case 744:
-		oobecc->length = 16;
+		oobfree->length = 16;
+		oobfree->offset = 0;
 		break;
+
 	case 1280:
 	case 1664:
-		oobecc->length = 32;
+		oobfree->length = 32;
+		oobfree->offset = 0;
 		break;
-	default:
-		return -ERANGE;
-	};
-#endif
-printk("%s\n", __func__);
-	return -ERANGE;
-}
 
-static int meson_nand_oob_free(struct mtd_info *mtd, int section,
-			       struct mtd_oob_region *oobfree)
-{
-printk("%s\n", __func__);
-	return -ERANGE;
+	default:
+		dev_err(&mtd->dev, "unsupported OOB size %u\n", mtd->oobsize);
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 static const struct mtd_ooblayout_ops meson_nand_ooblayout_ops = {
@@ -842,14 +909,6 @@ static void meson_nand_dma_free(struct mtd_info *mtd)
 			  nfc->info_dma_addr);
 }
 
-static struct nand_bbt_descr meson_nand_badblock_pattern = {
-	.options = NAND_BBT_8BIT | NAND_BBT_ABSPAGE,
-	.pages = { 1024, 0, 0, 0, 0, 0, 0, 0 },
-	.offs = 0,
-	.len = 4,
-	.pattern = "nbbt",
-};
-
 static int meson_nand_init_chips(struct meson_nfc *nfc)
 {
 	struct device_node *np = nfc->dev->of_node;
@@ -882,12 +941,14 @@ static int meson_nand_init_chips(struct meson_nfc *nfc)
 	chip->cmd_ctrl = meson_nand_cmd_ctrl;
 	chip->select_chip = meson_nand_select_chip;
 	chip->setup_data_interface = meson_nand_apply_timings;
-	chip->chip_delay = 0;
+	chip->chip_delay = 100;
 	chip->ecc.read_page = meson_nand_read_page;
 	chip->ecc.write_page = meson_nand_write_page;
 	chip->ecc.read_oob = meson_nand_read_oob;
 	chip->ecc.write_oob = meson_nand_write_oob;
-	chip->options = NAND_NO_SUBPAGE_WRITE | NAND_SKIP_BBTSCAN | NAND_OWN_BUFFERS; // TODO: see aml_nand.c from u-boot 2015-01-..
+	chip->options = NAND_NO_SUBPAGE_WRITE |
+			NAND_SKIP_BBTSCAN |
+			NAND_OWN_BUFFERS;
 
 	mtd_set_ooblayout(mtd, &meson_nand_ooblayout_ops);
 
@@ -907,13 +968,17 @@ static int meson_nand_init_chips(struct meson_nfc *nfc)
 	if (!chip->buffers->databuf)
 		return -ENOMEM;
 
-	//chip->badblock_pattern = &meson_nand_badblock_pattern; /* TODO: correct?? */
-	if (chip->bbt_options & NAND_BBT_USE_FLASH)
-		chip->bbt_options |= NAND_BBT_NO_OOB;
+	chip->oob_poi = chip->buffers->databuf + mtd->writesize;
 
 	err = meson_nand_validate_ecc_mode(mtd);
 	if (err)
 		return err;
+
+#if 0
+	// TODO:
+	mtd_ooblayout_ecc(mtd, 0, &oobregion);
+	mtd->oobavail = oobregion.length;
+#endif
 
 	err = meson_nand_dma_init(mtd);
 	if (err)

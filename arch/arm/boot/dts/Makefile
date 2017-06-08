@@ -1,5 +1,3 @@
-ifeq ($(CONFIG_OF),y)
-
 dtb-$(CONFIG_MACH_MESON6) += \
 	meson6-atv1200.dtb
 dtb-$(CONFIG_MACH_MESON8) += \
@@ -11,7 +9,6 @@ dtb-$(CONFIG_MACH_MESON8M2) += \
 	meson8m2-m8s.dtb \
 	meson8m2-mxiii-plus.dtb
 
-endif
 
 dtstree		:= $(srctree)/$(src)
 dtb-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(dtstree)/%.dts,%.dtb, $(wildcard $(dtstree)/*.dts))
