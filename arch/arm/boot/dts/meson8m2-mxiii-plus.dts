@@ -17,6 +17,13 @@
 
 	aliases {
 		serial0 = &uart_AO;
+		serial1 = &uart_A;
+		mmc0 = &sd_card_slot;
+		mmc1 = &sdio_wireless_slot;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
 	};
 
 	memory {
@@ -36,6 +43,13 @@
 		};
 	};
 
+	iio-hwmon {
+		compatible = "iio-hwmon";
+		io-channels = <&saradc 8>;
+	};
+
+
+/*
 	pwmleds {
 		compatible = "pwm-leds";
 
@@ -45,6 +59,17 @@
 			max-brightness = <255>;
 			active-low;
 			linux,default-trigger = "default-on";
+		};
+	};
+*/
+	leds {
+		compatible = "gpio-leds";
+
+		blue {
+			label = "vega-s95:blue:on";
+			gpios = <&gpio_ao GPIOAO_13 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+			panic-indicator;
 		};
 	};
 
@@ -99,7 +124,9 @@
 	phy-handle = <&eth_phy0>;
 	phy-mode = "rgmii";
 
-	snps,reset-gpio = <&gpio GPIOH_4 0>;
+	amlogic,tx-delay-ns = <2>;
+
+	snps,reset-gpio = <&gpio GPIOZ_14 0>;
 	snps,reset-delays-us = <0 10000 1000000>;
 	snps,reset-active-low;
 
@@ -109,8 +136,9 @@
 		#size-cells = <0>;
 
 		eth_phy0: ethernet-phy@0 {
-			/* IC Plus IP101GR (0x02430c54) */
+			/* Realtek RTL8211F (0x001cc916) */
 			reg = <0>;
+			eee-broken-1000t;
 		};
 	};
 };
@@ -202,12 +230,11 @@
 
 &sdio {
 	status = "okay";
-
 	pinctrl-0 = <&sd_a_pins>, <&sd_b_pins>;
 	pinctrl-names = "default";
 
 	/* Wireless SDIO Module */
-	slot@0 {
+	sdio_wireless_slot: slot@0 {
 		compatible = "mmc-slot";
 		reg = <0>;
 		status = "okay";
@@ -224,7 +251,7 @@
 	};
 
 	/* SD card */
-	slot@1 {
+	sd_card_slot: slot@1 {
 		compatible = "mmc-slot";
 		reg = <1>;
 		status = "okay";
@@ -239,6 +266,19 @@
 		cd-inverted;
 
 		vmmc-supply = <&vcc_3v3>;
+	};
+};
+
+&uart_A {
+	status = "okay";
+	pinctrl-0 = <&uart_a1_pins>, <&uart_a1_cts_rts_pins>;
+	pinctrl-names = "default";
+	uart-has-rtscts;
+
+	bluetooth {
+		compatible = "realtek,rtl8723bs-bluetooth";
+		disable-gpios = <&gpio GPIOX_20 GPIO_ACTIVE_LOW>;
+		max-speed = <1500000>;
 	};
 };
 

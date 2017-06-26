@@ -45,7 +45,7 @@
 
 #include <dt-bindings/clock/meson8b-clkc.h>
 #include <dt-bindings/gpio/meson8-gpio.h>
-/include/ "meson.dtsi"
+#include "meson.dtsi"
 
 / {
 	model = "Amlogic Meson8 SoC";
@@ -180,7 +180,7 @@
 		ranges;
 
 		/* 2 MiB reserved for Hardware ROM Firmware? */
-		hwrom_reserved: hwrom@0 {
+		hwrom@0 {
 			reg = <0x0 0x200000>;
 			no-map;
 		};
@@ -195,7 +195,7 @@
 		 * simply the power key) and re-starts the ARM core once it
 		 * detects a wakeup request.
 		 */
-		suspend_firmware: secmon@4f00000 {
+		power-firmware@4f00000 {
 			reg = <0x4f00000 0x100000>;
 			no-map;
 		};
@@ -345,6 +345,27 @@
 
 		eth_pins: ethernet {
 			mux {
+				groups = "eth_mdio",
+				       "eth_mdc",
+				       "eth_clk_rx_clk",
+				       "eth_rx_dv",
+				       "eth_rxd0",
+				       "eth_rxd1",
+				       "eth_rxd2",
+				       "eth_rxd3",
+				       "eth_rgmii_tx_clk",
+				       "eth_tx_en",
+				       "eth_txd0",
+				       "eth_txd1",
+				       "eth_txd2",
+				       "eth_txd3";
+				function = "ethernet";
+			};
+		};
+
+/*
+		eth_pins: ethernet {
+			mux {
 				groups = "eth_tx_clk_50m", "eth_tx_en",
 					 "eth_txd1", "eth_txd0",
 					 "eth_rx_clk_in", "eth_rx_dv",
@@ -353,6 +374,7 @@
 				function = "ethernet";
 			};
 		};
+*/
 
 		nand_pins: nand {
 			mux {
@@ -375,6 +397,22 @@
 				function = "pwm_e";
 			};
 		};
+
+		uart_a1_pins: uart-a1 {
+			mux {
+				groups = "uart_tx_a1",
+				       "uart_rx_a1";
+				function = "uart_a";
+			};
+		};
+
+		uart_a1_cts_rts_pins: uart-a1-cts-rts {
+			mux {
+				groups = "uart_cts_a1",
+				       "uart_rts_a1";
+				function = "uart_a";
+			};
+		};
 	};
 };
 
@@ -393,6 +431,7 @@
 };
 
 &hwrng {
+	compatible = "amlogic,meson8-rng", "amlogic,meson-rng";
 	clocks = <&clkc CLKID_RNG0>;
 	clock-names = "core";
 };

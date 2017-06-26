@@ -307,6 +307,23 @@ static const unsigned int spi_mosi_1_pins[] = { PIN(GPIOZ_12, 0) };
 static const unsigned int spi_miso_1_pins[] = { PIN(GPIOZ_13, 0) };
 static const unsigned int spi_ss2_1_pins[] = { PIN(GPIOZ_14, 0) };
 
+/* 20170626 */
+static const unsigned int eth_mdio_pins[]	= { PIN(GPIOZ_0, 0) };
+static const unsigned int eth_mdc_pins[]	= { PIN(GPIOZ_1, 0) };
+static const unsigned int eth_clk_rx_clk_pins[]	= { PIN(GPIOZ_2, 0) };
+static const unsigned int eth_rx_dv_pins[]	= { PIN(GPIOZ_3, 0) };
+static const unsigned int eth_rxd0_pins[]	= { PIN(GPIOZ_4, 0) };
+static const unsigned int eth_rxd1_pins[]	= { PIN(GPIOZ_5, 0) };
+static const unsigned int eth_rxd2_pins[]	= { PIN(GPIOZ_6, 0) };
+static const unsigned int eth_rxd3_pins[]	= { PIN(GPIOZ_7, 0) };
+static const unsigned int eth_rgmii_tx_clk_pins[] = { PIN(GPIOZ_8, 0) };
+static const unsigned int eth_tx_en_pins[]	= { PIN(GPIOZ_9, 0) };
+static const unsigned int eth_txd0_pins[]	= { PIN(GPIOZ_10, 0) };
+static const unsigned int eth_txd1_pins[]	= { PIN(GPIOZ_11, 0) };
+static const unsigned int eth_txd2_pins[]	= { PIN(GPIOZ_12, 0) };
+static const unsigned int eth_txd3_pins[]	= { PIN(GPIOZ_13, 0) };
+
+/* block 20170626
 static const unsigned int eth_tx_clk_50m_pins[] = { PIN(GPIOZ_4, 0) };
 static const unsigned int eth_tx_en_pins[] = { PIN(GPIOZ_5, 0) };
 static const unsigned int eth_txd1_pins[] = { PIN(GPIOZ_6, 0) };
@@ -317,6 +334,7 @@ static const unsigned int eth_rxd1_pins[] = { PIN(GPIOZ_10, 0) };
 static const unsigned int eth_rxd0_pins[] = { PIN(GPIOZ_11, 0) };
 static const unsigned int eth_mdio_pins[] = { PIN(GPIOZ_12, 0) };
 static const unsigned int eth_mdc_pins[] = { PIN(GPIOZ_13, 0) };
+block 20170626  */
 
 static const unsigned int i2c_sda_a0_pins[] = { PIN(GPIOZ_0, 0) };
 static const unsigned int i2c_sck_a0_pins[] = { PIN(GPIOZ_1, 0) };
@@ -650,6 +668,23 @@ static struct meson_pmx_group meson8_cbus_groups[] = {
 	GROUP(spi_miso_1,	8,	13),
 	GROUP(spi_ss2_1,	8,	17),
 
+/* add 20170626 */
+	GROUP(eth_mdio,		6,	1),
+	GROUP(eth_mdc,		6,	0),
+	GROUP(eth_clk_rx_clk,	6,	13),
+	GROUP(eth_rx_dv,	6,	12),
+	GROUP(eth_rxd0,		6,	11),
+	GROUP(eth_rxd1,		6,	10),
+	GROUP(eth_rxd2,		6,	9),
+	GROUP(eth_rxd3,		6,	8),
+	GROUP(eth_rgmii_tx_clk,	6,	7),
+	GROUP(eth_tx_en,	6,	6),
+	GROUP(eth_txd0,		6,	5),
+	GROUP(eth_txd1,		6,	4),
+	GROUP(eth_txd2,		6,	3),
+	GROUP(eth_txd3,		6,	2),
+
+/* blok 20170626 
 	GROUP(eth_tx_clk_50m,	6,	15),
 	GROUP(eth_tx_en,	6,	14),
 	GROUP(eth_txd1,		6,	13),
@@ -660,6 +695,7 @@ static struct meson_pmx_group meson8_cbus_groups[] = {
 	GROUP(eth_rxd0,		6,	7),
 	GROUP(eth_mdio,		6,	6),
 	GROUP(eth_mdc,		6,	5),
+blok 20170626 */
 
 	GROUP(i2c_sda_a0,	5,	31),
 	GROUP(i2c_sck_a0,	5,	30),
@@ -885,11 +921,21 @@ static const char * const spi_groups[] = {
 	"spi_miso_1", "spi_ss2_1"
 };
 
+/* add 20170626 */
+static const char * const ethernet_groups[] = {
+	"eth_mdio", "eth_mdc", "eth_clk_rx_clk", "eth_rx_dv",
+	"eth_rxd0", "eth_rxd1", "eth_rxd2", "eth_rxd3",
+	"eth_rgmii_tx_clk", "eth_tx_en",
+	"eth_txd0", "eth_txd1", "eth_txd2", "eth_txd3",
+};
+
+/* blok 20170626
 static const char * const ethernet_groups[] = {
 	"eth_tx_clk_50m", "eth_tx_en", "eth_txd1",
 	"eth_txd0", "eth_rx_clk_in", "eth_rx_dv",
 	"eth_rxd1", "eth_rxd0", "eth_mdio", "eth_mdc"
 };
+blok 20170626 */
 
 static const char * const i2c_a_groups[] = {
 	"i2c_sda_a0", "i2c_sck_a0", "i2c_sda_a1", "i2c_sck_a1",
