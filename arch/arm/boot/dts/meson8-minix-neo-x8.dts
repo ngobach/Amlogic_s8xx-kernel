@@ -124,6 +124,6 @@
 
 &ethmac {
 	status = "okay";
-	pinctrl-0 = <&eth_pins>;
+	pinctrl-0 = <&eth_rmii_pins>;
 	pnictrl-names = "default";
 };

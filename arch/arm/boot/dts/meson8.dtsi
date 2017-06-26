@@ -343,7 +343,7 @@
 			};
 		};
 
-		eth_pins: ethernet {
+		eth_rgmii pins: ethernet_rgmii {
 			mux {
 				groups = "eth_mdio",
 				       "eth_mdc",
@@ -363,8 +363,7 @@
 			};
 		};
 
-/*
-		eth_pins: ethernet {
+		eth_rmii_pins: ethernet_rmii {
 			mux {
 				groups = "eth_tx_clk_50m", "eth_tx_en",
 					 "eth_txd1", "eth_txd0",
@@ -374,7 +373,6 @@
 				function = "ethernet";
 			};
 		};
-*/
 
 		nand_pins: nand {
 			mux {
