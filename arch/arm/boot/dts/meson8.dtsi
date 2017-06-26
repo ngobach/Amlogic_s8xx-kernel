@@ -343,7 +343,7 @@
 			};
 		};
 
-		eth_rgmii pins: ethernet_rgmii {
+		eth_rgmii_pins: ethernet_rgmii {
 			mux {
 				groups = "eth_mdio",
 				       "eth_mdc",
