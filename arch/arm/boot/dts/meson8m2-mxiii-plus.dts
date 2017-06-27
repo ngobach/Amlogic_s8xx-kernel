@@ -102,6 +102,14 @@
 		pwms = <&pwm_ef 0 30518 0>; /* PWM_E at 32.768KHz */
 	};
 
+	sdio_pwrseq: sdio-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		reset-gpios = <&gpio GPIOX_6 GPIO_ACTIVE_LOW>,
+				<&gpio GPIOX_20 GPIO_ACTIVE_LOW>;
+		clocks = <&wifi32k>;
+		clock-names = "ext_clock";
+	};
+
 	usb_vbus: regulator-usb0-vbus {
 		compatible = "regulator-fixed";
 		regulator-name = "USB0_VBUS";
@@ -232,22 +240,31 @@
 	status = "okay";
 	pinctrl-0 = <&sd_a_pins>, <&sd_b_pins>;
 	pinctrl-names = "default";
+	#address-cells = <1>;
+	#size-cells = <0>;
 
 	/* Wireless SDIO Module */
 	sdio_wireless_slot: slot@0 {
 		compatible = "mmc-slot";
 		reg = <0>;
-		status = "okay";
+		status = "disabled";
 
 		bus-width = <4>;
 		cap-mmc-highspeed;
 		cap-sd-highspeed;
+		max-frequency = <100000000>;
 		non-removable;
 		disable-wp;
 
 		mmc-pwrseq = <&sdio_pwrseq>;
 
 		vmmc-supply = <&vcc_3v3>;
+		vqmmc-supply = <&vcc_1v8>;
+
+		brcmf: bcrmf@1 {
+//			reg = <1>;
+			compatible = "brcm,bcm4329-fmac";
+		};
 	};
 
 	/* SD card */

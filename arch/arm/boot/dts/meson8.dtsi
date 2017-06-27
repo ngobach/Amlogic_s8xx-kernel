@@ -343,7 +343,7 @@
 			};
 		};
 
-		eth_rgmii_pins: ethernet_rgmii {
+		eth_rgmii_pins: eth_rgmii {
 			mux {
 				groups = "eth_mdio",
 				       "eth_mdc",
@@ -359,18 +359,30 @@
 				       "eth_txd1",
 				       "eth_txd2",
 				       "eth_txd3";
-				function = "ethernet";
+				function = "eth";
 			};
 		};
 
-		eth_rmii_pins: ethernet_rmii {
+		eth_rmii_pins: eth_rmii {
 			mux {
+				groups = "eth_mdio",
+				       "eth_mdc",
+				       "eth_clk_rx_clk",
+				       "eth_rx_dv",
+				       "eth_rxd0",
+				       "eth_rxd1",
+				       "eth_tx_en",
+				       "eth_txd0",
+				       "eth_txd1";
+				function = "eth";
+/*
 				groups = "eth_tx_clk_50m", "eth_tx_en",
 					 "eth_txd1", "eth_txd0",
 					 "eth_rx_clk_in", "eth_rx_dv",
 					 "eth_rxd1", "eth_rxd0", "eth_mdio",
 					 "eth_mdc";
-				function = "ethernet";
+				function = "eth";
+*/
 			};
 		};
 
@@ -427,6 +439,15 @@
 	clocks = <&clkc CLKID_ETH>;
 	clock-names = "stmmaceth";
 };
+
+/*
+&ethmac {
+	clocks = <&clkc CLKID_ETH>,
+		 <&clkc CLKID_FCLK_DIV2>,
+		 <&clkc CLKID_MPLL2>;
+	clock-names = "stmmaceth", "clkin0", "clkin1";
+};
+*/
 
 &hwrng {
 	compatible = "amlogic,meson8-rng", "amlogic,meson-rng";

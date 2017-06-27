@@ -921,21 +921,21 @@ static const char * const spi_groups[] = {
 	"spi_miso_1", "spi_ss2_1"
 };
 
-/* add 20170626 */
-static const char * const ethernet_groups[] = {
+/* 20170626 */
+static const char * const eth_groups[] = {
 	"eth_mdio", "eth_mdc", "eth_clk_rx_clk", "eth_rx_dv",
 	"eth_rxd0", "eth_rxd1", "eth_rxd2", "eth_rxd3",
 	"eth_rgmii_tx_clk", "eth_tx_en",
-	"eth_txd0", "eth_txd1", "eth_txd2", "eth_txd3",
+	"eth_txd0", "eth_txd1", "eth_txd2", "eth_txd3"
 };
 
-/* blok 20170626
+/* 20170626
 static const char * const ethernet_groups[] = {
 	"eth_tx_clk_50m", "eth_tx_en", "eth_txd1",
 	"eth_txd0", "eth_rx_clk_in", "eth_rx_dv",
 	"eth_rxd1", "eth_rxd0", "eth_mdio", "eth_mdc"
 };
-blok 20170626 */
+ 20170626 */
 
 static const char * const i2c_a_groups[] = {
 	"i2c_sda_a0", "i2c_sck_a0", "i2c_sda_a1", "i2c_sck_a1",
@@ -1057,7 +1057,7 @@ static struct meson_pmx_func meson8_cbus_functions[] = {
 	FUNCTION(vga),
 	FUNCTION(hdmi),
 	FUNCTION(spi),
-	FUNCTION(ethernet),
+	FUNCTION(eth),
 	FUNCTION(i2c_a),
 	FUNCTION(i2c_b),
 	FUNCTION(sd_c),
