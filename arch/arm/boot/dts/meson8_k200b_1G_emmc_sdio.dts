@@ -11,24 +11,24 @@
         #address-cells = <1>;
         #size-cells = <0>;
         cpu@0 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a9";
-        	reg = <0x200>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a9";
+		reg = <0x200>;
         };
         cpu@1 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a9";
-        	reg = <0x1>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a9";
+		reg = <0x1>;
         };
         cpu@2 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a9";
-        	reg = <0x2>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a9";
+		reg = <0x2>;
         };
         cpu@3 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a9";
-        	reg = <0x3>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a9";
+		reg = <0x3>;
         };
     };
 
@@ -99,27 +99,26 @@
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		status = "okay";
-	   	reserve-memory = <0x01800000  0x00100000>;
-	   	reserve-iomap = "true";
+		reserve-memory = <0x04800000 0x00100000>;
+		reserve-iomap = "true";
                 vmode = <3>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
 		scale_mode = <1>; /*0:default 1:new*/
-		4k2k_fb = <0>;
- 		display_size_default = <1920 1080 1920 3240 32>; //1920*1080*4*3 = 0x17BB000
+		4k2k_fb = <1>;
+		display_size_default = <1920 1080 1920 3240 32>; //1920*1080*4*3 = 0x17BB000
 	};
 
-    	deinterlace{
+	deinterlace{
 		compatible = "amlogic,deinterlace";
 		dev_name = "deinterlace";
 		status = "ok";
 		reserve-memory = <0x02100000>; //10x1920x1088x3/2=33M
 	};
 
-
 	mesonstream{
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
 		status = "okay";
-		//reserve-memory = <0x02000000>; // 32M
+		reserve-memory = <0x02000000>; // 32M
 		//reserve-iomap = "true";
 	};
 
@@ -127,21 +126,10 @@
                 compatible = "amlogic,vdec";
                 dev_name = "vdec.0";
                 status = "okay";
-//				reserve-iomap = "true";
-//				linux,contiguous-region = <&mem_4k2k_decoder>;
-        };
-
-
-	codec_mm{
-		compatible = "amlogic, codec, mm";
-		dev_name = "codec_mm";
-		status = "okay";
-		reserve-memory = <0x04100000>; // 65M
-		//reserve-iomap = "true";
+								reserve-memory = <0x10000000>; // 64M
+//		reserve-iomap = "true";
 		linux,contiguous-region = <&mem_4k2k_decoder>;
-	};
-
-
+        };
     picdec{
 		compatible = "amlogic,picdec";
 		dev_name = "picdec";
@@ -156,7 +144,6 @@
 		dev_name = "ppmgr";
 		status = "okay";
 		reserve-memory = <0x02000000>; // 32M
-
 	};
 
     amvenc_avc{
@@ -226,19 +213,6 @@
 		dev_name = "mesonvout2";
 		status = "okay";
 	};
-
-	tvout {
-		compatible = "amlogic,tvout";
-		dev_name = "tvout";
-		status = "okay";
-	};
-
-	tvout2 {
-		compatible = "amlogic,tvout2";
-		dev_name = "tvout2";
-		status = "okay";
-	};
-
 	amvideocap{
 		compatible = "amlogic,amvideocap";
 		dev_name = "amvideocap.0";
@@ -266,8 +240,8 @@
 		port_name = "uart_a";
 		status = "okay";
 		dev_name = "uart_0";
-    	pinctrl-names = "default";
-    	pinctrl-0 = <&a_uart_pins>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&a_uart_pins>;
 	};
 
 	uart_1{
@@ -476,7 +450,7 @@ sdio{
 		#size-cells = <0>;
 		use_pio = <0>;
 		master_i2c_speed = <300000>;
- 	};
+	};
 
     i2c@c11087e0{ /*I2C-C*/
 		compatible = "amlogic,aml_i2c";
@@ -524,9 +498,9 @@ sdio{
                  600000         850000      850000
                  720000         850000      850000
                  816000         875000      875000
-                1008000        1100000     1100000
-                1200000        1100000     1100000
-                1416000        1100000     1100000
+                1008000         925000      925000
+                1200000         975000      975000
+                1416000        1025000     1025000
                 1608000        1100000     1100000
                 1800000        1125000     1125000
                 1992000        1150000     1150000
@@ -582,7 +556,7 @@ sdio{
     usb_con {
 		lm-compatible = "logicmodule-bus";
 
-        	usb_b{
+		usb_b{
 			lm-compatible = "amlogic,usb";
 			lm-periph-id = <1>; /** lm name */
 			clock-src = "usb1"; /** clock src */
@@ -591,7 +565,6 @@ sdio{
 			port-speed = <0>; /** 0: default, 1: high, 2: full */
 			port-config = <0>; /** 0: default */
 			port-dma = <0>; /** 0: default, 1: single, 2: incr, 3: incr4, 4: incr8, 5: incr16, 6: disable*/
-			dma-type = <0>; /** 0: buffer dma, 1: desc dma*/
 			port-id-mode = <1>; /** 0: hardware, 1: sw_host, 2: sw_slave*/
 			status = "okay";
 		};
@@ -605,7 +578,6 @@ sdio{
 			port-speed = <0>; /** 0: default, high, 1: full */
 			port-config = <0>; /** 0: default */
 			port-dma = <0>; /** 0: default, 1: single, 2: incr, 3: incr4, 4: incr8, 5: incr16, 6: disable*/
-			dma-type = <0>; /** 0: buffer dma, 1: desc dma*/
 			port-id-mode = <0>; /** 0: hardware, 1: sw_host, 2: sw_slave*/
 			gpio-vbus-power = "GPIOZ_1";
 			gpio-work-mask	= <1>; /**0: work on pulldown,1:work on pullup*/
@@ -676,8 +648,8 @@ sdio{
 		#thermal-cells=<7>;
 		dev_name = "aml_thermal";
         trip_point=<70 1608001 1608001 511 511 3 5
-                    80 1206001 1206001 435 435 2 4
-                    90  804001 804001  328 328 2 3
+                    80 1200001 1200001 435 435 2 4
+                    90  800001 800001  328 328 2 3
                     260 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff>;
 		cpu_cali_a=<0>;
 		idle_interval=<1000>;
@@ -699,6 +671,16 @@ sdio{
             426      55  65  70  75
             511      60  70  75  80
         >;
+	};
+
+	led{
+		compatible = "amlogic-led";
+		dev_name = "aml-setio";
+		status = "okay";
+		red_led_gpio = "GPIO_TEST_N";/** if your board just need one gpio,please config red_led_gpio and blue_led_gpio the same */
+		blue_led_gpio = "GPIO_TEST_N";/**  */
+		red_led_mode = <1>; /** 1:H on L off , 0:H off L on */
+		blue_led_mode= <1>; /** 1:H on L off , 0:H off L on */
 	};
 
     audio_platform{
@@ -853,7 +835,7 @@ sdio{
 		status = "ok";
 	};
 
-    	unifykey{
+	unifykey{
 		compatible = "amlogic,unifykey";
 		status = "ok";
 
@@ -943,8 +925,6 @@ sdio{
     cpufreq-meson{
         compatible = "amlogic,cpufreq-meson";
         status = "okay";
-        syspll_fixed;
-        fixpll_target = <1608000>;
     };
 
     aml_aes{
@@ -1000,7 +980,7 @@ sdio{
 						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
 			amlogic,enable-output=<1>;
 		};
-
+		
 		nand_cs_pins: nand_cs{
 			amlogic,setmask=<2 0x3000000>;
 			amlogic,clrmask=<7 0x80000
@@ -1216,7 +1196,7 @@ sdio{
 //			amlogic,pins="GPIOH_7","GPIOH_8";
 //		};
 
-        	remote_pins:remote_pin{
+		remote_pins:remote_pin{
 			amlogic,setmask=<10 0x1>;
 			amlogic,pins="GPIOAO_7";
 		};
@@ -1269,14 +1249,13 @@ sdio{
 
 	};
 
-	ethmac: ethernet@0xc9410000{
-		compatible = "amlogic,meson8-rmii-dwmac", "snps,dwmac";
-		reg = <0xc9410000 0x10000
-			0xc1108108 0x4>;
-		interrupts = <0 8 40>;
-		interrupt-names = "macirq";
-		clocks = "clk81";
-		clock-names = "stmmaceth";
+    meson-eth{
+		compatible = "amlogic,meson-eth";
+		dev_name = "meson-eth";
+		status = "okay";
+		ethbaseaddr = <0xfe0c0000>;
+		interruptnum = <40>;
+		new_maclogic = <1>;
 	};
 
 	dvb{
