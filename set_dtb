@@ -4,4 +4,21 @@ export ARCH=arm
 export CROSS_COMPILE=arm-linux-gnueabihf-
 export PATH=/opt/gcc-linaro-4.9-2016.02-x86_64_arm-linux-gnueabihf/bin/:$PATH
 
-make dtbs
+#make dtbs
+#make meson8b_m201_1G_old.dtb 
+#make meson8b_m201C_512M_old.dtb
+#make meson8b_i5.dtb 
+#make meson8b_i5_console.dtb 
+#make meson8b_m100_1G.dtb 
+#make meson8b_m101_512M.dtb 
+#make meson8b_m102_1G.dtb 
+make meson8b_mxq.dtd meson8b_mxq.dts
+make meson8b_hd18q.dtd meson8b_hd18q.dts
+make meson8b_mk808bplus.dtd meson8b_mk808bplus.dts
+make meson8b_m200_1G.dtd meson8b_m200_1G.dts
+make meson8b_m201C_512M.dtd meson8b_m201C_512M.dts
+make meson8b_m201_1G.dtd meson8b_m201_1G.dts
+make meson8b_m201d.dtd meson8b_m201d.dts
+make meson8b_m202_512M.dtd meson8b_m202_512M.dts
+make meson8b_m203a.dtd meson8b_m203a.dts
+make meson8b_m203b.dtd meson8b_m203b.dts

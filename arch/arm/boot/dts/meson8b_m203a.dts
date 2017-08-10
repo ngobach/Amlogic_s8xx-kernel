@@ -5,7 +5,7 @@
 	interrupt-parent = <&gic>;
 	#address-cells = <1>;
 	#size-cells = <1>;
-
+	
     cpus {
         #address-cells = <1>;
         #size-cells = <0>;
@@ -76,16 +76,16 @@
         #interrupt-cells = <3>;
         #address-cells = <0>;
     };
-
+    
     vpu{
 		compatible = "amlogic,vpu";
-		dev_name = "vpu";
+		dev_name = "vpu";	
 		status = "ok";
 		clk_level = <3>;
 		/**    	0: 106.25M		1: 127.5M		2: 159.375M
 				3: 182.15M		4: 212.5M	 */
 	};
-
+	
 	mesonfb{
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
@@ -151,7 +151,7 @@
 //		status = "ok";
 //		reg = <0x1e400000 0x00100000>;
 //	};
-//
+//	
 //    vdin0{
 //       compatible = "amlogic,vdin";
 //        dev_name = "vdin0";
@@ -160,7 +160,7 @@
 //        irq = <115>;
 //        vdin_id = <0>;
 //	};
-
+	
 //    vdin1{
 //        compatible = "amlogic,vdin";
 //       dev_name = "vdin1";
@@ -202,12 +202,6 @@
 		status = "okay";
 	};
 
-	tvout {
-		compatible = "amlogic,tvout";
-		dev_name = "tvout";
-		status = "okay";
-	};
-
     rtc{
 		compatible = "amlogic,aml_rtc";
 		sec_adjust = <1735>;
@@ -222,7 +216,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&ao_uart_pins>;
 	};
-
+	
 	uart_0{
 		compatible = "amlogic,aml_uart";
 		port_name = "uart_a";
@@ -231,7 +225,7 @@
 //    	pinctrl-names = "default";
 //    	pinctrl-0 = <&a_uart_pins>;
 	};
-
+	
 	uart_1{
 		compatible = "amlogic,aml_uart";
 		port_name = "uart_b";
@@ -240,14 +234,14 @@
         pinctrl-names = "default";
         pinctrl-0 = <&b_uart_pins>;
 	};
-
+	
 	uart_2{
 		compatible = "amlogic,aml_uart";
 		port_name = "uart_c";
 		status = "disabled";
 		dev_name = "uart_2";
 	};
-
+	
 	uart_3{
 		compatible = "amlogic,aml_uart";
 		port_name = "uart_d";
@@ -273,7 +267,7 @@
 		power_on_pin2 = "GPIOX_11";
 		clock_32k_pin = "GPIOX_10";
 	};
-
+	
 
     sdio{
         compatible = "amlogic,aml_sdio";
@@ -394,7 +388,7 @@
         //     card_type = <3>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
         // };
     };
-
+    
 
 	i2c@c8100500{ /*I2C-AO*/
 		compatible = "amlogic,aml_i2c";
@@ -423,7 +417,7 @@
 		use_pio = <0>;
 		master_i2c_speed = <300000>;
 	};
-
+	
 	i2c@c11087c0{ /*I2C-B*/
 		compatible = "amlogic,aml_i2c";
 		dev_name = "i2c-B";
@@ -487,9 +481,9 @@
                  408000         860000      860000
                  504000         860000      860000
                  600000         860000      860000
-                 720000         970000      970000
-                 816000         970000      970000
-                1008000         970000      970000
+                 720000         860000      860000
+                 816000         900000      900000
+                1008000         920000      920000
                 1200000         970000      970000
                 1320000        1050000     1050000
                 1488000        1100000     1100000
@@ -502,52 +496,52 @@
         status = "disable";
         pinctrl-names = "default";
         pinctrl-0 = <&aml_pwm_pins>;
-        use_pwm = <1>;
+        use_pwm = <1>; 
         pmw_controller = "PWM_C";
         table_count = <29>;
         cs_voltage_table = <
-        /*
+        /*   
          * Note: This table is hardware depended, If your hardware use PWM method,
          * then first line in this table is PWM register value, second line is
          * voltage of VCCK according this PWM register value. If your platform use
-         * constant-current source to adjust vcck voltage, then the first line should
+         * constant-current source to adjust vcck voltage, then the first line should 
          * set to 0, means not valid, member 'use_pwm' in this node should set to 0.
          *
          *  ---- This table must be in ascending order by voltage ----
-         *
-         *  PWM value       VCCK voltage
-         */
+         *    
+         *  PWM value       VCCK voltage 
+         */ 
 		0x1c0000        860000
 		0x1b0001        870000
 		0x1a0002        880000
-		0x190003        890000
-		0x180004        900000
+		0x190003        890000		
+		0x180004        900000			
 		0x170005        910000
 		0x160006        920000
 		0x150007        930000
-		0x140008        940000
-		0x130009        950000
-		0x12000a        960000
-		0x11000b        970000
-		0x10000c        980000
-		0x0f000d        990000
-		0x0e000e        1000000
-		0x0d000f        1010000
-		0x0c0010        1020000
-		0x0b0011        1030000
-		0x0a0012        1040000
+		0x140008        940000			
+		0x130009        950000		
+		0x12000a        960000			
+		0x11000b        970000		
+		0x10000c        980000			
+		0x0f000d        990000			
+		0x0e000e        1000000			
+		0x0d000f        1010000		
+		0x0c0010        1020000			
+		0x0b0011        1030000			
+		0x0a0012        1040000			
 		0x090013        1050000
 		0x080014        1060000
-		0x070015        1070000
+		0x070015        1070000			
 		0x060016        1080000
 		0x050017        1090000
 		0x040018        1100000
-		0x030019        1110000
-		0x02001a        1120000
+		0x030019        1110000			
+		0x02001a        1120000			
 		0x01001b        1130000
 		0x00001c        1140000
-        >;
-    };
+        >;   
+    };   	
 
     arm_pmu {
         compatible = "arm,cortex-a9-pmu";
@@ -573,7 +567,7 @@
 			port-id-mode = <1>; /** 0: hardware, 1: sw_host, 2: sw_slave*/
 			status = "okay";
 		};
-
+		
 		usb_a{
 			lm-compatible = "amlogic,usb";
 			lm-periph-id = <0>; /** lm name */
@@ -664,8 +658,8 @@
             id_reg = <0x00>;
             id_val = <0x01>;
             capless = <0>;
-            status = "disable";
-        };
+            status = "disable";      
+        };  
         wm8960:wm8960{
             codec_name = "wm8960";
             i2c_addr = <0x1A>;
@@ -686,14 +680,14 @@
         aml,codec_dai = "AML-M8","rt5616-aif1","rt5631-hifi","wm8960-hifi","dummy_codec";
         //aml,codec_name = "aml_m8_codec.0","rt5616.4-001b";
         //aml,audio-codec = <&rt5616>;
-        aml,audio-routing-rt5616 =
+        aml,audio-routing-rt5616 = 
             "Ext Spk","LOUTL",
             "Ext Spk","LOUTR",
             "HP","HPOL",
             "HP","HPOR",
             "micbias1","MAIN MIC",
             "IN2P","micbias1";
-        aml,audio-routing-amlm8 =
+        aml,audio-routing-amlm8 = 
             "Ext Spk","LINEOUTL",
             "Ext Spk","LINEOUTR",
             "HP","HP_L",
@@ -710,7 +704,7 @@
         pinctrl-names = "aml_snd_m8";
         pinctrl-0 = <&audio_pins>;
         status = "okay";
-
+        
     };
 
     gpio_keypad{
@@ -773,7 +767,7 @@
 		      size = <0x10000>;
 		};
 	};
-
+	
 	nand{
 		compatible = "amlogic,aml_nand";
 		dev_name = "nand";
@@ -803,14 +797,14 @@
 		usid-min = <8>; /*reserved*/
 		usid-max = <31>; /*reserved*/
 	};
-
+	
 	thermal{
 		compatible = "amlogic-thermal";
 		#thermal-cells=<7>;
 		dev_name = "aml_thermal";
         trip_point=<70 1488001 1488001 511 511 3 2
-                    80 1206001 1206001 435 435 2 2
-                    90  804001  804001 328 328 1 1
+                    80 1200001 1200001 435 435 2 2
+                    90  800001  800001 328 328 1 1
                     260 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff>;
 		cpu_cali_a=<0>;
 		idle_interval=<1000>;
@@ -833,7 +827,7 @@
             511      60  70  75  80
         >;
 	};
-
+	
     securitykey{
 		compatible = "amlogic,aml_keys";
 		status = "ok";
@@ -859,14 +853,14 @@
 			key-dataformat = "allascii";
 			key-permit = "read","write","del";
 		};
-
+		
 		keysn_1:key_1{
 			key-name = "mac";
 			key-device = "nandkey";
 			key-dataformat = "hexdata";
 			key-permit = "read","write","del";
 		};
-
+		
 		keysn_2:key_2{
 			key-name = "hdcp";
 			key-device = "nandkey";
@@ -880,14 +874,14 @@
 			key-dataformat = "hexdata";
 			key-permit = "read","write";
 		};
-
+		
 		keysn_4:key_4{
 			key-name = "mac_bt";
 			key-device = "nandkey";
 			key-dataformat = "hexdata";
 			key-permit = "read","write","del";
 		};
-
+		
 		keysn_5:key_5{
 			key-name = "mac_wifi";
 			key-device = "nandkey";
@@ -902,7 +896,7 @@
 		status = "ok";
         vend-data = <&vend_data>;
         pwr-ctrl = <&pwr_ctrl>;
-
+        
         vend_data: vend_data{
             vendor_name = "Amlogic";           /* Max Chars: 8     */
             vendor_id = <0x000000>;            /* Refer to http://standards.ieee.org/develop/regauth/oui/oui.txt */
@@ -911,7 +905,7 @@
             cec_config = <0x00000f>;           /* 4 bytes: use to control cec switch on/off; distinguish between Mbox and Tablet. <0x00000f>:Mbox; <0x000000> or no this value:Tablet*/
             ao_cec = <0x000001>;               /* switch between ao-cec and ee-cec:: 1: ao-cec; 0: ee-cec */
         };
-
+        
         pwr_ctrl: pwr_ctrl{
             pwr_5v_on = "";
             pwr_5v_off = "";
@@ -930,8 +924,6 @@
 
     cpufreq-meson{
         compatible = "amlogic,cpufreq-meson";
-        syspll_fixed;
-        fixpll_target = <1200000>;
         status = "okay";
     };
 
@@ -951,16 +943,16 @@
 		#gpio-cells=<2>;
 	};
 
-    pinmux{
+    pinmux{ 
 		compatible = "amlogic,pinmux-m8b";
 		dev_name = "pinmux";
-		#pinmux-cells=<2>;
-
+		#pinmux-cells=<2>;    
+    
         ao_uart_pins:ao_uart{
 			amlogic,setmask=<10 0x1800>;
 			amlogic,pins="GPIOAO_0", "GPIOAO_1";
 		};
-
+		
 //		a_uart_pins:a_uart{
 //			amlogic,setmask=<4 0x3c00>;
 //			amlogic,pins="GPIOX_12", "GPIOX_13", "GPIOX_14", "GPIOX_15";
@@ -992,14 +984,14 @@
 						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
 			amlogic,enable-output=<1>;
 		};
-
+		
 		nand_cs_pins: nand_cs{
 			amlogic,setmask=<2 0x3000000>;
 			amlogic,clrmask=<7 0x80000
 							6 0x80000000>;
 			amlogic,pins = "BOOT_8","BOOT_9";
 		};
-
+		
 		sdhc_b_pins:sdhc_b_pin{
 			amlogic,setmask=<2 0xfc00>;
 			amlogic,clrmask=<2 0xf0 8 0x600>;
@@ -1028,7 +1020,7 @@
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
-
+        
         sdio_clk_cmd_pins:sdio_clk_cmd_pins{
             amlogic,setmask=<8 0x00000003>;         /*sdio a*/
             amlogic,clrmask=<6 0x3f000000           /*sdio c*/
@@ -1050,7 +1042,7 @@
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
-
+        
         sd_1bit_pins:sd_1bit_pins{
             amlogic,setmask=<2 0x00008c00>;         /*sdio b*/
             amlogic,clrmask=<6 0x3f000000           /*sdio c*/
@@ -1061,7 +1053,7 @@
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
-
+        
         sd_clk_cmd_pins:sd_clk_cmd_pins{
             amlogic,setmask=<2 0x00000c00>;         /*sdio b*/
             amlogic,clrmask=<6 0x3f000000           /*sdio c*/
@@ -1072,7 +1064,7 @@
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
-
+        
         emmc_all_pins:emmc_all_pins{
             amlogic,setmask=<6 0xfc000000>;         /*sdio c*/
             amlogic,clrmask=<2 0x06c2fc00           /*sdio b & nand*/
@@ -1083,10 +1075,10 @@
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
-
+        
         emmc_clk_cmd_pins:emmc_clk_cmd_pins{
             amlogic,setmask=<6 0xc0000000>;         /*bit[30-31] */
-            amlogic,clrmask=<2 0x06c2fc00           /*sdio b & nand   nand bit17 bit25*/
+            amlogic,clrmask=<2 0x06c2fc00           /*sdio b & nand   nand bit17 bit25*/ 
                                 8 0x0000003f        /*sdio a*/
                                 7 0xc0000>;        /*sdhc c bit 18-19*/
             amlogic,pins = "BOOT_8","BOOT_10"; /** BOOT_10:CMD, BOOT_8:CLK */
@@ -1167,7 +1159,7 @@
 
 		a_i2c_master:a_i2c{
 			amlogic,setmask=<9 0xC0000000>;
-			amlogic,clrmask=<0 0x3C0300
+			amlogic,clrmask=<0 0x3C0300 
 			                 6 0xC00000
 			                 8 0x1800000>;
 			amlogic,pins="GPIODV_24","GPIODV_25";
@@ -1175,12 +1167,12 @@
 
 		b_i2c_master:b_i2c{
 			amlogic,setmask=<9 0x30000000>;
-			amlogic,clrmask=<0 0x480
+			amlogic,clrmask=<0 0x480 
 			                 6 0x300000
 			                 8 0x10780000>;
 			amlogic,pins="GPIODV_26","GPIODV_27";
 		};
-
+		
 // MATCH "I2C_D_pin_match" = "&d_i2c_master"
 // L2 PROP_U32 2 = "amlogic,setmask"
 // L2 PROP_STR 2 = "amlogic,pins"
