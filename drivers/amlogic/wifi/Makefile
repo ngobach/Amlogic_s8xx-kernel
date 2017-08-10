@@ -1,4 +1,5 @@
 obj-$(CONFIG_AM_WIFI_SD_MMC) +=  wifi_dt.o
+obj-$(CONFIG_AM_WIFI_DUMMY) += wifi_dummy.o
 obj-$(CONFIG_AM_WIFI) += wifi_power.o
 obj-$(CONFIG_DHD_USE_STATIC_BUF) += dhd_static_buf.o
 obj-$(CONFIG_RTL8189ES) += rtl8189ES/
@@ -12,4 +13,3 @@ obj-$(CONFIG_RTL8192CU) += rtl8xxx_CU/
 obj-$(CONFIG_RTL8192DU) += rtl8xxx_DU/
 obj-$(CONFIG_RTL8188EU) += rtl8xxx_EU/
 obj-$(CONFIG_BCMDHD) += bcmdhd/
-obj-$(CONFIG_SSV6XXX) += ssv6xxx/

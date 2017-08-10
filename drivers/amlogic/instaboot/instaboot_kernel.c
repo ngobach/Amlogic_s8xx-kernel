@@ -6,7 +6,6 @@
 #include <linux/list.h>
 #include <linux/slab.h>
 #include <asm/memory.h>
-#include <linux/utsname.h>
 
 static void* nftl_info_trans_buffer[3]  __nosavedata;
 EXPORT_SYMBOL(nftl_info_trans_buffer);
@@ -80,19 +79,6 @@ void aml_bio_set_pages_dirty(struct bio *bio)
 	bio_set_pages_dirty(bio);
 }
 EXPORT_SYMBOL(aml_bio_set_pages_dirty);
-
-void aml_get_utsname(struct new_utsname * un)
-{
-	if (un)
-		memcpy(un, init_utsname(), sizeof(struct new_utsname));
-}
-EXPORT_SYMBOL(aml_get_utsname);
-
-int ib_show_progress_bar(u32 percent)
-{
-	return osd_show_progress_bar(percent);
-}
-EXPORT_SYMBOL(ib_show_progress_bar);
 
 /*
    in kernel booting process, acquire some memory for device probe,

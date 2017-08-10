@@ -52,7 +52,9 @@
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
+#include <linux/suspend.h>
 static struct early_suspend early_suspend;
+extern void request_suspend_state(suspend_state_t new_state);
 #endif
 
 static bool key_pointer_switch = true;
@@ -222,6 +224,7 @@ static int remote_mouse_event(struct input_dev *dev, unsigned int scancode, unsi
 
 void remote_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type,int event)
 {
+	printk("remote_send_key\n");
 	if(scancode == FN_KEY_SCANCODE && type == 1) {
 		// switch from key to pointer
 		if(key_pointer_switch) {
@@ -257,27 +260,31 @@ void remote_send_key(struct input_dev *dev, unsigned int scancode, unsigned int 
 			return;
 		}
 
-		if(type == 2 && scancode == 0x1a && key_map[gp_remote->map_num][scancode] == 0x0074) {
+		if(type == 2 && key_map[gp_remote->map_num][scancode] == 0x0074) {
 			return;
-		} else {
+		} else if(!gp_remote->sleep) {
 			input_event(dev, EV_KEY, key_map[gp_remote->map_num][scancode], type);
 			input_sync(dev);
 		}
 
 		switch (type) {
 			case 0:
-				input_dbg("release ircode = 0x%02x, scancode = 0x%04x, maptable = %d  code:0x%08x\n", scancode, key_map[gp_remote->map_num][scancode],gp_remote->map_num,gp_remote->cur_lsbkeycode);
+				input_dbg("release ircode = 0x%02x, scancode = 0x%04x, maptable = %d \n", scancode, key_map[gp_remote->map_num][scancode],gp_remote->map_num);
 				break;
 			case 1:
-				input_dbg("press ircode = 0x%02x, scancode = 0x%04x, maptable = %d  code:0x%08x\n", scancode, key_map[gp_remote->map_num][scancode],gp_remote->map_num,gp_remote->cur_lsbkeycode);
+				input_dbg("press ircode = 0x%02x, scancode = 0x%04x, maptable = %d \n", scancode, key_map[gp_remote->map_num][scancode],gp_remote->map_num);
 				break;
 			case 2:
-				input_dbg("repeat ircode = 0x%02x, scancode = 0x%04x, maptable = %d  code:0x%08x\n", scancode, key_map[gp_remote->map_num][scancode],gp_remote->map_num,gp_remote->cur_lsbkeycode);
+				input_dbg("repeat ircode = 0x%02x, scancode = 0x%04x, maptable = %d \n", scancode, key_map[gp_remote->map_num][scancode],gp_remote->map_num);
 				break;
 		}
-		if(gp_remote->sleep && scancode == 0x1a && key_map[gp_remote->map_num][scancode] == 0x0074) {
+		input_dbg("%s sleep:%d\n", __func__, gp_remote->sleep);
+		if(gp_remote->sleep && key_map[gp_remote->map_num][scancode] == 0x0074) {
 			printk(" set AO_RTI_STATUS_REG2 0x4853ffff \n");
 			WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0x4853ffff); // tell uboot don't suspend
+#ifdef CONFIG_EARLYSUSPEND
+			request_suspend_state(PM_SUSPEND_ON);
+#endif
 		}
 	}
 }
@@ -537,11 +544,6 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 		case REMOTE_IOC_SET_OK_KEY_SCANCODE:
 			OK_KEY_SCANCODE = val;
 			break;
-
-		case REMOTE_IOC_HARDWARE_CHECK_ENABLE:
-			ret = copy_from_user(&remote->hardware_check_enable, argp, sizeof(long));
-			break;
-
 	}
 	//output result
 	switch (cmd) {
@@ -610,6 +612,12 @@ static void remote_early_suspend(struct early_suspend *handler)
 {
 	printk("remote_early_suspend, set sleep 1 \n");
 	gp_remote->sleep = 1;
+	return;
+}
+static void remote_late_resume(struct early_suspend *handler)
+{
+	printk("remote_late_resume, set sleep 0 \n");
+	gp_remote->sleep = 0;
 	return;
 }
 #endif
@@ -689,7 +697,7 @@ static int remote_probe(struct platform_device *pdev)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING + 1;
 	early_suspend.suspend = remote_early_suspend;
-	early_suspend.resume = NULL;
+	early_suspend.resume = remote_late_resume;
 	early_suspend.param = gp_remote;
 	register_early_suspend(&early_suspend);
 #endif
@@ -788,11 +796,6 @@ static int remote_resume(struct platform_device * pdev)
 	am_remote_read_reg(DURATION_REG1_AND_STATUS);
 	am_remote_read_reg(FRAME_BODY);
 	if (READ_AOBUS_REG(AO_RTI_STATUS_REG2) == 0x1234abcd) {
-		input_event(gp_remote->input, EV_KEY, KEY_POWER, 1);
-		input_sync(gp_remote->input);
-		input_event(gp_remote->input, EV_KEY, KEY_POWER, 0);
-		input_sync(gp_remote->input);
-
 		//aml_write_reg32(P_AO_RTC_ADDR0, (aml_read_reg32(P_AO_RTC_ADDR0) | (0x0000f000)));
 		WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0);
 	}
@@ -807,8 +810,8 @@ static int remote_resume(struct platform_device * pdev)
 
 static int remote_suspend(struct platform_device * pdev,pm_message_t state)
 {
-	printk("remote_suspend, set sleep 1 \n");
-	gp_remote->sleep = 1;
+	printk("remote_suspend, set sleep 0 \n");
+	gp_remote->sleep = 0;
 	return 0;
 }
 

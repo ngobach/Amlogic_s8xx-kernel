@@ -39,7 +39,6 @@
 #include "aml_audio_hw.h"
 #include "../../codecs/aml_m8_codec.h"
 #include <mach/register.h>
-#include <linux/amlogic/jtag.h>
 
 #ifdef CONFIG_USE_OF
 #include <linux/of.h>
@@ -93,7 +92,7 @@ static int hp_det_adc_value(struct aml_audio_private_data *p_aml_audio)
     int hp_val_sum = 0;
     int loop_num = 0;
     unsigned int mic_ret = 0;
-    
+
     while(loop_num < 8){
         hp_value = get_adc_sample(p_aml_audio->hp_adc_ch);
         if(hp_value <0){
@@ -121,11 +120,11 @@ static int hp_det_adc_value(struct aml_audio_private_data *p_aml_audio)
         if(p_aml_audio->mic_det){
             ret = 0;
             mic_ret = 8;
-            ret |= mic_ret; 
+            ret |= mic_ret;
         }
-            
+
     }
-    
+
     return ret;
 }
 
@@ -151,10 +150,10 @@ static int aml_audio_hp_detect(struct aml_audio_private_data *p_aml_audio)
         }
         loop_num = loop_num + 1;
     }
- 
+
    // mutex_unlock(&p_aml_audio->lock);
 
-    return ret; 
+    return ret;
 }
 
 
@@ -173,7 +172,7 @@ static void aml_asoc_work_func(struct work_struct *work)
     if(p_aml_audio->detect_flag != flag) {
 
         p_aml_audio->detect_flag = flag;
-        
+
         if (flag & 0x1) {
             //amlogic_set_value(p_aml_audio->gpio_mute, 0, "mute_spk");
             switch_set_state(&p_aml_audio->sdev, 2);  // 1 :have mic ;  2 no mic
@@ -214,7 +213,7 @@ static void aml_asoc_work_func(struct work_struct *work)
                }
             }
         }
-        
+
     }
     p_aml_audio->hp_det_status = true;
 }
@@ -251,9 +250,9 @@ static int aml_asoc_hw_params(struct snd_pcm_substream *substream,
     }
 
     /* set cpu DAI configuration */
-    if((!strncmp(codec_info.name_bus,"rt5616",strlen("rt5616"))) || 
+    if((!strncmp(codec_info.name_bus,"rt5616",strlen("rt5616"))) ||
         !(strncmp(codec_info.name_bus,"aml_pmu3_codec",strlen("aml_pmu3_codec")))){
-        
+
         ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
             SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_CBM_CFM);
     }else{
@@ -344,7 +343,7 @@ static int aml_audio_get_i2s_mute(struct snd_kcontrol *kcontrol,
 static int aml_audio_set_spdif_mute(struct snd_kcontrol *kcontrol,
     struct snd_ctl_elem_value *ucontrol)
 {
-    
+
     aml_audio_spdif_mute_flag = ucontrol->value.integer.value[0];
     printk(KERN_INFO "aml_audio_set_spdif_mute: flag=%d\n",aml_audio_spdif_mute_flag);
     if(aml_audio_spdif_mute_flag){
@@ -368,7 +367,6 @@ static int aml_set_bias_level(struct snd_soc_card *card,
     struct aml_audio_private_data * p_aml_audio;
     int hp_state;
 
-    printk(KERN_DEBUG "enter %s level: %d\n", __func__, level);
     p_aml_audio = snd_soc_card_get_drvdata(card);
 	hp_state = p_aml_audio->detect_flag;
 
@@ -431,7 +429,7 @@ static int i2s_gpio_set(struct snd_soc_card *card)
     struct aml_audio_private_data *p_aml_audio;
     const char *str=NULL;
     int ret;
-    
+
 
     p_aml_audio = snd_soc_card_get_drvdata(card);
     if(p_aml_audio->pin_ctl)
@@ -488,7 +486,7 @@ static int aml_resume_pre(struct snd_soc_card *card)
     printk(KERN_INFO "enter %s\n", __func__);
     if(ext_codec){
         struct aml_audio_private_data *p_aml_audio;
-        p_aml_audio = snd_soc_card_get_drvdata(card);  
+        p_aml_audio = snd_soc_card_get_drvdata(card);
 
         if(p_aml_audio->gpio_i2s_m)
             amlogic_gpio_free(p_aml_audio->gpio_i2s_m,"low_mclk");
@@ -498,7 +496,7 @@ static int aml_resume_pre(struct snd_soc_card *card)
             amlogic_gpio_free(p_aml_audio->gpio_i2s_r,"low_lrclk");
         if(p_aml_audio->gpio_i2s_o)
             amlogic_gpio_free(p_aml_audio->gpio_i2s_o,"low_odata");
-       
+
 
         p_aml_audio->pin_ctl = devm_pinctrl_get_select(card->dev, "aml_snd_m8");
     }
@@ -638,7 +636,7 @@ static const struct snd_kcontrol_new aml_m8_controls[] = {
     SOC_SINGLE_BOOL_EXT("aml audio i2s mute", 0,
         aml_audio_get_i2s_mute,
         aml_audio_set_i2s_mute),
-        
+
     SOC_SINGLE_BOOL_EXT("aml audio spdif mute", 0,
         aml_audio_get_spdif_mute,
         aml_audio_set_spdif_mute),
@@ -670,7 +668,7 @@ static int aml_asoc_init(struct snd_soc_pcm_runtime *rtd)
 	struct aml_audio_private_data * p_aml_audio;
     int ret = 0;
     int hp_paraments[5];
-	
+
     printk(KERN_DEBUG "enter %s \n", __func__);
 	p_aml_audio = snd_soc_card_get_drvdata(card);
     ret = snd_soc_add_card_controls(codec->card, aml_m8_controls,
@@ -728,7 +726,7 @@ static int aml_asoc_init(struct snd_soc_pcm_runtime *rtd)
             printk("hp detect paraments: h=%d,l=%d,mic=%d,det=%d,ch=%d \n",p_aml_audio->hp_val_h,p_aml_audio->hp_val_l,
                 p_aml_audio->mic_val,p_aml_audio->hp_detal,p_aml_audio->hp_adc_ch);
         }
-        
+
         init_timer(&p_aml_audio->timer);
         p_aml_audio->timer.function = aml_asoc_timer_func;
         p_aml_audio->timer.data = (unsigned long)p_aml_audio;
@@ -785,8 +783,8 @@ static struct snd_soc_dai_link aml_codec_dai_link[] = {
         .init = NULL,
         .platform_name = "aml-i2s.0",
         .codec_name = "spdif-dit.0",
-        .ops = NULL,      
-    }, 
+        .ops = NULL,
+    },
 
 };
 
@@ -808,24 +806,20 @@ static void aml_m8_pinmux_init(struct snd_soc_card *card)
 	struct aml_audio_private_data *p_aml_audio;
 	const char *str=NULL;
 	int ret;
-	p_aml_audio = snd_soc_card_get_drvdata(card);   
-	p_aml_audio->pin_ctl = devm_pinctrl_get_select(card->dev, "aml_snd_m8");
+	p_aml_audio = snd_soc_card_get_drvdata(card);
+    p_aml_audio->pin_ctl = devm_pinctrl_get_select(card->dev, "aml_snd_m8");
 
-	p_audio = p_aml_audio;
-	printk("-----ext_codec=%d---\n",ext_codec);
-	//#if USE_EXTERNAL_DAC
-	if (ext_codec) {
+    p_audio = p_aml_audio;
+    printk("-----ext_codec=%d---\n",ext_codec);
+//#if USE_EXTERNAL_DAC
+    if(ext_codec){
 #ifndef CONFIG_MESON_TRUSTZONE
-	//aml_write_reg32(P_AO_SECURE_REG1,0x00000000);
-	if (is_jtag_disable()) {
-		aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1)));
-	}
+    //aml_write_reg32(P_AO_SECURE_REG1,0x00000000);
+        aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1)));
 #else
-	/* Secure reg can only be accessed in Secure World if TrustZone enabled. */
-	//meson_secure_reg_write(P_AO_SECURE_REG1, 0x00000000);
-	if (is_jtag_disable()) {
-		meson_secure_reg_write(P_AO_SECURE_REG1, meson_secure_reg_read(P_AO_SECURE_REG1) & (~((1<<8) | (1<<1))));
-	}
+    /* Secure reg can only be accessed in Secure World if TrustZone enabled. */
+    //meson_secure_reg_write(P_AO_SECURE_REG1, 0x00000000);
+	meson_secure_reg_write(P_AO_SECURE_REG1, meson_secure_reg_read(P_AO_SECURE_REG1) & (~((1<<8) | (1<<1))));
 #endif /* CONFIG_MESON_TRUSTZONE */
     }
 //#endif
@@ -850,7 +844,7 @@ static void aml_m8_pinmux_deinit(struct snd_soc_card *card)
 	if(p_aml_audio->gpio_hp_det)
 		amlogic_gpio_free(p_aml_audio->gpio_hp_det,"hp_det");
 	if(p_aml_audio->gpio_mute)
-		amlogic_gpio_free(p_aml_audio->gpio_mute,"mute_spk"); 
+		amlogic_gpio_free(p_aml_audio->gpio_mute,"mute_spk");
     if(p_aml_audio->pin_ctl)
         devm_pinctrl_put(p_aml_audio->pin_ctl);
 }
@@ -904,7 +898,7 @@ static int aml_m8_audio_probe(struct platform_device *pdev)
 
     ret = snd_soc_of_parse_audio_routing(card, tmp);
     if (ret)
-    	goto err;
+	goto err;
 
     ret = snd_soc_register_card(card);
     if (ret) {
@@ -989,4 +983,3 @@ MODULE_DESCRIPTION("AML_M8 audio machine Asoc driver");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:" DRV_NAME);
 MODULE_DEVICE_TABLE(of, amlogic_audio_dt_match);
-

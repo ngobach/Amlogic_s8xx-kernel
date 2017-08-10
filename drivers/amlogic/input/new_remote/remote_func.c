@@ -144,7 +144,6 @@ void changeduokandecodeorder(struct remote *remote_data)
 void get_cur_scancode(struct remote *remote_data)
 {
 	int temp_cur_lsbkeycode =0;
-	//input_dbg("get_cur_scancode---OPERATION_CTRL_REG1 >>%08x\n",am_remote_read_reg(OPERATION_CTRL_REG1));
 	if(remote_data->work_mode== DECODEMODE_SANYO) {
 		remote_data->cur_lsbkeycode = am_remote_read_reg(FRAME_BODY);
 		remote_data->cur_msbkeycode = am_remote_read_reg(FRAME_BODY1)&0x2ff;
@@ -526,6 +525,7 @@ int remote_hw_reprot_key(struct remote *remote_data)
 			mod_timer(&remote_data->timer, jiffies + msecs_to_jiffies(remote_data->release_delay[remote_data->map_num]+remote_data->repeat_delay[remote_data->map_num]));
 	} else if((remote_data->frame_status & REPEARTFLAG) && remote_data->enable_repeat_falg) { //repeate key
 #ifdef CONFIG_AML_HDMI_TX
+#ifndef CONFIG_AML_HDMI_TX_NEW_CEC_DRIVER
 		extern int rc_long_press_pwr_key;
 		if((remote_data->repeat_release_code == 0x1a) && (!cec_repeat)) {
 			rc_long_press_pwr_key = 1;
@@ -534,6 +534,7 @@ int remote_hw_reprot_key(struct remote *remote_data)
 		if(remote_data->repeat_release_code == 0x1a)
 			cec_repeat--;
 
+#endif
 #endif
 		if (remote_data->repeat_enable) {
 			repeat_count++;
@@ -619,6 +620,7 @@ int remote_hw_nec_rca_2in1_reprot_key(struct remote *remote_data)
 			mod_timer(&remote_data->timer, jiffies + msecs_to_jiffies(remote_data->release_delay[remote_data->map_num]+remote_data->repeat_delay[remote_data->map_num]));
 	} else if((remote_data->frame_status & REPEARTFLAG) && remote_data->enable_repeat_falg) { //repeate key
 #ifdef CONFIG_AML_HDMI_TX
+#ifndef CONFIG_AML_HDMI_TX_NEW_CEC_DRIVER
 		extern int rc_long_press_pwr_key;
 		if((remote_data->repeat_release_code == 0x1a) && (!cec_repeat)) {
 			rc_long_press_pwr_key = 1;
@@ -627,6 +629,7 @@ int remote_hw_nec_rca_2in1_reprot_key(struct remote *remote_data)
 		if(remote_data->repeat_release_code == 0x1a)
 			cec_repeat--;
 
+#endif
 #endif
 		if (remote_data->repeat_enable) {
 			repeat_count++;
@@ -701,6 +704,7 @@ int remote_hw_nec_toshiba_2in1_reprot_key(struct remote *remote_data)
 			mod_timer(&remote_data->timer, jiffies + msecs_to_jiffies(remote_data->release_delay[remote_data->map_num]+remote_data->repeat_delay[remote_data->map_num]));
 	} else if((remote_data->frame_status & REPEARTFLAG) && remote_data->enable_repeat_falg) { //repeate key
 #ifdef CONFIG_AML_HDMI_TX
+#ifndef CONFIG_AML_HDMI_TX_NEW_CEC_DRIVER
 		extern int rc_long_press_pwr_key;
 		if((remote_data->repeat_release_code == 0x1a) && (!cec_repeat)) {
 			rc_long_press_pwr_key = 1;
@@ -709,6 +713,7 @@ int remote_hw_nec_toshiba_2in1_reprot_key(struct remote *remote_data)
 		if(remote_data->repeat_release_code == 0x1a)
 			cec_repeat--;
 
+#endif
 #endif
 		if (remote_data->repeat_enable) {
 			repeat_count++;

@@ -47,8 +47,7 @@ static unsigned int sdhc_debug_flag = 0;
 static int sdhc_err_bak;
 
 void aml_sdhc_send_stop(struct amlsd_host* host);
-static void aml_sdhc_emmc_clock_switch_on (struct amlsd_platform* pdata);
-static void aml_sdhc_clk_switch_off (struct amlsd_host* host);
+
 static void aml_sdhc_clk_switch (struct amlsd_platform* pdata, int clk_div, int clk_src_sel);
 static int aml_sdhc_status (struct amlsd_host* host);
 
@@ -831,10 +830,7 @@ void aml_sdhc_start_cmd(struct amlsd_platform* pdata, struct mmc_request* mrq)
             misc->manual_stop = 1;
         }
         else{
-            if (mmc_host_cmd23(host->mmc))
-                misc->manual_stop = 1;
-            else
-                misc->manual_stop = 0;
+            misc->manual_stop = 0;
         }
         writel(vmisc, host->base + SDHC_MISC);
 
@@ -844,7 +840,7 @@ void aml_sdhc_start_cmd(struct amlsd_platform* pdata, struct mmc_request* mrq)
                 // mrq->cmd->opcode, stat->txfifo_cnt, stat->rxfifo_cnt);
 
             if(aml_sdhc_wait_ready(host, STAT_POLL_TIMEOUT)){ /*Wait command busy*/
-            	sdhc_err("aml_sdhc_wait_ready error before start cmd fifo\n");
+		sdhc_err("aml_sdhc_wait_ready error before start cmd fifo\n");
             }
             vsrst = readl(host->base + SDHC_SRST);
             srst->rxfifo = 1;
@@ -1004,7 +1000,7 @@ void aml_sdhc_request_done(struct mmc_host *mmc, struct mmc_request *mrq)
 
     if (pdata->xfer_post)
         pdata->xfer_post(pdata);
-    //printk("%s [%d] mrq->cmd->opcode = %d\n",__func__, __LINE__, mrq->cmd->opcode);
+
     aml_sdhc_disable_imask(host, SDHC_ICTL_ALL);
     /*Set irq status: write 1 clear*/
     writel(SDHC_ISTA_W1C_ALL, host->base+SDHC_ISTA);
@@ -1012,7 +1008,6 @@ void aml_sdhc_request_done(struct mmc_host *mmc, struct mmc_request *mrq)
     if(aml_sdhc_wait_ready(host, STAT_POLL_TIMEOUT)){ /*Wait command busy*/
 		sdhc_err("aml_sdhc_wait_ready request done\n");
     }
-    aml_sdhc_clk_switch_off(host);
     mmc_request_done(host->mmc, mrq);
 }
 
@@ -1323,7 +1318,7 @@ void aml_sdhc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
     if (aml_check_unsupport_cmd(mmc, mrq))
         return;
-    aml_sdhc_emmc_clock_switch_on(pdata);
+
     //only for SDCARD
     if(!pdata->is_in || (!host->init_flag && aml_card_type_sd(pdata))){
         spin_lock_irqsave(&host->mrq_lock, flags);
@@ -1349,6 +1344,7 @@ void aml_sdhc_request(struct mmc_host *mmc, struct mmc_request *mrq)
     sdhc_dbg(AMLSD_DBG_REQ ,"%s: starting CMD%u arg %08x flags %08x\n",
         mmc_hostname(mmc), mrq->cmd->opcode,
         mrq->cmd->arg, mrq->cmd->flags);
+
 #ifdef      CONFIG_AML_MMC_DEBUG_FORCE_SINGLE_BLOCK_RW
     if ((mrq->cmd->opcode == 18) || (mrq->cmd->opcode == 25)) { // ???? for debug
         sdhc_err("cmd%d\n", mrq->cmd->opcode);
@@ -1608,7 +1604,7 @@ static void aml_sdhc_not_timeout_err_handler (struct amlsd_host* host)
 {
     //aml_sdhc_wait_ready(host, STAT_POLL_TIMEOUT);
     if(aml_sdhc_wait_ready(host, (STAT_POLL_TIMEOUT<<2))){ /*Wait command busy*/
-    	sdhc_err("aml_sdhc_wait_ready error not timeout error handler\n");
+	sdhc_err("aml_sdhc_wait_ready error not timeout error handler\n");
     }
     aml_sdhc_com_err_handler(host);
 }
@@ -1784,7 +1780,7 @@ irqreturn_t aml_sdhc_data_thread(int irq, void *data)
             //do not check device ready status here
             //aml_sdhc_wait_ready(host, STAT_POLL_TIMEOUT);
             if(aml_sdhc_wait_ready(host, (STAT_POLL_TIMEOUT<<2))){ /*Wait command busy*/
-            	sdhc_err("aml_sdhc_wait_ready error after data thread\n");
+		sdhc_err("aml_sdhc_wait_ready error after data thread\n");
             }
             aml_sdhc_read_response(host->mmc, mrq->cmd);
             // aml_sdhc_clear_fifo(host);
@@ -1801,7 +1797,7 @@ irqreturn_t aml_sdhc_data_thread(int irq, void *data)
                 spin_unlock_irqrestore(&host->mrq_lock, flags);
                 //aml_sdhc_wait_ready(host, STAT_POLL_TIMEOUT);
 	            if(aml_sdhc_wait_ready(host, STAT_POLL_TIMEOUT)){ /*Wait command busy*/
-	            	sdhc_err("aml_sdhc_wait_ready error cmd thread\n");
+			sdhc_err("aml_sdhc_wait_ready error cmd thread\n");
 	            }
                 aml_sdhc_read_response(host->mmc, host->mrq->cmd);
                 aml_sdhc_request_done(host->mmc, mrq);
@@ -1817,7 +1813,7 @@ irqreturn_t aml_sdhc_data_thread(int irq, void *data)
                 cancel_delayed_work_sync(&host->timeout);
             //aml_sdhc_wait_ready(host, STAT_POLL_TIMEOUT);
             if (aml_sdhc_wait_ready(host, (STAT_POLL_TIMEOUT<<2))) { /*Wait command busy*/
-            	sdhc_err("aml_sdhc_wait_ready error fifo or timeout thread\n");
+		sdhc_err("aml_sdhc_wait_ready error fifo or timeout thread\n");
             }
             aml_sdhc_read_response(host->mmc, host->mrq->cmd);
             aml_sdhc_print_err(host);
@@ -1932,26 +1928,6 @@ static void aml_sdhc_clk_switch_off (struct amlsd_host* host)
 
     host->is_gated = true;
     // sdhc_err("clock off\n");
-}
-
-static void aml_sdhc_emmc_clock_switch_on (struct amlsd_platform* pdata)
-{
-    struct amlsd_host* host = (void*)pdata->host;
-    u32 vclkc = readl(host->base+SDHC_CLKC);
-    struct sdhc_clkc* clkc = (struct sdhc_clkc*)&vclkc;
-
-    /*Turn on Clock*/
-    clkc->mod_clk_on = 1;
-    writel(vclkc, host->base+SDHC_CLKC);
-
-    clkc->tx_clk_on = 1;
-    clkc->rx_clk_on = 1;
-    clkc->sd_clk_on = 1;
-    writel(vclkc, host->base+SDHC_CLKC);
-
-    host->is_gated = false;
-    // udelay(10);
-    // sdhc_err("clock on, SDHC_CLKC=%#x\n", readl(host->base+SDHC_CLKC));
 }
 
 static void aml_sdhc_clk_switch_on (struct amlsd_platform* pdata, int clk_div, int clk_src_sel)

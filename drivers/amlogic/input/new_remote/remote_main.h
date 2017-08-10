@@ -74,18 +74,17 @@ typedef enum {
 /*remote config val*/
 /****************************************************************/
 static const remotereg_t RDECODEMODE_NEC[] = {
-/* NEC leader 9500us,max 477: (477* timebase = 20) = 9540 ;min 400 = 8000us*/
-	{LDR_ACTIVE, ((unsigned)500<<16) | ((unsigned)400<<0)},
-	{LDR_IDLE, 300<<16 | 200<<0},/*leader idle*/
-	{LDR_REPEAT, 150<<16|80<<0}, /*leader repeat*/
-	{DURATION_REG0, 72<<16|40<<0 },/* logic '0' or '00'*/
-	{OPERATION_CTRL_REG0, 3<<28|(0xFA0<<12)|0x13},/*20us, body frame 108ms*/
-	{DURATION_REG1_AND_STATUS, (134<<20)|(90<<10)}, /* logic '1' or '01'*/
-	{OPERATION_CTRL_REG1, 0x9f50},/* boby long decode (8-13)*/
-	/*{OPERATION_CTRL_REG1,0xbe40},// boby long decode (8-13)*/
-	{OPERATION_CTRL_REG2, 0x0}, /* hard decode mode*/
-	{DURATION_REG2, 0},
-	{DURATION_REG3, 0},
+	{LDR_ACTIVE,((unsigned)477<<16) | ((unsigned)400<<0)},// NEC leader 9500us,max 477: (477* timebase = 20) = 9540 ;min 400 = 8000us
+	{LDR_IDLE, 248<<16 | 202<<0},// leader idle
+	{LDR_REPEAT,130<<16|110<<0}, // leader repeat
+	{DURATION_REG0,60<<16|48<<0 },// logic '0' or '00'
+	{OPERATION_CTRL_REG0,3<<28|(0xFA0<<12)|0x13},  // sys clock boby time.base time = 20 body frame 108ms
+	{DURATION_REG1_AND_STATUS,(111<<20)|(100<<10)}, // logic '1' or '01'
+	{OPERATION_CTRL_REG1,0x9f40},// boby long decode (8-13)
+	//{OPERATION_CTRL_REG1,0xbe40},// boby long decode (8-13)
+	{OPERATION_CTRL_REG2,0x0}, // hard decode mode
+	{DURATION_REG2,0},
+	{DURATION_REG3,0},
 	{CONFIG_END,            0      }
 };
 /****************************************************************/
@@ -266,14 +265,14 @@ static const remotereg_t RDECODEMODE_NEC_RCA_2IN1[] = {
 	{CONFIG_END,            0      }
 };
 static const remotereg_t RDECODEMODE_NEC_TOSHIBA_2IN1[] = {
-/*used old decode NEC leader 9500us,max 477: (477* 20) = 9540 ;min 400: 8000us*/
-	{LDR_ACTIVE-0x100, ((unsigned)500<<16) | ((unsigned)400<<0)},
-	{LDR_IDLE-0x100, 300<<16 | 200<<0},/*leader idle*/
-	{LDR_REPEAT-0x100, 150<<16|80<<0}, /*leader repeat*/
-	{DURATION_REG0-0x100, 72<<16|40<<0 },/*logic '0' or '00'*/
-	{OPERATION_CTRL_REG0-0x100, 3<<28|(0xFA0<<12)|0x13},/*20us body 108ms*/
-	{DURATION_REG1_AND_STATUS-0x100, (134<<20)|(90<<10)},/*logic'1'or'01'*/
-	{OPERATION_CTRL_REG1-0x100, 0xbe10},/*boby long decode (9-13)*/
+	// used old decode
+	{LDR_ACTIVE-0x100,((unsigned)477<<16) | ((unsigned)400<<0)},// NEC leader 9500us,max 477: (477* timebase = 20) = 9540 ;min 400 = 8000us
+	{LDR_IDLE-0x100, 248<<16 | 202<<0},// leader idle
+	{LDR_REPEAT-0x100,130<<16|110<<0}, // leader repeat
+	{DURATION_REG0-0x100,60<<16|48<<0 },// logic '0' or '00'
+	{OPERATION_CTRL_REG0-0x100,3<<28|(0xFA0<<12)|0x13},  // sys clock boby time.base time = 20 body frame 108ms
+	{DURATION_REG1_AND_STATUS-0x100,(111<<20)|(100<<10)}, // logic '1' or '01'
+	{OPERATION_CTRL_REG1-0x100,0xbe00},// boby long decode (9-13)
 	// used new decode
 	{LDR_ACTIVE,((unsigned)300<<16) | ((unsigned)160<<0)},//toshiba leader 4500us,20* timebase
 	{LDR_IDLE, 300<<16 | 160<<0},// leader idle 4500
@@ -358,8 +357,10 @@ void setremotereg(const remotereg_t *r);
 
 
 //remote config  ioctl  cmd
+#define REMOTE_IOC_INFCODE_CONFIG       _IOW_BAD('I',13,sizeof(short))
 #define REMOTE_IOC_RESET_KEY_MAPPING        _IOW_BAD('I',3,sizeof(short))
 #define REMOTE_IOC_SET_KEY_MAPPING          _IOW_BAD('I',4,sizeof(short))
+#define REMOTE_IOC_SET_REPEAT_KEY_MAPPING   _IOW_BAD('I',20,sizeof(short))
 #define REMOTE_IOC_SET_MOUSE_MAPPING        _IOW_BAD('I',5,sizeof(short))
 #define REMOTE_IOC_SET_REPEAT_DELAY         _IOW_BAD('I',6,sizeof(short))
 #define REMOTE_IOC_SET_REPEAT_PERIOD        _IOW_BAD('I',7,sizeof(short))
@@ -367,11 +368,9 @@ void setremotereg(const remotereg_t *r);
 #define REMOTE_IOC_SET_REPEAT_ENABLE        _IOW_BAD('I',8,sizeof(short))
 #define REMOTE_IOC_SET_DEBUG_ENABLE         _IOW_BAD('I',9,sizeof(short))
 #define REMOTE_IOC_SET_MODE                 _IOW_BAD('I',10,sizeof(short))
-#define REMOTE_IOC_INFCODE_CONFIG           _IOW_BAD('I',13,sizeof(short))
-#define REMOTE_IOC_SET_REPEAT_KEY_MAPPING   _IOW_BAD('I',20,sizeof(short))
-#define REMOTE_IOC_SET_RELEASE_DELAY        _IOW_BAD('I',99,sizeof(short))
 
-#define REMOTE_IOC_SET_CUSTOMCODE           _IOW_BAD('I',100,sizeof(short))
+#define REMOTE_IOC_SET_CUSTOMCODE       _IOW_BAD('I',100,sizeof(short))
+#define REMOTE_IOC_SET_RELEASE_DELAY        _IOW_BAD('I',99,sizeof(short))
 
 //reg
 #define REMOTE_IOC_SET_REG_BASE_GEN         _IOW_BAD('I',101,sizeof(short))
@@ -379,7 +378,7 @@ void setremotereg(const remotereg_t *r);
 #define REMOTE_IOC_SET_REG_LEADER_ACT       _IOW_BAD('I',103,sizeof(short))
 #define REMOTE_IOC_SET_REG_LEADER_IDLE      _IOW_BAD('I',104,sizeof(short))
 #define REMOTE_IOC_SET_REG_REPEAT_LEADER    _IOW_BAD('I',105,sizeof(short))
-#define REMOTE_IOC_SET_REG_BIT0_TIME        _IOW_BAD('I',106,sizeof(short))
+#define REMOTE_IOC_SET_REG_BIT0_TIME         _IOW_BAD('I',106,sizeof(short))
 
 //sw
 #define REMOTE_IOC_SET_BIT_COUNT            _IOW_BAD('I',107,sizeof(short))
@@ -414,8 +413,6 @@ void setremotereg(const remotereg_t *r);
 #define   REMOTE_IOC_SET_PAGEUP_KEY_SCANCODE _IOW_BAD('I', 137, sizeof(short))
 #define   REMOTE_IOC_SET_PAGEDOWN_KEY_SCANCODE _IOW_BAD('I', 138, sizeof(short))
 #define   REMOTE_IOC_SET_RELT_DELAY     _IOW_BAD('I',140,sizeof(short))
-#define   REMOTE_IOC_HARDWARE_CHECK_ENABLE     _IOW_BAD('I',141,sizeof(short))
-
 
 #define REMOTE_HW_DECODER_STATUS_MASK       (0xf<<4)
 #define REMOTE_HW_DECODER_STATUS_OK         (0<<4)
@@ -501,8 +498,6 @@ struct remote {
 	int (*key_report)(struct remote *);
 	void (*key_release_report)(struct remote *);
 	void (*remote_send_key)(struct input_dev *, unsigned int,unsigned int,int);
-
-	int hardware_check_enable;
 };
 
 extern type_printk input_dbg;

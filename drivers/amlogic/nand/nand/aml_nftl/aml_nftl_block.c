@@ -222,7 +222,7 @@ static int aml_nftl_add_cache_list(struct aml_nftl_blk_t *aml_nftl_blk, uint32_t
 	if (!cache_node->buf) {
 		aml_nftl_dbg("cache buf need malloc %d\n", aml_nftl_blk->cache_buf_cnt);
 		cache_node->buf = aml_nftl_malloc(aml_nftl_info->writesize);
-		if (!cache_node->buf) 
+		if (!cache_node->buf)
 			return -ENOMEM;
 		cache_node->bounce_buf_num = -1;
 	}
@@ -301,7 +301,7 @@ static int aml_nftl_read_data(struct aml_nftl_blk_t *aml_nftl_blk, unsigned long
 				if (error)
 					return error;
 				aml_nftl_blk->cache_sect_addr = read_sect_addr;
-			}	
+			}
 			memcpy(buf + buf_offset, aml_nftl_blk->cache_buf, total_blk_count * 512);
 		}
 	}
@@ -497,7 +497,7 @@ int aml_nftl_init_bounce_buf(struct mtd_blktrans_dev *dev, struct request_queue 
     spin_unlock_irq(rq->queue_lock);
 
 	aml_nftl_blk->req = NULL;
-	
+
 	aml_nftl_blk->sg = aml_nftl_malloc(sizeof(struct scatterlist));
 	if (!aml_nftl_blk->sg) {
 		ret = -ENOMEM;
@@ -737,7 +737,7 @@ static int aml_nftl_thread(void *arg)
 		aml_nftl_info = aml_nftl_blk->aml_nftl_info;
 		aml_nftl_wl = aml_nftl_info->aml_nftl_wl;
 
-		if ((aml_nftl_blk->cache_buf_status == NFTL_CACHE_STATUS_READY) 
+		if ((aml_nftl_blk->cache_buf_status == NFTL_CACHE_STATUS_READY)
 			|| (aml_nftl_blk->cache_buf_status == NFTL_CACHE_STATUS_READY_DONE)
 			|| (aml_nftl_blk->cache_buf_status == NFTL_CACHE_STATUS_DONE)) {
 
@@ -817,13 +817,13 @@ static int aml_nftl_reboot_notifier(struct notifier_block *nb, unsigned long pri
 
     aml_nftl_dbg("%s, %d nftl flush all cache data: %d\n", __func__, __LINE__,
             aml_nftl_blk->cache_buf_cnt);
-            
+
     mutex_lock(&aml_nftl_lock);
     //aml_nftl_dbg("nftl reboot flush cache data: %d\n", aml_nftl_blk->cache_buf_cnt);
     if (aml_nftl_blk->cache_buf_cnt > 0)
         error = aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
     mutex_unlock(&aml_nftl_lock);
-               
+
     if(aml_nftl_blk->nftl_thread!=NULL){
         kthread_stop(aml_nftl_blk->nftl_thread);
         aml_nftl_blk->nftl_thread=NULL;
@@ -886,7 +886,7 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 		aml_nftl_dbg("aml_nftl_init_bounce_buf  failed\n");
 		return;
     }
-    
+
     aml_nftl_dbg("aml_nftl_add_mtd ok\n");
     return;
 }
@@ -942,7 +942,7 @@ static struct mtd_blktrans_ops aml_nftl_tr = {
 	.release	= aml_nftl_release,
 #if 0 //removed for cost too much time while count free sectors at the time of mounting FS.
 	.update_blktrans_sysinfo = aml_nftl_update_blktrans_sysinfo,
-#endif	
+#endif
 	.do_blktrans_request = do_nftltrans_request,
 	.writesect	= aml_nftl_writesect,
 	.flush		= aml_nftl_flush,

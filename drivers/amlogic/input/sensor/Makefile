@@ -26,7 +26,6 @@ obj-$(CONFIG_GRAVITY_STK8312)	+= stk831x.o
 
 obj-$(CONFIG_GRAVITY_MXC622X)     += mxc622x.o
 obj-$(CONFIG_GRAVITY_MXC6255XC)     += mxc6255xc.o
-obj-$(CONFIG_GRAVITY_STK8BAXX)     +=stk8baxx.o
 
 #GYROSCOPE
 obj-$(CONFIG_GYROSCOPE_L3GD20)    += l3gd20_gyr.o
@@ -41,4 +40,3 @@ obj-$(CONFIG_LIGHT_LTR501)	+= ltr501_als.o
 obj-$(CONFIG_LIGHT_STK220X) += stk220x_poll.o
 obj-$(CONFIG_LIGHT_LTR558) += ltr558_pls.o
 obj-$(CONFIG_LIGHT_ISL29023) += isl29023.o
-

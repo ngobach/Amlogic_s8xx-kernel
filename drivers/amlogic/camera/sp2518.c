@@ -225,7 +225,7 @@ struct v4l2_querymenu sp2518_qmenu_wbmode[] = {
     },{
         .id         = V4L2_CID_DO_WHITE_BALANCE,
         .index      = CAM_WB_FLUORESCENT,
-        .name       = "fluorescent", 
+        .name       = "fluorescent",
         .reserved   = 0,
     },{
         .id         = V4L2_CID_DO_WHITE_BALANCE,
@@ -640,7 +640,7 @@ struct aml_camera_i2c_fig_s SP2518_script[] = {
 {0x99,0x00},
 {0x9a,0x01},
 {0x9b,0x00},
-//Status    
+//Status
 {0xfd,0x01},
 {0xce,0x48},
 {0xcf,0x05},
@@ -3234,4 +3234,3 @@ static struct i2c_driver sp2518_i2c_driver = {
 };
 
 module_i2c_driver(sp2518_i2c_driver);
-

@@ -55,9 +55,7 @@ static int get_input_format(struct vframe_s* vf) {
     int format = GE2D_FORMAT_M24_NV21;
 
     if (vf->type & VIDTYPE_VIU_422) {
-        if (vf->type & VIDTYPE_VIU_FIELD) {
-            format = GE2D_FORMAT_S16_YUV422;
-        } else if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
+        if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
             format = GE2D_FORMAT_S16_YUV422 | (GE2D_FORMAT_S16_YUV422B & (3 << 3));
         } else if ((vf->type & 3) == VIDTYPE_INTERLACE_TOP) {
             format = GE2D_FORMAT_S16_YUV422 | (GE2D_FORMAT_S16_YUV422T & (3 << 3));
@@ -65,9 +63,7 @@ static int get_input_format(struct vframe_s* vf) {
             format = GE2D_FORMAT_S16_YUV422;
         }
     } else if (vf->type & VIDTYPE_VIU_NV21) {
-        if (vf->type & VIDTYPE_VIU_FIELD) {
-            format = GE2D_FORMAT_M24_NV21;
-        } else if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
+        if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
             format = GE2D_FORMAT_M24_NV21 | (GE2D_FORMAT_M24_NV21B & (3 << 3));
         } else if ((vf->type & 3) == VIDTYPE_INTERLACE_TOP) {
             format = GE2D_FORMAT_M24_NV21 | (GE2D_FORMAT_M24_NV21T & (3 << 3));
@@ -75,9 +71,7 @@ static int get_input_format(struct vframe_s* vf) {
             format = GE2D_FORMAT_M24_NV21;
         }
     } else {
-        if (vf->type & VIDTYPE_VIU_FIELD) {
-            format = GE2D_FORMAT_M24_YUV420;
-        } else if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
+        if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
             format = GE2D_FORMAT_M24_YUV420 | (GE2D_FMT_M24_YUV420B & (3 << 3));
         } else if ((vf->type & 3) == VIDTYPE_INTERLACE_TOP) {
             format = GE2D_FORMAT_M24_YUV420 | (GE2D_FORMAT_M24_YUV420T & (3 << 3));
@@ -328,11 +322,6 @@ int ppmgr2_process(struct vframe_s* vf, struct ppmgr2_device *ppd, int index) {
     ge2d_context_t *context = ppd->context;
     config_para_ex_t* ge2d_config = &(ppd->ge2d_config);
     int angle = (ppd->angle + src_vf->orientation) % 4;
-    if (src_vf->type & VIDTYPE_INTERLACE) {
-        if ((ppd->bottom_first && src_vf->type & 0x2) || (ppd->bottom_first == 0 && (src_vf->type & 0x2) == 0)) {
-            return -EAGAIN;
-        }
-    }
 
     src_position[0] = 0;
     src_position[1] = 0;
@@ -353,10 +342,18 @@ int ppmgr2_process(struct vframe_s* vf, struct ppmgr2_device *ppd, int index) {
     ge2d_angle_config(angle, ge2d_config);
     paint_mode_convert(ppd->paint_mode, src_position, dst_paint_position, dst_plane_position);
 
-    if (src_vf->type & VIDTYPE_INTERLACE) {
+    if(src_vf->type & VIDTYPE_INTERLACE) {
         src_position[3] = src_vf->height >> 1;
     }
     ret = ge2d_paint_dst(context, ge2d_config, dst_canvas_id, dst_pixel_format, src_position, dst_paint_position, dst_plane_position);
+
+//#ifdef GE2D_DEINTERLACE
+    if (src_vf->type & VIDTYPE_INTERLACE) {
+        if ((ppd->bottom_first && src_vf->type & 0x2) || (ppd->bottom_first == 0 && (src_vf->type & 0x2) == 0)) {
+		return -EAGAIN;
+        }
+    }
+//#endif
     return ret;
 }
 

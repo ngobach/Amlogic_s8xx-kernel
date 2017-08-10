@@ -131,4 +131,3 @@ module_exit(nulldisp_exit);
 MODULE_DESCRIPTION("AMLOGIC NullDisp ");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Tim Yao <timyao@amlogic.com>");
-

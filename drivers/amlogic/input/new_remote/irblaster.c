@@ -40,7 +40,12 @@
 #include <mach/gpio.h>
 #include <linux/irq.h>
 #include "irblaster.h"
-
+//#define DEBUG
+#ifdef DEBUG
+#define irblaster_dbg(fmt, args...) printk(KERN_INFO "ir_blaster: " fmt, ##args)
+#else
+#define irblaster_dbg(fmt, args...)
+#endif
 
 #define DEVICE_NAME "meson-irblaster"
 #define DEIVE_COUNT 32
@@ -58,106 +63,34 @@ static void aml_irblaster_tasklet(void);
 static DEFINE_MUTEX(irblaster_file_mutex);
 static void ir_hardware_release(void);
 static void ir_hardware_init(void);
-static int debug_enable = 0x00;
-
-static int irblaster_dbg(const char* fmt, ...)
-{
-	va_list args;
-	int r;
-
-	if (!debug_enable)
-		return 0;
-	va_start(args, fmt);
-	r = vprintk(fmt, args);
-	va_end(args);
-	return r;
-}
-
-static int send_bit(unsigned int hightime, unsigned int lowtime)
-{
-	unsigned int count_delay;
-	uint32_t val;
-
-	//[11:10] = 2'b01,then set the timebase 10us.
-	//[9:0] = 10'd,the timecount = N+1;
-	count_delay = (((hightime*10-1)*38)/1000)&0x3ff;
-	val = (0x10000 & ~(1<<12)) | (3<<10) | (count_delay<<0);
-	aml_write_reg32( P_AO_IR_BLASTER_ADDR2, val);
-
-	//timeleve = 1;
-	//[11:10] = 2'b11,then set the timebase 26.5us.
-	//[9:0] = 10'd,the timecount = N+1;
-	count_delay = (lowtime-1) & 0x3ff;
-	val = (0x10000 | (1<<12)) | (1<<10) | (count_delay<<0);
-	aml_write_reg32( P_AO_IR_BLASTER_ADDR2, val);
-
-	return 0;
-}
-
-static void send_all_frame(struct blaster_window * cw)
-{
+static void send_all_frame(struct blaster_window * creat_window){
 	int i,k;
-	int exp = 0x00;
-	unsigned int* pData;
-
-	irblaster_dbg("cw->winNum = %d\n", cw->winNum);
-	irblaster_dbg("cw->winArray = ");
-	for ( i = 0; i < cw->winNum; i++ ) {
-		irblaster_dbg("%d,", cw->winArray[i]);
-		if ( i % 10 == 9 )
-			irblaster_dbg("\n");
-	}
-	irblaster_dbg("\n");
-
-	aml_set_reg32_mask(P_AO_RTI_GEN_CNTL_REG0, (1<<23));
-	udelay(2);
-	aml_clr_reg32_mask(P_AO_RTI_GEN_CNTL_REG0, (1<<23));
-	/*set the modulator_tb = 2'10; 1us*/
-	aml_set_reg32_mask(P_AO_IR_BLASTER_ADDR0, (2<<12));
-	/*set mod_high_count = 13;*/
-	aml_set_reg32_mask(P_AO_IR_BLASTER_ADDR1, (12<<16));
-	/*set mod_low_count = 13;*/
-	aml_set_reg32_mask(P_AO_IR_BLASTER_ADDR1, (12<<0));
-	aml_set_reg32_mask(P_AO_IR_BLASTER_ADDR0, (1<<2));
-//	udelay(1);
-//	aml_clr_reg32_mask(P_AO_IR_BLASTER_ADDR0, (1<<2));
-	aml_set_reg32_mask(P_AO_IR_BLASTER_ADDR0, (1<<0));
-
-	k = cw->winNum;
-	exp = cw->winNum / 10;
-	pData = cw->winArray;
-
-	while (exp) {
-#define SEND_BIT_NUM 5
-		for ( i = 0; i < SEND_BIT_NUM; i++ ) {
-			send_bit( *pData, *(pData+1));
-			irblaster_dbg("%d,%d\n", *pData, *(pData+1));
-			pData += 2;
+	// set init_high valid and enable the ir_blaster
+	irblaster_dbg("Enable the ir_blaster, and create a new format !! \n");
+	aml_write_reg32( P_AO_IR_BLASTER_ADDR0, aml_read_reg32(P_AO_IR_BLASTER_ADDR0)| (2<<12));     //set the modulator_tb = 2'10; 1us
+	aml_write_reg32( P_AO_IR_BLASTER_ADDR1, aml_read_reg32(P_AO_IR_BLASTER_ADDR1)| (12<<16));    //set mod_high_count = 13;
+	aml_write_reg32( P_AO_IR_BLASTER_ADDR1, aml_read_reg32(P_AO_IR_BLASTER_ADDR1)| (12<<0));     //set mod_low_count = 13;
+	aml_write_reg32( P_AO_IR_BLASTER_ADDR0, aml_read_reg32(P_AO_IR_BLASTER_ADDR0)| (1<<2) | (1<<0));
+	udelay(1);
+	aml_write_reg32( P_AO_IR_BLASTER_ADDR0, aml_read_reg32(P_AO_IR_BLASTER_ADDR0)| (1<<2) | (1<<0));
+		k = creat_window->winNum;
+	if(creat_window->winNum){
+		for(i =0; i < k/2; i++){
+			aml_write_reg32( P_AO_IR_BLASTER_ADDR2, (0x10000 & ~(1<<12))    //timeleve = 0;
+					| (3<<10)     //[11:10] = 2'b01,then set the timebase 10us.
+			//		| ((((creat_window->winArray[2*i])*10-1)/26)<<0)    //[9:0] = 10'd,the timecount = N+1;
+					| (((((creat_window->winArray[2*i])*10-1)*38)/1000)<<0)    //[9:0] = 10'd,the timecount = N+1;
+				       );
+			aml_write_reg32( P_AO_IR_BLASTER_ADDR2, (0x10000  | (1<<12))     //timeleve = 1;
+					| (1<<10)     //[11:10] = 2'b11,then set the timebase 26.5us.
+					| ((((creat_window->winArray[2*i+1])-1))<<0)     //[9:0] = 10'd,the timecount = N+1;
+				//	| ((((creat_window->winArray[2*i+1])-1))<<0)     //[9:0] = 10'd,the timecount = N+1;
+				       );
 		}
-
-		while (!(aml_read_reg32(P_AO_IR_BLASTER_ADDR0) & (1<<24))) ;
-		while (aml_read_reg32(P_AO_IR_BLASTER_ADDR0) & (1<<26)) ;
-#if 0
-		aml_clr_reg32_mask(P_AO_IR_BLASTER_ADDR0, (1<<0));
-		udelay(1);
-		aml_set_reg32_mask(P_AO_IR_BLASTER_ADDR0, (1<<0));
-#endif
-		aml_set_reg32_mask(P_AO_RTI_GEN_CNTL_REG0, (1<<23));
-		udelay(2);
-		aml_clr_reg32_mask(P_AO_RTI_GEN_CNTL_REG0, (1<<23));
-		exp--;
-		irblaster_dbg("exp=%d\n",exp);
-	}
-	exp = (cw->winNum % 10) & (~(1));
-	irblaster_dbg("exp2=%d\n",exp);
-	for ( i = 0; i < exp; ) {
-		send_bit(*pData, *(pData+1));
-		pData += 2;
-		i += 2;
 	}
 	irblaster_dbg("The all frame finished !!\n");
-}
 
+}
 #if 0
 static void send_nec_frame(struct blaster_window * creat_window){
 	int i;
@@ -325,108 +258,45 @@ static void send_duokan_frame(struct blaster_window *creat_window){
 
 #endif
 
-static ssize_t show_debug(struct device* dev,
-	struct device_attribute* attr, char* buf)
+static ssize_t dbg_operate(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
-	if (debug_enable)
-		sprintf(buf, "debug=enable\n");
-	else
-		sprintf(buf, "debug=disable\n");
-	return strlen(buf);
+	irblaster_dbg("Enter dbg mode ...\n");
+	if(!strncmp(buf, "v", 1)) {
+		printk("Test printk\n");
+	}
+	else if(!strncmp(buf, "t", 1)) {
+		printk("Test printk!!!!\n");
+	}
+	return 16;
 }
 
-static ssize_t store_debug(struct device * dev,
-	struct device_attribute *attr, const char * buf, size_t count)
-{
-	if (!strncmp(buf, "enable", 1)) {
-		debug_enable = 1;
-		printk("enable debug\n");
-	}
-	else if(!strncmp(buf, "disable", 1)) {
-		debug_enable = 0;
-		printk("disable debug\n");
-	}
-	return strlen(buf);;
-}
-
-static ssize_t show_key_value(struct device * dev,
-	struct device_attribute *attr, char * buf)
+static ssize_t show_key_value(struct device * dev, struct device_attribute *attr, char * buf)
 {
 	int i = 0;
 	char tmp[64];
 	memset(buf, 0, PAGE_SIZE);
 	sprintf(tmp, "codelenth=\"%d\" code=\"", rec_win.winNum);
 	strcat(buf, tmp);
-	for ( i=0; i < rec_win.winNum; i++) {
+	for(i=0; i<rec_win.winNum; i++)
+	{
 		sprintf(tmp, "%d,", rec_win.winArray[i]);
 		strcat(buf, tmp);
 	}
-	strcat(buf, "\n");
+	strcat(buf, "\"\n");
 	return strlen(buf);
 }
 
-static ssize_t show_log(struct device * dev,
-	struct device_attribute *attr, char * buf)
+
+static ssize_t show_log(struct device * dev, struct device_attribute *attr, char * buf)
 {
 	memset(buf, 0, PAGE_SIZE);
 	strcpy(buf, logbuf);
 	return strlen(buf);
 }
 
-static ssize_t show_send_value(struct device * dev,
-	struct device_attribute *attr, char * buf)
-{
-	int i = 0;
-	char tmp[64];
-	memset(buf, 0, PAGE_SIZE);
-	sprintf(tmp, "codelenth=%d\n", send_win.winNum);
-	strcat(buf, tmp);
-	for ( i = 0; i < send_win.winNum; i++) {
-		sprintf(tmp, "%d,", send_win.winArray[i]);
-		strcat(buf, tmp);
-	}
-	strcat(buf, "\n");
-	return strlen(buf);
-
-}
-
-static ssize_t store_key_code(struct device * dev,
-	struct device_attribute *attr, const char * buf, size_t count)
-{
-	int i;
-	static struct blaster_window win;
-	static	int f[] = {
-		1901, 4453, 625, 1614, 625, 1588, 625, 1614, 625, 442,
-		625, 442, 625, 468, 625, 442, 625, 494, 572, 1614,
-		625, 1588, 625, 1614, 625, 494, 572, 442, 651, 442,
-		625, 442, 625, 442, 625, 1614, 625, 1588, 651, 1588,
-		625, 442, 625, 494, 598, 442, 625, 442, 625, 520,
-		572, 442, 625, 442, 625, 442, 651, 1588, 625, 1614,
-		625, 1588, 625, 1614, 625, 1588, 625, 48958
-	};
-
-	win.winNum = sizeof(f)/sizeof(f[0]);
-	for ( i = 0; i < win.winNum; i++)
-		win.winArray[i] = f[i];
-	send_all_frame(&win);
-	return count;
-}
-
-static ssize_t store_hard_init(struct device* dev,
-	struct device_attribute* attr, const char* buf, size_t count)
-
-{
-	printk("ir_blaster hardware init\n");
-	ir_hardware_init();
-	return strlen(buf);
-}
-
-static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, show_debug, store_debug);
+static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, dbg_operate);
 static DEVICE_ATTR(keyvalue, S_IWUSR | S_IRUGO, show_key_value, NULL);
 static DEVICE_ATTR(log, S_IWUSR | S_IRUGO, show_log, NULL);
-static DEVICE_ATTR(sendvalue, S_IWUSR | S_IRUGO, show_send_value, NULL);
-static DEVICE_ATTR(key_code, S_IWUSR | S_IRUGO, NULL, store_key_code);
-static DEVICE_ATTR(hard_init,S_IWUSR | S_IRUGO, NULL,  store_hard_init);
 
 static int aml_ir_irblaster_open(struct inode *inode, struct file *file)
 {
@@ -437,7 +307,9 @@ static int aml_ir_irblaster_open(struct inode *inode, struct file *file)
 }
 
 static long aml_ir_irblaster_ioctl(struct file *filp, unsigned int cmd, unsigned long args)
+
 {
+	int i;
 	s32 r = 0;
 	unsigned long flags;
 	void __user *argp = (void __user *)args;
@@ -448,6 +320,10 @@ static long aml_ir_irblaster_ioctl(struct file *filp, unsigned int cmd, unsigned
 		case IRRECEIVER_IOC_SEND:
 			if (copy_from_user(&send_win, argp, sizeof(struct blaster_window)))
 				return -EFAULT;
+
+			for(i=0; i<send_win.winNum; i++)
+				irblaster_dbg("idx[%d]:[%d]\n", i, send_win.winArray[i]);
+			irblaster_dbg("send win [%d]\n", send_win.winNum);
 			local_irq_save(flags);
 			send_all_frame(&send_win);
 			local_irq_restore(flags);
@@ -479,7 +355,6 @@ static long aml_ir_irblaster_ioctl(struct file *filp, unsigned int cmd, unsigned
 
 	return r;
 }
-
 static int aml_ir_irblaster_release(struct inode *inode, struct file *file)
 {
 	irblaster_dbg("aml_ir_irblaster_release()\n");
@@ -488,14 +363,12 @@ static int aml_ir_irblaster_release(struct inode *inode, struct file *file)
 	return 0;
 
 }
-
 static const struct file_operations aml_ir_irblaster_fops = {
 	.owner		= THIS_MODULE,
 	.open		= aml_ir_irblaster_open,
 	.unlocked_ioctl = aml_ir_irblaster_ioctl,
 	.release	= aml_ir_irblaster_release,
 };
-
 static irqreturn_t irblaster_interrupt(int irq, void *dev_id){
 	aml_irblaster_tasklet();
 	return IRQ_HANDLED;
@@ -546,7 +419,6 @@ static void ir_hardware_init(void)
 		return;
 	}
 }
-
 static void ir_hardware_release(void)
 {
 	//unsigned int control_value;
@@ -554,7 +426,6 @@ static void ir_hardware_release(void)
 	am_remote_write_reg(AM_IR_DEC_REG1, temp_value1);
 	free_irq(INT_REMOTE,irblaster_interrupt);
 }
-
 static int  aml_ir_irblaster_probe(struct platform_device *pdev)
 {
 	int r;
@@ -574,8 +445,7 @@ static int  aml_ir_irblaster_probe(struct platform_device *pdev)
 	irblaster_device.owner = THIS_MODULE;
 	cdev_add(&(irblaster_device), irblaster_id, DEIVE_COUNT);
 
-	irblaster_dev = device_create(irblaster_class, NULL,
-		irblaster_id, NULL, "irblaster%d", 0);
+	irblaster_dev = device_create(irblaster_class, NULL, irblaster_id, NULL, "irblaster%d", 0);
 
 	if (irblaster_dev == NULL) {
 		printk("irblaster_dev create error\n");
@@ -586,24 +456,18 @@ static int  aml_ir_irblaster_probe(struct platform_device *pdev)
 	device_create_file(irblaster_dev, &dev_attr_debug);
 	device_create_file(irblaster_dev, &dev_attr_keyvalue);
 	device_create_file(irblaster_dev, &dev_attr_log);
-	device_create_file(irblaster_dev, &dev_attr_sendvalue);
-	device_create_file(irblaster_dev, &dev_attr_key_code);
-	device_create_file(irblaster_dev, &dev_attr_hard_init);
 	return 0;
 }
 
 static int aml_ir_irblaster_remove(struct platform_device *pdev)
 {
-	irblaster_dbg("remove IR Reccateiver\n");
+	irblaster_dbg("remove IR Receiver\n");
 
 	/* unregister everything */
 	/* Remove the cdev */
 	device_remove_file(irblaster_dev, &dev_attr_debug);
 	device_remove_file(irblaster_dev, &dev_attr_keyvalue);
 	device_remove_file(irblaster_dev, &dev_attr_log);
-	device_remove_file(irblaster_dev, &dev_attr_sendvalue);
-	device_remove_file(irblaster_dev, &dev_attr_key_code);
-	device_remove_file(irblaster_dev, &dev_attr_hard_init);
 
 	cdev_del(&irblaster_device);
 
@@ -614,13 +478,11 @@ static int aml_ir_irblaster_remove(struct platform_device *pdev)
 	unregister_chrdev_region(irblaster_id, DEIVE_COUNT);
 	return 0;
 }
-
 static const struct of_device_id irblaster_dt_match[]={
 	{	.compatible 	= "amlogic,aml_irblaster",
 	},
 	{},
 };
-
 static struct platform_driver aml_ir_irblaster_driver = {
 	.probe		= aml_ir_irblaster_probe,
 	.remove		= aml_ir_irblaster_remove,
@@ -637,7 +499,7 @@ static struct platform_device* aml_ir_irblaster_device = NULL;
 
 static int __init aml_ir_irblaster_init(void)
 {
-	irblaster_dbg("IR Receiver Driver Init \n");
+	irblaster_dbg("IR Receiver Driver Init\n");
 	aml_ir_irblaster_device = platform_device_alloc(DEVICE_NAME,-1);
 	if (!aml_ir_irblaster_device) {
 		irblaster_dbg("failed to alloc aml_ir_irblaster_device\n");
@@ -672,5 +534,3 @@ module_exit(aml_ir_irblaster_exit);
 MODULE_AUTHOR("platform-beijing");
 MODULE_DESCRIPTION("IR BLASTER Driver");
 MODULE_LICENSE("GPL");
-
-

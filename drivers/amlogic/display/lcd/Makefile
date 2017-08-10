@@ -2,7 +2,5 @@
 # Makefile for Amlogic LCD Drivers
 #
 
-obj-y					+= lcd_notify.o
-obj-$(CONFIG_AML_LCD_TV)		+= aml_lcd_tv.o
-obj-$(CONFIG_AML_LCD_TV)		+= aml_tv_lcd_port/
-obj-$(CONFIG_AML_LCD_EXTERN)		+= aml_lcd_extern/
+obj-$(CONFIG_AML_TV_LCD)		+= aml_lcd.o
+obj-$(CONFIG_AML_TV_LCD_V2)		+= aml_lcd_v2.o

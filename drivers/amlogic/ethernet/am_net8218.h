@@ -13,7 +13,7 @@
 #define ETH_MAC_4_GMII_Addr_CR_P                2
 #define ETH_MAC_4_GMII_Addr_GR_P                6
 #define ETH_MAC_4_GMII_Addr_PA_P                11
-  
+
 #define ETH_MAC_4_GMII_Addr_CR_60_100           (0<<ETH_MAC_4_GMII_Addr_CR_P)
 #define ETH_MAC_4_GMII_Addr_CR_100_150          (1<<ETH_MAC_4_GMII_Addr_CR_P)
 #define ETH_MAC_4_GMII_Addr_CR_20_35            (2<<ETH_MAC_4_GMII_Addr_CR_P)
@@ -179,7 +179,7 @@ struct am_net_private {
 	struct mii_bus *mii;
 	phy_interface_t phy_interface;
 	int phy_addr;
-	int phy_mask; 
+	int phy_mask;
 	struct phy_device *phydev;
 	int oldlink;
 	int speed;
@@ -189,4 +189,4 @@ struct am_net_private {
 
 };
 
-#endif			
+#endif

@@ -1372,7 +1372,7 @@ EXPORT_SYMBOL(osd_ext_resume_early);
 #endif
 
 static struct resource memobj;
-static int 
+static int
 osd_ext_probe(struct platform_device *pdev)
 {
 	int r,ret;
@@ -1675,4 +1675,3 @@ module_exit(osd_ext_remove_module);
 MODULE_DESCRIPTION("AMLOGIC framebuffer driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Tim Yao <timyao@amlogic.com>");
-

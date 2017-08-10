@@ -16,8 +16,6 @@
 #include <linux/fs.h>
 #include <linux/device.h>
 #include <linux/cdev.h>
-#include <linux/platform_device.h>
-#include <linux/of.h>
 #include <linux/string.h>
 #include <linux/mm.h>
 #include <linux/slab.h>
@@ -47,8 +45,6 @@
 #define AMVECM_MODULE_NAME        "amvecm"
 #define AMVECM_DEVICE_NAME        "amvecm"
 #define AMVECM_CLASS_NAME         "amvecm"
-
-
 typedef struct amvecm_dev_s {
     dev_t                       devt;
     struct cdev                 cdev;
@@ -75,8 +71,6 @@ MODULE_PARM_DESC(vecm_latch_flag, "\n vecm_latch_flag \n");
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
 #define VLOCK_MODE_ENC          0
 #define VLOCK_MODE_PLL         	1
-#define XTAL_VLOCK_CLOCK        24000000         //vlock use xtal clock
-
 
 unsigned int vlock_mode = VLOCK_MODE_PLL;//0:enc;1:pll
 module_param(vlock_mode, uint, 0664);
@@ -105,6 +99,7 @@ static vframe_source_mode_t pre_source_mode = VFRAME_SOURCE_MODE_OTHERS;
 static unsigned int pre_input_freq = 0;
 static unsigned int pre_output_freq = 0;
 static unsigned int vlock_dis_cnt = 0;
+
 
 unsigned int sync_3d_h_start = 0;
 module_param(sync_3d_h_start, uint, 0664);
@@ -143,7 +138,11 @@ unsigned int pq_load_en = 1;// load pq table enable/disable
 module_param(pq_load_en, uint, 0664);
 MODULE_PARM_DESC(pq_load_en, "\n pq_load_en \n");
 
-bool gamma_en = 1; // wb_gamma_en enable/disable
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
+bool gamma_en = 0;  // wb_gamma_en enable/disable
+#else
+bool gamma_en = 1;
+#endif
 module_param(gamma_en, bool, 0664);
 MODULE_PARM_DESC(gamma_en, "\n gamma_en \n");
 
@@ -151,25 +150,6 @@ bool wb_en = 1;  // wb_en enable/disable
 module_param(wb_en, bool, 0664);
 MODULE_PARM_DESC(wb_en, "\n wb_en \n");
 
-static int pq_on_off = 2; // 1 :on    0 :off
-module_param(pq_on_off, uint, 0664);
-MODULE_PARM_DESC(pq_on_off, "\n pq_on_off \n");
-
-static int cm_on_off = 2; // 1 :on    0 :off
-module_param(cm_on_off, uint, 0664);
-MODULE_PARM_DESC(cm_on_off, "\n cm_on_off \n");
-
-static int dnlp_on_off = 2; // 1 :on    0 :off
-module_param(dnlp_on_off, uint, 0664);
-MODULE_PARM_DESC(dnlp_on_off, "\n dnlp_on_off \n");
-
-static int sharpness_on_off = 2; // 1 :on    0 :off
-module_param(sharpness_on_off, uint, 0664);
-MODULE_PARM_DESC(sharpness_on_off, "\n sharpness_on_off \n");
-
-static int wb_on_off = 2; // 1 :on    0 :off
-module_param(wb_on_off, uint, 0664);
-MODULE_PARM_DESC(wb_on_off, "\n wb_on_off \n");
 
 extern unsigned int cm_size;
 extern unsigned int ve_size;
@@ -177,7 +157,6 @@ extern unsigned int cm2_patch_flag;
 extern struct ve_dnlp_s am_ve_dnlp;
 extern struct ve_dnlp_table_s am_ve_new_dnlp;
 extern int cm_en;//0:disabel;1:enable
-extern int dnlp_en;//0:disabel;1:enable
 extern struct tcon_gamma_table_s video_gamma_table_r;
 extern struct tcon_gamma_table_s video_gamma_table_g;
 extern struct tcon_gamma_table_s video_gamma_table_b;
@@ -211,128 +190,6 @@ static void amvecm_size_patch(void)
 #endif
 
 }
-
-
-//video adj1
-static ssize_t video_adj1_brightness_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-    s32 val = (READ_VPP_REG(VPP_VADJ1_Y) >> 8) & 0x1ff;
-
-    val = (val << 23) >> 23;
-
-    return sprintf(buf, "%d\n", val);
-}
-
-static ssize_t video_adj1_brightness_store(struct class *cla, struct class_attribute *attr, const char *buf,
-                                      size_t count)
-{
-    size_t r;
-    int val;
-
-    r = sscanf(buf, "%d", &val);
-    if ((r != 1) || (val < -255) || (val > 255)) {
-        return -EINVAL;
-    }
-
-    WRITE_VPP_REG_BITS(VPP_VADJ1_Y, val, 8, 9);
-    WRITE_VPP_REG(VPP_VADJ_CTRL, VPP_VADJ1_EN);
-
-    return count;
-}
-
-static ssize_t video_adj1_contrast_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-    return sprintf(buf, "%d\n", (int)(READ_VPP_REG(VPP_VADJ1_Y) & 0xff) - 0x80);
-}
-
-static ssize_t video_adj1_contrast_store(struct class *cla, struct class_attribute *attr, const char *buf,
-                                    size_t count)
-{
-    size_t r;
-    int val;
-
-    r = sscanf(buf, "%d", &val);
-    if ((r != 1) || (val < -127) || (val > 127)) {
-        return -EINVAL;
-    }
-
-    val += 0x80;
-
-    WRITE_VPP_REG_BITS(VPP_VADJ1_Y, val, 0, 8);
-    WRITE_VPP_REG(VPP_VADJ_CTRL, VPP_VADJ1_EN);
-
-    return count;
-}
-
-//video adj2
-static ssize_t video_adj2_brightness_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-    s32 val = (READ_VPP_REG(VPP_VADJ2_Y) >> 8) & 0x1ff;
-
-    val = (val << 23) >> 23;
-
-    return sprintf(buf, "%d\n", val);
-}
-
-static ssize_t video_adj2_brightness_store(struct class *cla, struct class_attribute *attr, const char *buf,
-                                      size_t count)
-{
-    size_t r;
-    int val;
-
-    r = sscanf(buf, "%d", &val);
-    if ((r != 1) || (val < -255) || (val > 255)) {
-        return -EINVAL;
-    }
-
-    WRITE_VPP_REG_BITS(VPP_VADJ2_Y, val, 8, 9);
-    WRITE_VPP_REG(VPP_VADJ_CTRL, VPP_VADJ2_EN);
-
-    return count;
-}
-
-static ssize_t video_adj2_contrast_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-    return sprintf(buf, "%d\n", (int)(READ_VPP_REG(VPP_VADJ2_Y) & 0xff) - 0x80);
-}
-
-static ssize_t video_adj2_contrast_store(struct class *cla, struct class_attribute *attr, const char *buf,
-                                    size_t count)
-{
-    size_t r;
-    int val;
-
-    r = sscanf(buf, "%d", &val);
-    if ((r != 1) || (val < -127) || (val > 127)) {
-        return -EINVAL;
-    }
-
-    val += 0x80;
-
-    WRITE_VPP_REG_BITS(VPP_VADJ2_Y, val, 0, 8);
-    WRITE_VPP_REG(VPP_VADJ_CTRL, VPP_VADJ2_EN);
-
-    return count;
-}
-
-static ssize_t amvecm_usage_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-	pr_info("Usage:");
-	pr_info("brightness_val range:-255~255\n");
-	pr_info("contrast_val range:-127~127\n");
-	pr_info("saturation_val range:-128~128\n");
-	pr_info("hue_val range:-25~25\n");
-	pr_info("************video brightness & contrast & saturation_hue adj as flow************* \n");
-	pr_info("	echo brightness_val > /sys/class/amvecm/brightness1 \n");
-	pr_info("	echo contrast_val > /sys/class/amvecm/contrast1 \n");
-	pr_info("	echo saturation_val hue_val > /sys/class/amvecm/saturation_hue1 \n");
-	pr_info("************after video+osd blender, brightness & contrast & saturation_hue adj as flow************* \n");
-	pr_info("	echo brightness_val > /sys/class/amvecm/brightness2 \n");
-	pr_info("	echo contrast_val > /sys/class/amvecm/contrast2 \n");
-	pr_info("	echo saturation_val hue_val > /sys/class/amvecm/saturation_hue2 \n");
-	return 0;
-}
-
 
 static void vd1_brightness_contrast(signed int brightness, signed int contrast)
 {
@@ -411,21 +268,49 @@ static void amvecm_bricon_process(void)
 static unsigned int amvecm_vlock_check_input_hz(vframe_t *vf)
 {
 	unsigned int ret_hz = 0;
-	unsigned int duration = vf->duration;
-
-	if ((vf->source_type != VFRAME_SOURCE_TYPE_TUNER) &&
-		(vf->source_type != VFRAME_SOURCE_TYPE_CVBS) &&
+	if((vf->source_type != VFRAME_SOURCE_TYPE_TUNER)&&
+		(vf->source_type != VFRAME_SOURCE_TYPE_CVBS)&&
 		(vf->source_type != VFRAME_SOURCE_TYPE_HDMI))
 		ret_hz = 0;
-	else if (vf->source_type == VFRAME_SOURCE_TYPE_HDMI) {
-		if (duration != 0)
-			ret_hz = (96000 + duration/2)/duration;
-	} else if ((vf->source_type == VFRAME_SOURCE_TYPE_TUNER) ||
-		(vf->source_type == VFRAME_SOURCE_TYPE_CVBS)) {
-		if (vf->source_mode == VFRAME_SOURCE_MODE_NTSC)
+	else if(vf->source_type == VFRAME_SOURCE_TYPE_HDMI){
+		if(((vf->sig_fmt >= TVIN_SIG_FMT_HDMI_640X480P_60HZ)&&
+			(vf->sig_fmt <= TVIN_SIG_FMT_HDMI_1920X1080P_60HZ))||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_2880X480P_60HZ)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_2880X576P_60HZ)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1280X720P_60HZ_FRAME_PACKING)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1920X1080I_60HZ_FRAME_PACKING)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1920X1080I_60HZ_ALTERNATIVE)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_720X480P_60HZ_FRAME_PACKING))
 			ret_hz = 60;
-		else if ((vf->source_mode == VFRAME_SOURCE_MODE_PAL) ||
-			(vf->source_mode == VFRAME_SOURCE_MODE_SECAM))
+		else if(((vf->sig_fmt >= TVIN_SIG_FMT_HDMI_720X576P_50HZ)&&
+			(vf->sig_fmt <= TVIN_SIG_FMT_HDMI_1920X1080P_50HZ))||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1920X1080I_50HZ_B)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1280X720P_50HZ_FRAME_PACKING)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1920X1080I_50HZ_FRAME_PACKING)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1920X1080I_50HZ_ALTERNATIVE)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_720X576P_50HZ_FRAME_PACKING))
+			ret_hz = 50;
+		else if((vf->sig_fmt == TVIN_SIG_FMT_HDMI_1920X1080P_24HZ)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1280X720P_24HZ)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1280X720P_24HZ_FRAME_PACKING)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1920X1080P_24HZ_FRAME_PACKING)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1920X1080P_24HZ_ALTERNATIVE))
+			ret_hz = 24;
+		else if((vf->sig_fmt == TVIN_SIG_FMT_HDMI_1920X1080P_30HZ)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1280X720P_30HZ)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1280X720P_30HZ_FRAME_PACKING)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1920X1080P_30HZ_FRAME_PACKING)||
+			(vf->sig_fmt == TVIN_SIG_FMT_HDMI_1920X1080P_30HZ_ALTERNATIVE))
+			ret_hz = 30;
+		else
+			ret_hz = 0;
+	}
+	else if((vf->source_type == VFRAME_SOURCE_TYPE_TUNER)||
+		(vf->source_type == VFRAME_SOURCE_TYPE_CVBS)){
+		if(vf->source_mode== VFRAME_SOURCE_MODE_NTSC)
+			ret_hz = 60;
+		else if((vf->source_mode== VFRAME_SOURCE_MODE_PAL)||
+			(vf->source_mode== VFRAME_SOURCE_MODE_SECAM))
 			ret_hz = 50;
 		else
 			ret_hz = 0;
@@ -501,13 +386,13 @@ static void amvecm_vlock_setting(vframe_t *vf,unsigned int input_hz,unsigned int
 		/* vlock module output goes to which module */
 		switch(READ_VPP_REG_BITS(VPU_VIU_VENC_MUX_CTRL,0,2)){
 			case 0://ENCL
-				WRITE_VPP_REG_BITS(VPU_VLOCK_CTRL,0,26,2);
+				WRITE_VPP_REG_BITS(VPU_VLOCK_MISC_CTRL,0,26,2);
 				break;
 			case 1://ENCI
-				WRITE_VPP_REG_BITS(VPU_VLOCK_CTRL,2,26,2);
+				WRITE_VPP_REG_BITS(VPU_VLOCK_MISC_CTRL,2,26,2);
 				break;
 			case 2: //ENCP
-				WRITE_VPP_REG_BITS(VPU_VLOCK_CTRL,1,26,2);
+				WRITE_VPP_REG_BITS(VPU_VLOCK_MISC_CTRL,1,26,2);
 				break;
 			default:
 				break;
@@ -517,9 +402,6 @@ static void amvecm_vlock_setting(vframe_t *vf,unsigned int input_hz,unsigned int
 		WRITE_VPP_REG_BITS(VPU_VLOCK_CTRL,0,30,1);//disable to adjust pll
 		WRITE_CBUS_REG_BITS(HHI_HDMI_PLL_CNTL6,1,20,1);//VLOCK_CNTL_EN enable
 		WRITE_VPP_REG_BITS(VPU_VLOCK_CTRL,1,29,1);//enable to adjust pll
-
-		WRITE_VPP_REG_BITS(VPU_VLOCK_CTRL,1,2,1);//clear accum1 value
-		WRITE_VPP_REG_BITS(VPU_VLOCK_CTRL,1,5,1);//clear accum0 value
 	}
 	if((vf->source_type == VFRAME_SOURCE_TYPE_TUNER)||(vf->source_type == VFRAME_SOURCE_TYPE_CVBS))
 		WRITE_VPP_REG_BITS(VPU_VLOCK_CTRL,1,16,3);//Input Vsync source select from tv-decoder
@@ -560,16 +442,11 @@ static void amvecm_vlock_process(vframe_t *vf)
 		if(vlock_sync_limit_flag < 5){
 			vlock_sync_limit_flag++;
 			if(vlock_sync_limit_flag == 5){
-				input_vs_cnt = XTAL_VLOCK_CLOCK/input_hz;
-				//input_vs_cnt = READ_VPP_REG_BITS(VPU_VLOCK_RO_VS_I_DIST,0,28);
-				WRITE_VPP_REG(VPU_VLOCK_LOOP1_IMISSYNC_MAX,input_vs_cnt*125/100);
-				WRITE_VPP_REG(VPU_VLOCK_LOOP1_IMISSYNC_MIN,input_vs_cnt*70/100);
-
-				WRITE_VPP_REG_BITS(VPU_VLOCK_CTRL,0,2,1);//cal accum1 value
-				WRITE_VPP_REG_BITS(VPU_VLOCK_CTRL,0,5,1);//cal accum0 value
+				input_vs_cnt = READ_VPP_REG_BITS(VPU_VLOCK_RO_VS_I_DIST,0,28);
+				WRITE_VPP_REG(VPU_VLOCK_LOOP1_IMISSYNC_MAX,input_vs_cnt*103/100);
+				WRITE_VPP_REG(VPU_VLOCK_LOOP1_IMISSYNC_MIN,input_vs_cnt*97/100);
 			}
 		}
-
 		return;
 	}
 	if(vlock_dis_cnt > 0){
@@ -733,93 +610,7 @@ static ssize_t amvecm_3d_sync_store(struct class *cla, struct class_attribute *a
 }
 
 #endif
-void pq_enable_disable(void)
-{
-
-	if (pq_on_off == 1) {
-		pq_on_off = 2;
-
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL1, 0,0,2);   // open dnlp clock gate
-		dnlp_en = 1;
-		ve_enable_dnlp();
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL0, 0,4,2);   // open cm clock gate
-		cm_en = 1;
-		amcm_enable();
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL0, 0,30,2);	// open sharpness clock gate
-		WRITE_VPP_REG_BITS(VPP_VE_ENABLE_CTRL, 1,1,1);	// sharpness on
-		wb_en = 1;
-		WRITE_VPP_REG_BITS(VPP_GAINOFF_CTRL0, 1,31,1);	 // wb on
-		vecm_latch_flag |= FLAG_GAMMA_TABLE_EN;		//gamma on
-#endif
-	} else if (pq_on_off == 0) {
-		pq_on_off = 2;
-
-		dnlp_en = 0;
-		ve_disable_dnlp();
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL1, 1,0,2);   // open dnlp clock gate
-		cm_en = 0;
-		amcm_disable();
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL0, 1,4,2);   // open cm clock gate
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-		WRITE_VPP_REG_BITS(VPP_VE_ENABLE_CTRL, 0,1,1); //sharpness off
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL0, 1,30,2);	// close sharpness clock gate
-		wb_en = 0;
-		WRITE_VPP_REG_BITS(VPP_GAINOFF_CTRL0, 0,31,1);	 //wb off
-		vecm_latch_flag |= FLAG_GAMMA_TABLE_DIS;	// gamma off
-#endif
-	}
-
-	if (cm_on_off == 1) {
-		cm_on_off = 2;
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL0, 0,4,2);   // open cm clock gate
-		cm_en = 1;
-		amcm_enable();
-	} else if (cm_on_off == 0){
-		cm_on_off = 2;
-		cm_en = 0;
-		amcm_disable();
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL0, 1,4,2);   // open cm clock gate
-	}
-
-	if (dnlp_on_off == 1) {
-		dnlp_on_off = 2;
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL1, 0,0,2);   // open dnlp clock gate
-		dnlp_en = 1;
-		ve_enable_dnlp();
-	} else if (dnlp_on_off == 0){
-		dnlp_on_off = 2;
-		dnlp_en = 0;
-		ve_disable_dnlp();
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL1, 1,0,2);   // open dnlp clock gate
-	}
-
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-	if (sharpness_on_off == 1) {
-		sharpness_on_off = 2;
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL0, 0,30,2);	// open sharpness clock gate
-		WRITE_VPP_REG_BITS(VPP_VE_ENABLE_CTRL, 1,1,1);	// sharpness on
-	} else if (sharpness_on_off == 0){
-		sharpness_on_off = 2;
-		WRITE_VPP_REG_BITS(VPP_VE_ENABLE_CTRL, 0,1,1); //sharpness off
-		WRITE_VPP_REG_BITS(VPP_GCLK_CTRL0, 1,30,2);	// close sharpness clock gate
-	}
-
-	if (wb_on_off == 1) {
-		wb_on_off = 2;
-		wb_en = 1;
-		WRITE_VPP_REG_BITS(VPP_GAINOFF_CTRL0, 1,31,1);	 // wb on
-	} else if (wb_on_off == 0){
-		wb_on_off = 2;
-		wb_en = 0;
-		WRITE_VPP_REG_BITS(VPP_GAINOFF_CTRL0, 0,31,1);	 //wb off
-	}
-
-#endif
-
-}
-
-void amvecm_video_latch(void)
+void amvecm_video_latch(vframe_t *vf)
 {
 	//if (pq_load_en == 0)
 	//	return;
@@ -830,28 +621,17 @@ void amvecm_video_latch(void)
 	amvecm_bricon_process();
 	lvds_freq_process();
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
+	amvecm_vlock_process(vf);
 	amvecm_3d_sync_process();
 	amvecm_3d_black_process();
 #endif
 }
-void amvecm_on_vs(void)
+void amvecm_on_vs(vframe_t *vf)
 {
-	amvecm_video_latch();
-	pq_enable_disable();
+	amvecm_video_latch(vf);
+	ve_on_vs(vf);
 }
-
-void refresh_on_vs(vframe_t *vf)
-{
-	if (vf != NULL) {
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-		amvecm_vlock_process(vf);
-#endif
-		ve_on_vs(vf);
-	}
-}
-
 EXPORT_SYMBOL(amvecm_on_vs);
-EXPORT_SYMBOL(refresh_on_vs);
 
 static int amvecm_open(struct inode *inode, struct file *file)
 {
@@ -1110,12 +890,12 @@ static int parse_para_pq(const char *para, int para_num, int *result)
 	return count;
 }
 
-static ssize_t video_adj1_saturation_hue_show(struct class *cla, struct class_attribute *attr, char *buf)
+static ssize_t amvecm_saturation_hue_pre_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
 	return snprintf(buf, 20, "%d %d\n", saturation_pre, hue_pre);
 }
 
-static ssize_t video_adj1_saturation_hue_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
+static ssize_t amvecm_saturation_hue_pre_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
 {
 	int parsed[2];
 	int i, ma, mb, mab, mc, md;
@@ -1147,7 +927,7 @@ static ssize_t video_adj1_saturation_hue_store(struct class *cla, struct class_a
 	if (mb < -512) mb = -512;
 	mab =  ((ma & 0x3ff) << 16) | (mb & 0x3ff);
 	printk("\n[amvideo..] saturation_pre:%d hue_pre:%d mab:%x\n", saturation_pre,hue_pre,mab);
-	WRITE_VPP_REG(VPP_VADJ1_MA_MB, mab);
+	WRITE_VPP_REG(VPP_VADJ2_MA_MB, mab);
 	mc = (s16)((mab<<22)>>22); // mc = -mb
 	mc = 0 - mc;
 	if (mc > 511)  mc = 511;
@@ -1159,12 +939,12 @@ static ssize_t video_adj1_saturation_hue_store(struct class *cla, struct class_a
 	return count;
 }
 
-static ssize_t video_adj2_saturation_hue_show(struct class *cla, struct class_attribute *attr, char *buf)
+static ssize_t amvecm_saturation_hue_post_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
 	return snprintf(buf, 20, "%d %d\n", saturation_post, hue_post);
 }
 
-static ssize_t video_adj2_saturation_hue_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
+static ssize_t amvecm_saturation_hue_post_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
 {
 	int parsed[2];
 	int i, ma, mb, mab, mc, md;
@@ -1303,150 +1083,6 @@ static ssize_t amvecm_cm2_store(struct class *cls,
 	return count;
 }
 
-static ssize_t amvecm_pq_en_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-	int len = 0;
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-	int sharpness_en_val = 0, gamma_en_val = 0;
-	sharpness_en_val = READ_VPP_REG_BITS(VPP_VE_ENABLE_CTRL, 1,1);
-	gamma_en_val = READ_VPP_REG_BITS(L_GAMMA_CNTL_PORT, GAMMA_EN,1);
-#endif
-	len += sprintf(buf+len, "dnlp_en = %d\n", dnlp_en);
-	len += sprintf(buf+len, "cm_en = %d\n", cm_en);
-	len += sprintf(buf+len, "wb_en = %d\n", wb_en);
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-	len += sprintf(buf+len, "sharpness_en = %d\n", sharpness_en_val);
-	len += sprintf(buf+len, "gamma_en = %d\n", gamma_en_val);
-#endif
-	return len;
-}
-
-static ssize_t amvecm_pq_en_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
-{
-	size_t r;
-	int val;
-	r = sscanf(buf, "%d", &val);
-	if ((r != 1) || ((val != 1) && (val != 0))) {
-		return -EINVAL;
-	}
-	if (val == 1)
-		pq_on_off = 1;
-	else
-		pq_on_off = 0;
-	return count;
-}
-
-static ssize_t amvecm_cm_en_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-	return sprintf(buf, "cm_en = %d\n", cm_en);
-}
-
-static ssize_t amvecm_cm_en_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
-{
-	size_t r;
-	int val;
-	r = sscanf(buf, "%d", &val);
-	if ((r != 1) || ((val != 1) && (val != 0))) {
-		return -EINVAL;
-	}
-	if (val == 1)
-		cm_on_off = 1;
-	else
-		cm_on_off = 0;
-	return count;
-
-}
-
-static ssize_t amvecm_dnlp_en_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-	return sprintf(buf, "dnlp_en = %d\n", dnlp_en);
-}
-
-static ssize_t amvecm_dnlp_en_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
-{
-	size_t r;
-	int val;
-	r = sscanf(buf, "%d", &val);
-	if ((r != 1) || ((val != 1) && (val != 0))) {
-		return -EINVAL;
-	}
-	if (val == 1)
-		dnlp_on_off = 1;
-	else
-		dnlp_on_off = 0;
-	return count;
-
-}
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-static ssize_t amvecm_sharpness_en_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-	int val = READ_VPP_REG_BITS(VPP_VE_ENABLE_CTRL, 1,1);
-
-	return sprintf(buf, "sharpness_en = %d\n", val);
-}
-
-static ssize_t amvecm_sharpness_en_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
-{
-	size_t r;
-	int val;
-	r = sscanf(buf, "%d", &val);
-	if ((r != 1) || ((val != 1) && (val != 0))) {
-		return -EINVAL;
-	}
-	if (val == 1)
-		sharpness_on_off = 1;
-	else
-		sharpness_on_off = 0;
-	return count;
-
-}
-
-static ssize_t amvecm_gamma_en_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-	int val = READ_VPP_REG_BITS(L_GAMMA_CNTL_PORT, GAMMA_EN,1);
-
-	return sprintf(buf, "gamma_en = %d\n", val);
-}
-
-static ssize_t amvecm_gamma_en_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
-{
-	size_t r;
-	int val;
-	r = sscanf(buf, "%d", &val);
-	if ((r != 1) || ((val != 1) && (val != 0))) {
-		return -EINVAL;
-	}
-	if (val == 1)
-		vecm_latch_flag |= FLAG_GAMMA_TABLE_EN;	// gamma off
-	else
-		vecm_latch_flag |= FLAG_GAMMA_TABLE_DIS;	// gamma off
-	return count;
-
-}
-
-static ssize_t amvecm_wb_en_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-	int val = READ_VPP_REG_BITS(VPP_GAINOFF_CTRL0, 31,1);
-
-	return sprintf(buf, "sharpness_en = %d\n", val);
-}
-
-static ssize_t amvecm_wb_en_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
-{
-	size_t r;
-	int val;
-	r = sscanf(buf, "%d", &val);
-	if ((r != 1) || ((val != 1) && (val != 0))) {
-		return -EINVAL;
-	}
-	if (val == 1)
-		wb_on_off = 1;
-	else
-		wb_on_off = 0;
-	return count;
-
-}
-#endif
 
 static ssize_t amvecm_gamma_show(struct class *cls,
 			struct class_attribute *attr,
@@ -1533,56 +1169,7 @@ static ssize_t amvecm_gamma_store(struct class *cls,
 	kfree(gammaB);
 	return count;
 }
-
-static ssize_t amvecm_set_post_matrix_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-	return sprintf(buf, "0x%x\n", (int)(READ_VPP_REG(VPP_MATRIX_CTRL)));
-}
-static ssize_t amvecm_set_post_matrix_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
-{
-	size_t r;
-	int val;
-	r = sscanf(buf, "0x%x", &val);
-	if ((r != 1)  || (val & 0xffff0000)) {
-		return -EINVAL;
-	}
-	WRITE_VPP_REG(VPP_MATRIX_CTRL, val);
-	return count;
-}
-
-static ssize_t amvecm_post_matrix_pos_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-	return sprintf(buf, "0x%x\n", (int)(READ_VPP_REG(VPP_MATRIX_PROBE_POS)));
-}
-static ssize_t amvecm_post_matrix_pos_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
-{
-	size_t r;
-	int val;
-	r = sscanf(buf, "0x%x", &val);
-	if ((r != 1)  || (val & 0xf000f000)) {
-		return -EINVAL;
-	}
-	WRITE_VPP_REG(VPP_MATRIX_PROBE_POS, val);
-	return count;
-}
-
-static ssize_t amvecm_post_matrix_data_show(struct class *cla, struct class_attribute *attr, char *buf)
-{
-	int len = 0 , val1 = 0, val2 = 0;
-	val1 = READ_VPP_REG(VPP_MATRIX_PROBE_COLOR);
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-	val2 = READ_VPP_REG(VPP_MATRIX_PROBE_COLOR1);
-#endif
-	len += sprintf(buf+len, "VPP_MATRIX_PROBE_COLOR %x\n", val1);
-	len += sprintf(buf+len, "VPP_MATRIX_PROBE_COLOR %x\n", val2);
-	return len;
-}
-static ssize_t amvecm_post_matrix_data_store(struct class *cla, struct class_attribute *attr, const char *buf,size_t count)
-{
-	return 0;
-}
-
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
 void init_sharpness(void)
 {
 	WRITE_VPP_REG_BITS(VPP_VE_ENABLE_CTRL, 1,1,1);
@@ -1630,51 +1217,23 @@ static struct class_attribute amvecm_class_attrs[] = {
 	__ATTR(saturation_hue,S_IRUGO | S_IWUSR,
 		amvecm_saturation_hue_show,
 		amvecm_saturation_hue_store),
-	__ATTR(saturation_hue1,S_IRUGO | S_IWUSR,
-		video_adj1_saturation_hue_show,
-		video_adj1_saturation_hue_store),
-	__ATTR(saturation_hue2,S_IRUGO | S_IWUSR,
-		video_adj2_saturation_hue_show,
-		video_adj2_saturation_hue_store),
+	__ATTR(saturation_hue_pre,S_IRUGO | S_IWUSR,
+		amvecm_saturation_hue_pre_show,
+		amvecm_saturation_hue_pre_store),
+	__ATTR(saturation_hue_post,S_IRUGO | S_IWUSR,
+		amvecm_saturation_hue_post_show,
+		amvecm_saturation_hue_post_store),
 	__ATTR(cm2,S_IRUGO | S_IWUSR,
 		amvecm_cm2_show,
 		amvecm_cm2_store),
 	__ATTR(gamma,S_IRUGO | S_IWUSR,
 		amvecm_gamma_show,
 		amvecm_gamma_store),
-	__ATTR(brightness1, S_IRUGO | S_IWUSR,
-		video_adj1_brightness_show, video_adj1_brightness_store),
-	__ATTR(contrast1, S_IRUGO | S_IWUSR,
-		video_adj1_contrast_show, video_adj1_contrast_store),
-	__ATTR(brightness2, S_IRUGO | S_IWUSR,
-		video_adj2_brightness_show, video_adj2_brightness_store),
-	__ATTR(contrast2, S_IRUGO | S_IWUSR,
-		video_adj2_contrast_show, video_adj2_contrast_store),
-	__ATTR(help, S_IRUGO | S_IWUSR,
-		amvecm_usage_show, NULL),
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
 	__ATTR(sync_3d,S_IRUGO | S_IWUSR,
 		amvecm_3d_sync_show,
 		amvecm_3d_sync_store),
-	__ATTR(sharpness_on_off, S_IRUGO | S_IWUSR,
-		amvecm_sharpness_en_show, amvecm_sharpness_en_store),
-	__ATTR(gamma_on_off, S_IRUGO | S_IWUSR,
-		amvecm_gamma_en_show, amvecm_gamma_en_store),
-	__ATTR(wb_on_off, S_IRUGO | S_IWUSR,
-		amvecm_wb_en_show, amvecm_wb_en_store),
 #endif
-	__ATTR(pq_on_off, S_IRUGO | S_IWUSR,
-		amvecm_pq_en_show, amvecm_pq_en_store),
-	__ATTR(cm_on_off, S_IRUGO | S_IWUSR,
-		amvecm_cm_en_show, amvecm_cm_en_store),
-	__ATTR(dnlp_on_off, S_IRUGO | S_IWUSR,
-		amvecm_dnlp_en_show, amvecm_dnlp_en_store),
-	__ATTR(matrix_set, S_IRUGO | S_IWUSR,
-		amvecm_set_post_matrix_show, amvecm_set_post_matrix_store),
-	__ATTR(matrix_pos, S_IRUGO | S_IWUSR,
-		amvecm_post_matrix_pos_show, amvecm_post_matrix_pos_store),
-	__ATTR(matrix_data, S_IRUGO | S_IWUSR,
-		amvecm_post_matrix_data_show, amvecm_post_matrix_data_store),
 	__ATTR_NULL
 };
 
@@ -1685,40 +1244,7 @@ static struct file_operations amvecm_fops = {
 	.unlocked_ioctl   = amvecm_ioctl,
 };
 
-static void aml_vecm_dt_parse(struct platform_device *pdev)
-{
-	struct device_node *node;
-	unsigned int val;
-	int ret;
-
-	node = pdev->dev.of_node;
-
-#ifdef CONFIG_USE_OF
-	/* get interger value */
-	if (node) {
-		ret = of_property_read_u32(node, "gamma_en", &val);
-		if (ret) {
-			printk("Can't find  gamma_en.\n");
-		}
-		else
-			gamma_en = val;
-		ret = of_property_read_u32(node, "wb_en", &val);
-		if (ret) {
-			printk("Can't find  wb_en.\n");
-		}
-		else
-			wb_en = val;
-		ret = of_property_read_u32(node, "cm_en", &val);
-		if (ret) {
-			printk("Can't find  cm_en.\n");
-		}
-		else
-			cm_en = val;
-	}
-#endif
-}
-
-static int aml_vecm_probe(struct platform_device *pdev)
+static int __init amvecm_init(void)
 {
 	int ret = 0;
 	int i = 0;
@@ -1749,11 +1275,9 @@ static int aml_vecm_probe(struct platform_device *pdev)
 		ret = PTR_ERR(devp->dev);
 		goto fail_create_device;
 	}
-	#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
+	#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
 	init_sharpness();
 	#endif
-
-	aml_vecm_dt_parse(pdev);
 	return 0;
 
 fail_create_device:
@@ -1778,7 +1302,7 @@ fail_alloc_region:
 	return ret;
 }
 
-static int __exit aml_vecm_remove(struct platform_device *pdev)
+static void __exit amvecm_exit(void)
 {
 	struct amvecm_dev_s *devp = &amvecm_dev;
 	device_destroy(devp->clsp, devp->devno);
@@ -1787,49 +1311,10 @@ static int __exit aml_vecm_remove(struct platform_device *pdev)
 	unregister_chrdev_region(devp->devno, 1);
 	kfree(devp);
 	pr_info("[amvecm.] : amvecm_exit.\n");
-	return 0;
 }
 
-
-static const struct of_device_id aml_vecm_dt_match[] = {
-	{
-		.compatible = "amlogic,vecm",
-	},
-	{},
-};
-
-static struct platform_driver aml_vecm_driver = {
-	.driver = {
-		.name = "aml_vecm",
-		.owner = THIS_MODULE,
-#ifdef CONFIG_USE_OF
-		.of_match_table = aml_vecm_dt_match,
-#endif
-	},
-	.probe = aml_vecm_probe,
-	.remove = __exit_p(aml_vecm_remove),
-};
-
-static int __init aml_vecm_init(void)
-{
-	pr_info("module init\n");
-	if (platform_driver_register(&aml_vecm_driver)) {
-		pr_err("failed to register bl driver module\n");
-		return -ENODEV;
-	}
-
-	return 0;
-}
-
-static void __exit aml_vecm_exit(void)
-{
-	pr_info("module exit\n");
-	platform_driver_unregister(&aml_vecm_driver);
-}
-
-module_init(aml_vecm_init);
-module_exit(aml_vecm_exit);
+module_init(amvecm_init);
+module_exit(amvecm_exit);
 
 MODULE_DESCRIPTION("AMLOGIC amvecm driver");
 MODULE_LICENSE("GPL");
-

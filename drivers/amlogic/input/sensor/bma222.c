@@ -2090,7 +2090,7 @@ static void bma222_work_func(struct work_struct *work)
 	static struct bma222acc acc;
 	unsigned long delay = msecs_to_jiffies(atomic_read(&bma222->delay));
 	struct gsen_platform_data *pdata =(struct gsen_platform_data *) bma222->bma222_client->dev.platform_data;
-	
+
 	bma222_read_accel_xyz(bma222->bma222_client, &acc);
 	//printk("%s:::x:%d,y:%d,z:%d\n",__FUNCTION__,acc.x,acc.y,acc.z);
 	if(!pdata){
@@ -2102,7 +2102,7 @@ static void bma222_work_func(struct work_struct *work)
 		input_report_abs(bma222->input, ABS_Y, acc.x * pdata->rotator[3] + acc.y * pdata->rotator[4]+acc.z * pdata->rotator[5]);
 		input_report_abs(bma222->input, ABS_Z, acc.x * pdata->rotator[6] + acc.y * pdata->rotator[7]+acc.z * pdata->rotator[8]);
         input_sync(bma222->input);
-	}	
+	}
 	mutex_lock(&bma222->value_mutex);
 	bma222->value = acc;
 	mutex_unlock(&bma222->value_mutex);
@@ -3778,4 +3778,3 @@ MODULE_LICENSE("GPL");
 
 module_init(BMA222_init);
 module_exit(BMA222_exit);
-

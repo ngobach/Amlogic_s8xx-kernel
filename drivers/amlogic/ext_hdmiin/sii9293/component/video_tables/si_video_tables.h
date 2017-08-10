@@ -49,7 +49,6 @@ typedef struct
 #define NMB_OF_HDMI_VIDEO_MODES     4
 #define NMB_OF_VIDEO_MODES          (NMB_OF_CEA861_VIDEO_MODES + NMB_OF_HDMI_VIDEO_MODES)
 
-#define NMB_OF_VIDEO_OTHER_MODES	48
 // repetition factor
 #define	RP1		0x01	// x1 (no repetition)
 #define	RP2		0x02	// x2 (doubled)
@@ -73,7 +72,6 @@ typedef struct
 
 
 extern ROM const videoMode_t VideoModeTable[NMB_OF_VIDEO_MODES + 1];
-extern ROM const videoMode_t VideoModeTableOther[NMB_OF_VIDEO_OTHER_MODES+1];
 
 #define LAST_KNOWN_HDMI_VIC 4
 extern ROM const uint8_t hdmiVicToVideoTableIndex[LAST_KNOWN_HDMI_VIC + 1];

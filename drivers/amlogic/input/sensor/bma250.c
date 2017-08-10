@@ -3658,7 +3658,7 @@ static void bma250_late_resume(struct early_suspend *h)
     container_of(h, struct bma250_data, early_suspend);
 
     mutex_lock(&data->enable_mutex);
-    
+
     atomic_set(&data->enable, 1);
     bma250_set_mode(data->bma250_client, BMA250_MODE_NORMAL);
     schedule_delayed_work(&data->work,
@@ -3724,4 +3724,3 @@ MODULE_LICENSE("GPL");
 
 module_init(BMA250_init);
 module_exit(BMA250_exit);
-

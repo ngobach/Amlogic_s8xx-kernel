@@ -624,5 +624,3 @@ module_exit(amjpegdec_exit);
 MODULE_DESCRIPTION("AMLOGIC HW JPEG decoder driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Tim Yao <timyao@amlogic.com>");
-
-

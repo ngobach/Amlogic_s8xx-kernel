@@ -145,22 +145,22 @@ void audio_set_aiubuf(u32 addr, u32 size, unsigned int channel)
     WRITE_MPEG_REG(AIU_MEM_I2S_RD_PTR, addr & 0xffffffc0);
     if(channel == 8){
         WRITE_MPEG_REG_BITS(AIU_CLK_CTRL_MORE, 1, 6, 1);
-        WRITE_MPEG_REG(AIU_MEM_I2S_END_PTR, (addr & 0xffffffc0) + (size & 0xffffffc0) - 256); 
+        WRITE_MPEG_REG(AIU_MEM_I2S_END_PTR, (addr & 0xffffffc0) + (size & 0xffffffc0) - 256);
     }else{
         WRITE_MPEG_REG_BITS(AIU_CLK_CTRL_MORE, 0, 6, 1);
         WRITE_MPEG_REG(AIU_MEM_I2S_END_PTR, (addr & 0xffffffc0) + (size & 0xffffffc0) - 64);   //this is for 16bit 2 channel
     }
 
     WRITE_MPEG_REG(AIU_I2S_MISC,        0x0004);    // Hold I2S
-    //WRITE_MPEG_REG(AIU_I2S_MUTE_SWAP,   0x0000);    // No mute, no swap
+    WRITE_MPEG_REG(AIU_I2S_MUTE_SWAP,   0x0000);    // No mute, no swap
     // As the default amclk is 24.576MHz, set i2s and iec958 divisor appropriately so as not to exceed the maximum sample rate.
     WRITE_MPEG_REG(AIU_I2S_MISC,        0x0010 );   // Release hold and force audio data to left or right
 
     if(channel == 8){
         printk(" %s channel == 8\n",__FUNCTION__);
         WRITE_MPEG_REG(AIU_MEM_I2S_MASKS,       (24 << 16) |    // [31:16] IRQ block.
-                                (0xff << 8) |   // [15: 8] chan_mem_mask. Each bit indicates which channels exist in memory
-                                (0xff << 0));   // [ 7: 0] chan_rd_mask.  Each bit indicates which channels are READ from memory
+                                (((1 << channel) - 1) << 8) |   // [15: 8] chan_mem_mask. Each bit indicates which channels exist in memory
+                                (((1 << channel) - 1) << 0));   // [ 7: 0] chan_rd_mask.  Each bit indicates which channels are READ from memory
         }
     else 
         WRITE_MPEG_REG(AIU_MEM_I2S_MASKS,       (24 << 16) |    // [31:16] IRQ block.
@@ -179,8 +179,10 @@ void audio_set_aiubuf(u32 addr, u32 size, unsigned int channel)
     audio_out_buf_ready = 1;
 }
 
-void audio_set_958outbuf(u32 addr, u32 size,int flag)
+void audio_set_958outbuf(u32 addr, u32 size, int channels, int flag)
 {
+	u8 chanmask;
+
     if (ENABLE_IEC958) {
         WRITE_MPEG_REG(AIU_MEM_IEC958_START_PTR, addr & 0xffffffc0);
         if(READ_MPEG_REG(AIU_MEM_IEC958_START_PTR) == READ_MPEG_REG(AIU_MEM_I2S_START_PTR)){
@@ -193,7 +195,8 @@ void audio_set_958outbuf(u32 addr, u32 size,int flag)
         }else{
             WRITE_MPEG_REG(AIU_MEM_IEC958_END_PTR, (addr & 0xffffffc0) + (size & 0xffffffc0) - 1);    // this is for RAW mode
         }
-        WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_MASKS, 0x303, 0, 16);
+		chanmask = (1 << channels) - 1;
+        WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_MASKS, chanmask << 8 | chanmask, 0, 16);
 
         WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 1, 0, 1);
         WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 0, 1);
@@ -447,7 +450,7 @@ void audio_set_i2s_mode(u32 mode)
             WRITE_MPEG_REG_BITS(AIU_I2S_SOURCE_DESC, 1, 5, 1);
         }
 
-        WRITE_MPEG_REG_BITS(AIU_MEM_I2S_MASKS, mask[mode], 0, 16);
+//        WRITE_MPEG_REG_BITS(AIU_MEM_I2S_MASKS, mask[mode], 0, 16);
 
         //WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 1, 0, 1);
         //WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 0, 1);
@@ -537,7 +540,7 @@ enum clk_enum
     CLK_MPLL2
 };
 
-// iec958 and i2s clock are separated after M6TV. 
+// iec958 and i2s clock are separated after M6TV.
 void audio_set_i2s_clk(unsigned freq, unsigned fs_config, unsigned mpll)
 {
     int i, index = 0, xtal = 0;
@@ -1018,25 +1021,10 @@ unsigned int read_i2s_mute_swap_reg(void)
 
 void audio_i2s_swap_left_right(unsigned int flag)
 {
-	u32 reg;
-	if (0 == IEC958_mode_raw)
-	{
-		if (ENABLE_IEC958) {
-			WRITE_MPEG_REG_BITS(AIU_958_CTRL, flag, 1, 2);
-		}
-		WRITE_MPEG_REG_BITS(AIU_I2S_MUTE_SWAP, flag, 0, 2);
-	}
-	else
-	{
-		reg = read_i2s_mute_swap_reg();
-		if (reg & 0x3)
-			WRITE_MPEG_REG_BITS(AIU_958_CTRL, 0, 1, 2);
-		else
-			WRITE_MPEG_REG_BITS(AIU_958_CTRL, 3, 1, 2);
-		WRITE_MPEG_REG(AIU_I2S_MISC,        0x0004);
-		WRITE_MPEG_REG(AIU_I2S_MUTE_SWAP,   0x0000);
-		WRITE_MPEG_REG(AIU_I2S_MISC,        0x0010);
-	}
+    if (ENABLE_IEC958){
+        WRITE_MPEG_REG_BITS(AIU_958_CTRL, flag, 1, 2);
+    }
+    WRITE_MPEG_REG_BITS(AIU_I2S_MUTE_SWAP, flag, 0, 2);
 }
 unsigned int audio_hdmi_init_ready()
 {
@@ -1071,5 +1059,3 @@ unsigned audio_aiu_pg_enable(unsigned char enable)
     }
     return 0;
 }
-
-

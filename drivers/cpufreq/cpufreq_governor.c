@@ -31,14 +31,6 @@
 
 #include "cpufreq_governor.h"
 
-static struct kobject *get_governor_parent_kobj(struct cpufreq_policy *policy)
-{
-	if (have_governor_per_policy())
-		return &policy->kobj;
-	else
-		return cpufreq_global_kobject;
-}
-
 static struct attribute_group *get_sysfs_attr(struct dbs_data *dbs_data)
 {
 	if (have_governor_per_policy())
@@ -194,17 +186,15 @@ void gov_queue_work(struct dbs_data *dbs_data, struct cpufreq_policy *policy,
 {
 	int i;
 
-	mutex_lock(&cpufreq_governor_lock);
 	if (!policy->governor_enabled)
-		goto out_unlock;
+		return;
+
 	if (!all_cpus) {
-		__gov_queue_work(raw_smp_processor_id(), dbs_data, delay);
+		__gov_queue_work(policy->cpu, dbs_data, delay);
 	} else {
 		for_each_cpu(i, policy->cpus)
 			__gov_queue_work(i, dbs_data, delay);
 	}
-out_unlock:
-	mutex_unlock(&cpufreq_governor_lock);
 }
 EXPORT_SYMBOL_GPL(gov_queue_work);
 
@@ -271,7 +261,6 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 	unsigned int max_periods;
 	int io_busy = 0;
 	int rc, i;
-	static unsigned int hg_init = 1;
 
 	if (have_governor_per_policy())
 		dbs_data = policy->governor_data;
@@ -340,19 +329,6 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		if(dbs_data->cdata->governor == GOV_HOTPLUG){
 			hg_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(policy->cpu);
 			mutex_init(&hg_dbs_info->hotplug_thread_mutex);
-
-			if (hg_init) {
-				struct hg_dbs_tuners *tuners = dbs_data->tuners;
-				if (tuners->hotplug_min_freq < policy->min)
-					tuners->hotplug_min_freq = policy->min;
-				if (tuners->hotplug_max_freq < policy->min)
-					tuners->hotplug_max_freq = policy->min;
-				if (tuners->hotplug_max_freq > policy->max)
-					tuners->hotplug_max_freq = policy->max;
-				if (tuners->hotplug_min_freq > policy->max)
-					tuners->hotplug_min_freq = policy->max;
-				hg_init = 0;
-			}
 		}
 		if((dbs_data->cdata->governor != GOV_HOTPLUG) && (num_online_cpus() < NR_CPUS))
 			schedule_work(&policy->up_cpu);

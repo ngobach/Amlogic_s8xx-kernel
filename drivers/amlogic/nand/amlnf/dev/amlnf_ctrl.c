@@ -1,6 +1,6 @@
 
 /*
- * Aml  
+ * Aml
  *
  * (C) 2012 8
  */
@@ -34,7 +34,7 @@ struct bch_desc bch_list[MAX_ECC_MODE_NUM] = {
 
 #ifndef 	AML_NAND_UBOOT
 static dma_addr_t nfdata_dma_addr;
-static dma_addr_t nfinfo_dma_addr;	
+static dma_addr_t nfinfo_dma_addr;
 spinlock_t amlnf_lock;
 wait_queue_head_t amlnf_wq;
 #endif
@@ -83,7 +83,7 @@ int set_nphy_dma_addr(unsigned count, unsigned len, unsigned char *data_buf, uns
 	NFC_SEND_CMD_ADL(nfdata_dma_addr);
 	NFC_SEND_CMD_ADH(nfdata_dma_addr);
 	NFC_SEND_CMD_AIL(nfinfo_dma_addr);
-	NFC_SEND_CMD_AIH(nfinfo_dma_addr);		
+	NFC_SEND_CMD_AIH(nfinfo_dma_addr);
 #else
 	dcache_flush_range((unsigned)usr_buf, count*PER_INFO_BYTE);
 	dcache_invalid_range((unsigned)data_buf, len);
@@ -92,16 +92,16 @@ int set_nphy_dma_addr(unsigned count, unsigned len, unsigned char *data_buf, uns
 	NFC_SEND_CMD_ADL((int)data_buf);
 	NFC_SEND_CMD_ADH((int)data_buf);
 	NFC_SEND_CMD_AIL((int)usr_buf);
-	NFC_SEND_CMD_AIH((int)usr_buf);		
+	NFC_SEND_CMD_AIH((int)usr_buf);
 #endif
 	return 0;
 }
- 
+
 unsigned char nandphy_readb(void)
 {
 	return readb((void __iomem *) NAND_IO_ADDR);
 }
- 
+
 #ifndef AML_NAND_UBOOT
 int amlphy_prepare(unsigned flag)
 {
@@ -113,44 +113,33 @@ int amlphy_prepare(unsigned flag)
 
 int phydev_suspend(struct amlnand_phydev *phydev)
 {
-    struct amlnand_chip *aml_chip = (struct amlnand_chip *)phydev->priv;	
-#ifdef AML_NAND_RB_IRQ    
+    struct amlnand_chip *aml_chip = (struct amlnand_chip *)phydev->priv;
+#ifdef AML_NAND_RB_IRQ
 	unsigned long flags;
 #endif
-    
+
 	if (!strncmp((char*)phydev->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME)))
 		return 0;
 	aml_nand_dbg("phydev_suspend: entered!");
 #ifdef AML_NAND_RB_IRQ
 	spin_lock_irqsave(&amlnf_lock, flags);
 #else
-	spin_lock(&amlnf_lock);	
-#endif	
+	spin_lock(&amlnf_lock);
+#endif
 	//set_chip_state(phydev, CHIP_PM_SUSPENDED);
 	set_chip_state(aml_chip, CHIP_PM_SUSPENDED);
 #ifdef AML_NAND_RB_IRQ
     spin_unlock_irqrestore(&amlnf_lock, flags);
 #else
-    spin_unlock(&amlnf_lock);	
-#endif	
+    spin_unlock(&amlnf_lock);
+#endif
 		return 0;
 
 }
-int aml_sys_info_reinit(struct amlnand_chip *aml_chip);
 
 void phydev_resume(struct amlnand_phydev *phydev)
 {
-	struct amlnand_chip *aml_chip;
-	
-	aml_chip = (struct amlnand_chip *)phydev->priv;
-	
 	amlchip_resume(phydev);
-	
-	/* fixme, reinit sysinfo...  only resume once!*/
-	if (!strncmp((char*)phydev->name, NAND_CODE_NAME, strlen((const char*)NAND_CODE_NAME)) ){
-		aml_sys_info_reinit(aml_chip);
-	}
-	
 	return;
 }
 int nand_idleflag=0;
@@ -170,9 +159,9 @@ void   nand_get_chip(void *chip)
 			if (ret<0){
 				printk("%s:%d  %s  can't get pinctrl \n",__func__,__LINE__,dev_name(&aml_chip->device));
 			}
-			else 
-				break; 
-			
+			else
+				break;
+
 			if(retry++ > 10 ){
 				aml_nand_msg("devm_pinctrl_get_select get failed after  over 10 times retry=%d",retry);
 			}
@@ -183,12 +172,8 @@ void   nand_get_chip(void *chip)
  void  nand_release_chip(void *chip)
 {
 	 struct amlnand_chip *aml_chip = (struct amlnand_chip *)chip;
-	 struct hw_controller *controller = &(aml_chip->controller);
-	 
-	int ret;
-  	if(nand_idleflag){
-		//enter standby state.
-		controller->enter_standby(controller );
+	 int ret;
+	if(nand_idleflag){
 		ret = pinctrl_select_state(aml_chip->nand_pinctrl , aml_chip->nand_idlestate);
 		if(ret<0)
 			printk("select idle state error\n");
@@ -203,38 +188,38 @@ void   nand_get_chip(void *chip)
  * Get the device and lock it for exclusive access
  */
 int amlnand_get_device(struct amlnand_chip *aml_chip, chip_state_t new_state)
-{	
-#ifdef AML_NAND_RB_IRQ    
+{
+#ifdef AML_NAND_RB_IRQ
 	unsigned long flags;
 #endif
 
 	DECLARE_WAITQUEUE(wait, current);
-	
+
 retry:
 #ifdef AML_NAND_RB_IRQ
 	spin_lock_irqsave(&amlnf_lock, flags);
 #else
-	spin_lock(&amlnf_lock);	
+	spin_lock(&amlnf_lock);
 #endif
 
 	if (get_chip_state(aml_chip) == CHIP_READY) {
-		set_chip_state(aml_chip, new_state);	
+		set_chip_state(aml_chip, new_state);
 #ifdef AML_NAND_RB_IRQ
         spin_unlock_irqrestore(&amlnf_lock, flags);
 #else
-        spin_unlock(&amlnf_lock);	
-#endif		
+        spin_unlock(&amlnf_lock);
+#endif
         //set nand pinmux here
-		nand_get_chip(aml_chip);	
+		nand_get_chip(aml_chip);
 		return 0;
 	}
-	
+
 	set_current_state(TASK_UNINTERRUPTIBLE);
 	add_wait_queue(&amlnf_wq, &wait);
 #ifdef AML_NAND_IRQ_MODE
     spin_unlock_irqrestore(&amlnf_lock, flags);
 #else
-    spin_unlock(&amlnf_lock);	
+    spin_unlock(&amlnf_lock);
 #endif
 	schedule();
 	remove_wait_queue(&amlnf_wq, &wait);
@@ -249,22 +234,22 @@ retry:
  */
 void amlnand_release_device(struct amlnand_chip *aml_chip)
 {
-#ifdef AML_NAND_RB_IRQ    
+#ifdef AML_NAND_RB_IRQ
 	unsigned long flags;
 #endif
-    
+
 	/* Release the controller and the chip */
 #ifdef AML_NAND_RB_IRQ
 	spin_lock_irqsave(&amlnf_lock, flags);
 #else
-	spin_lock(&amlnf_lock);	
+	spin_lock(&amlnf_lock);
 #endif
 	set_chip_state(aml_chip, CHIP_READY);
 	wake_up(&amlnf_wq);
 #ifdef AML_NAND_RB_IRQ
     spin_unlock_irqrestore(&amlnf_lock, flags);
 #else
-    spin_unlock(&amlnf_lock);	
+    spin_unlock(&amlnf_lock);
 #endif
 	//clear nand pinmux here
 	nand_release_chip(aml_chip);
@@ -273,7 +258,7 @@ void amlnand_release_device(struct amlnand_chip *aml_chip)
 #else
 int amlnand_get_device(struct amlnand_chip *aml_chip, chip_state_t new_state)
 {
-	nand_get_chip();	
+	nand_get_chip();
 	set_chip_state(aml_chip, new_state);
 
 	return 0;
@@ -301,13 +286,13 @@ void pinmux_select_chip(unsigned ce_enable, unsigned rb_enable, unsigned flag)
 		SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1 << 22));
 
 #ifndef CONFIG_NAND_AML_M8
-	if (flag && (rb_enable)){ 
+	if (flag && (rb_enable)){
 		if (!((rb_enable >> 10) & 1))
 			SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1 << 17));
 		if (!((rb_enable >> 10) & 1))
 			SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1 << 16));
 	}
-#endif	
+#endif
 
 #endif
 
@@ -322,37 +307,37 @@ void pinmux_select_chip(unsigned ce_enable, unsigned rb_enable, unsigned flag)
     int div[4] = {4, 3, 5, 7};
     nand_core_clk_t clk_cfg;
 
-#ifdef AML_NAND_DBG_M8   
+#ifdef AML_NAND_DBG_M8
     // NAND uses crystal, 24 or 25 MHz
     //NFC_SET_CORE_PLL(((4<<9) | (1<<8) | 0);
-    
-    if(clk_freq  == 160){    
+
+    if(clk_freq  == 160){
 	    // NAND uses src 0 div by 4, 160 MHz
 	    //WRITE_CBUS_REG(HHI_NAND_CLK_CNTL, ((0<<9) | (1<<8) | 3));
 	    NFC_SET_CORE_PLL(((0<<9) | (1<<8) | 3));
 	}
-		
-	if(clk_freq  == 182){    
+
+	if(clk_freq  == 182){
 	    // NAND uses src 0 div by 4, 160 MHz
 	    //WRITE_CBUS_REG(HHI_NAND_CLK_CNTL, ((0<<9) | (1<<8) | 3));
 	    NFC_SET_CORE_PLL(((3<<9) | (1<<8) | 1));
 	}
 
-    if(clk_freq  == 212){    
+    if(clk_freq  == 212){
 	    // NAND uses src 0 div by 4, 160 MHz
 	    //WRITE_CBUS_REG(HHI_NAND_CLK_CNTL, ((0<<9) | (1<<8) | 3));
 	    NFC_SET_CORE_PLL(((1<<9) | (1<<8) | 3));
-	}	
-	
-    if(clk_freq  == 255){    
+	}
+
+    if(clk_freq  == 255){
 	    // NAND uses src 0 div by 4, 160 MHz
 	    //WRITE_CBUS_REG(HHI_NAND_CLK_CNTL, ((0<<9) | (1<<8) | 3));
 	    NFC_SET_CORE_PLL(((2<<9) | (1<<8) | 1));
-	}	
-	
+	}
+
     return;
 #endif
-    
+
     unit = 10000; // 10000 as 1 MHz, 0.1 kHz resolution.
     for (i=0; i<4; i++)
         fclk[i] = 2551*unit/div[i];
@@ -365,7 +350,7 @@ void pinmux_select_chip(unsigned ce_enable, unsigned rb_enable, unsigned flag)
 
     if (clk_freq > 0) {
         clk_cfg.b.clk_en = 1;
-        if (clk_freq <= 1000) 
+        if (clk_freq <= 1000)
             clk_freq = clk_freq*unit;
         else
             clk_freq = clk_freq*unit/1000;
@@ -394,13 +379,13 @@ void pinmux_select_chip(unsigned ce_enable, unsigned rb_enable, unsigned flag)
 
         clk_cfg.b.clk_div = best_div;
         clk_cfg.b.clk_sel = best_sel;
-        aml_nand_msg("Set nand core clock %3d MHz : sel %d  div %2d  actual %3d MHz", 
+        aml_nand_msg("Set nand core clock %3d MHz : sel %d  div %2d  actual %3d MHz",
                   clk_freq/unit, best_sel, best_div, best_freq/unit);
     }
     else {
         clk_cfg.b.clk_en = 0;
     }
-    
+
     NFC_SET_CORE_PLL(clk_cfg.d32);
 
 	//WRITE_CBUS_REG(HHI_NAND_CLK_CNTL, clk_cfg.d32);
@@ -412,25 +397,25 @@ void get_sys_clk_rate(int * rate)
 {
 #ifndef AML_NAND_UBOOT
 //	struct clk *sys_clk;
-#endif	
+#endif
 
 #ifdef CONFIG_NAND_AML_M8
-#ifdef AML_NAND_DBG_M8   
-	//set_nand_core_clk(160); 
+#ifdef AML_NAND_DBG_M8
+	//set_nand_core_clk(160);
 	//*rate = 160000000;  //160M
 
-	//set_nand_core_clk(182); 
+	//set_nand_core_clk(182);
 	//*rate = 182000000;  //
-	
-	//set_nand_core_clk(212); 
+
+	//set_nand_core_clk(212);
 	//*rate = 212000000;  //
-		
-	set_nand_core_clk(*rate); 
-	//set_nand_core_clk(255); 
-	//*rate = 255000000;  //		
-	
+
+	set_nand_core_clk(*rate);
+	//set_nand_core_clk(255);
+	//*rate = 255000000;  //
+
 #else
-	set_nand_core_clk(200*10000); 
+	set_nand_core_clk(200*10000);
 	//*rate = 200*1000000;
 #endif
 #else
@@ -438,7 +423,6 @@ void get_sys_clk_rate(int * rate)
 	#ifndef AML_NAND_UBOOT
 		sys_clk = clk_get_sys(NAND_SYS_CLK_NAME, NULL);
 		*rate = clk_get_rate(sys_clk);
-		*rate = *rate/1000000;
 	#else
 		*rate = get_clk81();
 	#endif
@@ -448,7 +432,7 @@ void get_sys_clk_rate(int * rate)
 
  void nand_boot_info_prepare(struct amlnand_phydev *phydev, unsigned char * page0_buf)
 {
-	struct amlnand_chip *aml_chip = (struct amlnand_chip *)phydev->priv;	
+	struct amlnand_chip *aml_chip = (struct amlnand_chip *)phydev->priv;
 	struct nand_flash *flash = &(aml_chip->flash);
 //	struct phydev_ops *devops = &(phydev->ops);
 	struct hw_controller *controller = &(aml_chip->controller);
@@ -456,7 +440,7 @@ void get_sys_clk_rate(int * rate)
 	struct en_slc_info *slc_info = &(controller->slc_info);
 	int i;
 #endif
-	unsigned en_slc,configure_data, pages_per_blk; 
+	unsigned en_slc,configure_data, pages_per_blk;
 	int chip_num=1, nand_read_info, new_nand_type;
 
 #ifdef CONFIG_NAND_AML_M8
@@ -465,23 +449,20 @@ void get_sys_clk_rate(int * rate)
 #endif
 	pages_per_blk = flash->blocksize / flash->pagesize;
 	new_nand_type = aml_chip->flash.new_type;
-	if (slc_info->mircon_l0l3_mode == 1)
-		new_nand_type |= (1<<31);/* mircon l0l3 type mode*/
 	//en_slc = (( flash->new_type < 10)&&( flash->new_type))? 1:0;
-	configure_data = NFC_CMD_N2M(controller->ran_mode, controller->bch_mode, 0, (controller->ecc_unit >> 3), controller->ecc_steps);	
+	configure_data = NFC_CMD_N2M(controller->ran_mode, controller->bch_mode, 0, (controller->ecc_unit >> 3), controller->ecc_steps);
 
-    if (( flash->new_type < 10 || slc_info->mircon_l0l3_mode == 1)
-		&& (flash->new_type)) {
+    if(( flash->new_type < 10)&&( flash->new_type)){
         en_slc = 1;
     }
     else if(flash->new_type == SANDISK_19NM){
         en_slc = 2;
     }
     else{
-       en_slc = 0; 
-    }    
+       en_slc = 0;
+    }
 #ifdef CONFIG_NAND_AML_M8
-	
+
 	memset(page0_buf, 0x0, flash->pagesize);
 
 	info_cfg = (struct nand_page0_cfg_t *)page0_buf;
@@ -494,20 +475,20 @@ void get_sys_clk_rate(int * rate)
 	info_cfg->max =0;
 
     memset((unsigned char *)(&info_cfg->list[0]), 0, NAND_PAGELIST_CNT);
-	
+
 	if(en_slc){
 	    info_cfg->ext |= (1<<26);
 	    if(en_slc == 1){
 		    memcpy((unsigned char *)(&info_cfg->list[0]), (unsigned char *)(&slc_info->pagelist[1]), NAND_PAGELIST_CNT);
-		}		
+		}
 	    else if(en_slc == 2){
 	        info_cfg->ext |= (1<<24);
 	        for(i=1;i<NAND_PAGELIST_CNT;i++)
 	            info_cfg->list[i-1] = i<<1;
-		}		
+		}
 	}
 
-		
+
 
 	chip_num = controller->chip_num;
 	aml_nand_msg("chip_num %d controller->chip_num %d",chip_num,controller->chip_num);
@@ -521,7 +502,7 @@ void get_sys_clk_rate(int * rate)
 
 	memset(page0_buf, 0xbb, flash->pagesize);
 	memcpy(page0_buf, (unsigned char *)(&configure_data), sizeof(int));
-	memcpy(page0_buf + sizeof(int), (unsigned char *)(&pages_per_blk), sizeof(int));	
+	memcpy(page0_buf + sizeof(int), (unsigned char *)(&pages_per_blk), sizeof(int));
 	new_nand_type = aml_chip->flash.new_type;
 	memcpy(page0_buf +2* sizeof(int), (unsigned char *)(&new_nand_type), sizeof(int));
 
@@ -534,20 +515,20 @@ void get_sys_clk_rate(int * rate)
 
 void uboot_set_ran_mode(struct amlnand_phydev *phydev)
 {
-	struct amlnand_chip *aml_chip = (struct amlnand_chip *)phydev->priv;	
-	struct hw_controller *controller = &(aml_chip->controller); 
+	struct amlnand_chip *aml_chip = (struct amlnand_chip *)phydev->priv;
+	struct hw_controller *controller = &(aml_chip->controller);
 
 #ifdef CONFIG_NAND_AML_M8
 	controller->ran_mode = 1;
 #else
 	controller->ran_mode = 0;
 #endif
-	
+
 }
 
 int aml_sys_info_init(struct amlnand_chip *aml_chip)
 {
-	nand_arg_info * nand_key = &aml_chip->nand_key;  
+	nand_arg_info * nand_key = &aml_chip->nand_key;
 #ifdef CONFIG_SECURE_NAND
 	nand_arg_info  * nand_secure= &aml_chip->nand_secure;
 #endif
@@ -561,13 +542,13 @@ int aml_sys_info_init(struct amlnand_chip *aml_chip)
 	}else{
 		buf_size = CONFIG_KEYSIZE;
 	}
-	
+
 	buf = aml_nand_malloc(buf_size);
 	if(!buf){
 		aml_nand_msg("aml_sys_info_init : malloc failed");
 	}
 	memset(buf,0x0,buf_size);
-	
+
 #ifdef CONFIG_AML_NAND_KEY
 		if(nand_key->arg_valid == 0){
 			ret = aml_key_init(aml_chip);
@@ -595,7 +576,7 @@ int aml_sys_info_init(struct amlnand_chip *aml_chip)
 			goto exit_error;
 		}
 	}
-	
+
 #ifdef CONFIG_AML_NAND_KEY
 	if(nand_key->arg_valid == 0){
 		ret = amlnand_save_info_by_name(aml_chip,(unsigned char *)(&(aml_chip->nand_key)),buf, KEY_INFO_HEAD_MAGIC,CONFIG_KEYSIZE);
@@ -615,43 +596,14 @@ int aml_sys_info_init(struct amlnand_chip *aml_chip)
 		}
 	}
 #endif
-	
+
 exit_error:
 
 	if(buf){
 		kfree(buf);
 		buf = NULL;
-	}		
-	
-	return ret;
-}
-/*
-  For fastboot, yyh.
- */
-int aml_sys_info_reinit(struct amlnand_chip *aml_chip)
-{
-	int ret =0;
-	
-#ifdef CONFIG_AML_NAND_KEY
-	ret = aml_key_reinit(aml_chip);
-	if(ret < 0){
-		aml_nand_msg("nand key init failed");
 	}
-#endif
 
-#ifdef CONFIG_SECURE_NAND
-	ret = aml_secure_init(aml_chip);
-	if(ret < 0) {
-		aml_nand_msg("nand secure reinit failed");
-	}
-#endif
-
-	if(boot_device_flag == 1) {
-		ret = aml_ubootenv_reinit(aml_chip);
-		if(ret < 0) {
-			aml_nand_msg("nand uboot env reinit failed");
-		}
-	}
 	return ret;
 }
 
@@ -665,8 +617,8 @@ int aml_sys_info_error_handle(struct amlnand_chip *aml_chip)
 			aml_nand_msg("NAND UPDATE CKECK  : arg %s: arg_valid= %d, valid_blk_addr = %d, valid_page_addr = %d",\
 					"nandkey",aml_chip->nand_key.arg_valid, aml_chip->nand_key.valid_blk_addr, aml_chip->nand_key.valid_page_addr);
 		}
-#endif 
-	
+#endif
+
 #ifdef CONFIG_SECURE_NAND
 		 if((aml_chip->nand_secure.arg_valid == 1) && (aml_chip->nand_secure.update_flag)){
 			aml_nand_update_secure(aml_chip,NULL);
@@ -691,19 +643,19 @@ void amlnf_disprotect(uchar * name)
 	struct amlnand_chip *aml_chip = aml_nand_chip;
 
 	if(strcmp(name, "fbbt") == 0){
-		aml_chip->protect |= 1; 	//force nand fbbt can be erased 
+		aml_chip->protect |= 1; 	//force nand fbbt can be erased
 		return 0 ;
 	}
-	
+
 #ifdef CONFIG_AML_NAND_KEY
 	if (strcmp(name, "key") == 0){
-		aml_chip->protect  |= (1 << 1);		//force nand key can be erased 
+		aml_chip->protect  |= (1 << 1);		//force nand key can be erased
 		return 0;
 	}
 #endif
 #ifdef CONFIG_SECURE_NAND
 	if (strcmp(name, "secure") == 0){
-		aml_chip->protect |= (1 << 2);		//force secure storage can be erased 
+		aml_chip->protect |= (1 << 2);		//force secure storage can be erased
 		return 0;
 	}
 

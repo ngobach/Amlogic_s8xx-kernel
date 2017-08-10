@@ -900,7 +900,6 @@ static int dwc_otg_driver_probe(
 	int port_speed = USB_PORT_SPEED_DEFAULT;
 	int port_config = 0;
 	int dma_config = USB_DMA_BURST_DEFAULT;
-	int dma_type = USB_DMA_BUFFER;
 	int gpio_work_mask =1;
 	int gpio_vbus_power_pin = -1;
 	int charger_detect = 0;
@@ -964,9 +963,6 @@ static int dwc_otg_driver_probe(
 			prop = of_get_property(of_node, "port-dma", NULL);
 			if(prop)
 				dma_config = of_read_ulong(prop,1);
-			prop = of_get_property(of_node, "dma-type", NULL);
-			if (prop)
-				dma_type = of_read_ulong(prop, 1);
 			prop = of_get_property(of_node, "port-id-mode", NULL);
 			if(prop)
 				id_mode = of_read_ulong(prop,1);
@@ -974,7 +970,7 @@ static int dwc_otg_driver_probe(
 			prop = of_get_property(of_node, "charger_detect", NULL);
 			if(prop)
 				charger_detect = of_read_ulong(prop,1);
-
+				
 			prop = of_get_property(of_node, "non_normal_usb_charger_detect_delay", NULL);
       if(prop)
 				non_normal_usb_charger_detect_delay = of_read_ulong(prop,1);
@@ -1193,8 +1189,6 @@ static int dwc_otg_driver_probe(
 		}
 	}
 
-	pcore_para->dma_desc_enable = dma_type;
-
 	/*
 	 * Validate parameter values.
 	 */
@@ -1221,7 +1215,7 @@ static int dwc_otg_driver_probe(
 	DWC_DEBUGPL(DBG_CIL, "registering (common) handler for irq%d\n",
 		    _dev->irq);
 	retval = request_irq(_dev->irq, dwc_otg_common_irq,
-			     IRQF_SHARED | IRQF_DISABLED | IRQ_TYPE_LEVEL_HIGH, "dwc_otg",
+			     IRQF_SHARED | IRQF_DISABLED | IRQ_LEVEL, "dwc_otg",
 			     dwc_otg_device);
 	if (retval) {
 		DWC_ERROR("request of irq%d failed\n", _dev->irq);
@@ -1230,6 +1224,11 @@ static int dwc_otg_driver_probe(
 	} else {
 		dwc_otg_device->common_irq_installed = 1;
 	}
+
+        if (irq_set_affinity(_dev->irq, cpumask_of(3))) {
+                pr_warning("unable to set irq affinity (irq=%d, cpu=%u)\n",
+                                _dev->irq, 3);
+        }
 
 #ifdef LM_INTERFACE
 //	set_irq_type(_dev->irq, IRQT_LOW);

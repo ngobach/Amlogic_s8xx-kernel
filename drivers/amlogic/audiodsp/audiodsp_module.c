@@ -782,7 +782,13 @@ static ssize_t dsp_working_status_show(struct class *cla,
 static ssize_t digital_raw_show(struct class *cla, struct class_attribute *attr,
                                 char *buf)
 {
+    static char *digital_format[] = {
+        "0 - PCM",
+        "1 - RAW w/o over clock",
+        "2 - RAW w/  over clock",
+    };
     char *pbuf = buf;
+    printk("Digital output mode: %s\n", digital_format[IEC958_mode_raw]);
     pbuf += sprintf(pbuf, "%d\n", IEC958_mode_raw);
     return (pbuf - buf);
 }
@@ -799,7 +805,7 @@ static ssize_t digital_raw_store(struct class *class,
     } else if (buf[0] == '2') {
         IEC958_mode_raw = 2;	// RAW with over clock
     }
-    //printk("IEC958_mode_raw=%d\n", IEC958_mode_raw);
+    printk("IEC958_mode_raw=%d\n", IEC958_mode_raw);
     return count;
 }
 

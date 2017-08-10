@@ -103,24 +103,6 @@
 			reg = <0 0x01200000>;
 			linux,contiguous-region;
 		};
-
-		cma_vdin0: region@2 {
-			region_name = "cma_vdin0";
-			linux,contiguous-region;
-			reg = <0x00000000 0x02100000>;
-		};
-
-		cma_vdin1: region@3 {
-			region_name = "cma_vdin1";
-			linux,contiguous-region;
-			reg = <0x00000000 0x01000000>;
-		};
-
-		cma_tvafe: region@4 {
-			region_name = "cma_tvafe";
-			linux,contiguous-region;
-			reg = <0x00000000 0x00500000>;
-		};
 	};
 
 
@@ -436,7 +418,7 @@
 ///	-	WATCHDOG
 	amlogic-watchdog {
 		compatible = "amlogic,aml-wdt";
-		status = "disable";
+		status = "okay";
 		default_timeout=<8>;
 		reset_watchdog_method=<1>;//0:sysfs,1:kernel
 		reset_watchdog_time=<2>;
@@ -733,98 +715,29 @@
 
 // ****************************************************************************
 /// -   DISP&MM-LVDS
-//$$ MODULE = "DISP&MM-LCD"
-//$$ DEVICE = "LCD"
+//$$ MODULE = "DISP&MM-LVDS"
+//$$ DEVICE = "mesonfb"
 //$$ L2 PROP_STR = "status"
-	lcd {
-		compatible = "amlogic,lcd_tv";
-		dev_name = "lcd";
+	lvds {
+		compatible = "amlogic,lvds";
 		status = "okay";
-		/* AOC: public Platform lvds : 1920x1080@60hz 8bit pixel clk@74.25mhz 2prot*/
-		lvds_0{
-			interface="lvds";		/** lcd_interface(lvds, vbyone, ttl) */
-			basic_setting = <1920 1080 2200 1125 148 41>; /**h_active v_active h_period v_period h_blank v_blank*/
-			lcd_timing = <0x500404ad 0x00414400 0x71486900 44 2156 0 1079 2100 2164 3 5>;
-			frame_rate_adjust_type=<1>; /** 0=htotal adjust, 1=clock adjust */
-			lvds_att = <8 1 0 1 1 0x3>;	/** lvds_bits lvds_repack pn_swap dual_port port_reverse lvds_fifo_wr_mode*/
-			panel_power_pin ="GPIOH_10";
-			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
-		};
-
-		/*AUO: T320XVN02.9 lvds : 1366x768@60hz 8bit pixel clk@80mhz 1port*/
-		lvds_2{
-			interface="lvds";		/** lcd_interface(lvds, vbyone, ttl) */
-			basic_setting = <1366 768 1648 810 280 42>;
-			lcd_timing = <0x5000068c 0x00454400 0x71c86900 20 30 0 809 20 1200 3 5>;
-			frame_rate_adjust_type=<1>; /** 0=htotal adjust, 1=clock adjust */
-			lvds_att = <8 1 0 0 0 0x101>;
-			panel_power_pin ="GPIOH_10";
-			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
-		};
-
-		/*BOE: HV320WHB-N80 lvds : 1366x768@60hz 8bit pixel clk@74.25mhz 1port*/
-		lvds_3{
-			interface="lvds";		/** lcd_interface(lvds, vbyone, ttl) */
-			basic_setting = <1366 768 1560 806 190 30>;
-			lcd_timing = <0x500404ad 0x00454400 0x71486900 20 30 0 809 20 1200 3 5>;
-			frame_rate_adjust_type=<1>; /** 0=htotal adjust, 1=clock adjust */
-			lvds_att = <8 1 0 0 0 0x101>;
-			panel_power_pin ="GPIOH_10";
-			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
-		};
-
-		/*PANDA: TPT315B5-0TU3A.Q lvds : 1366x768@60hz 8bit pixel clk@82mhz 1port*/
-		lvds_4{
-			interface="lvds";		/** lcd_interface(lvds, vbyone, ttl) */
-			basic_setting = <1366 768 1696 806 300 38>;
-			lcd_timing = <0x5000068c 0x00454400 0x71c86900 20 30 0 809 20 1200 3 5>;
-			frame_rate_adjust_type=<1>; /** 0=htotal adjust, 1=clock adjust */
-			lvds_att = <8 1 0 0 0 0x101>;
-			panel_power_pin ="GPIOH_10";
-			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
-		};
-
-		/*BOE: HV550QU2-305 vx1 : 3840x2160@60hz 8lane pixel clk@74.5mhz */
-		vbyone_0{
-			interface="vbyone";		/** lcd_interface(lvds, vbyone, ttl) */
-			basic_setting = <3840 2160 4400 2250 557 90>;
-			lcd_timing = <0xffffffff 0xffffffff 0xffffffff 47 80 47 80 47 47 3 9>;
-			frame_rate_adjust_type=<1>; /** 0=htotal adjust, 1=clock adjust */
-			vbyone_att = <8 4 2 4>;
-			panel_power_pin ="GPIOH_10";
-			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
-		};
+		basic_setting = <1920 1080 2200 1125 16 9 127 203 2 8>; /**  hactive,vactive,hperiod,vperiod,hstart,vstart, */
+		/**  hratio,vratio,screen_width,screen_height,lvd_type,lcd bit */
+		delay_setting = <500 50 20 20 50 0 0 200>;  /** CLK ON/OFF,PWM ON/OFF,PANEL_PWR ON/OFF,BL ON/OFF delay */
 	};
 
-	backlight {
+	backlight{
 		compatible = "amlogic,backlight";
 		dev_name = "backlight";
 		status = "okay";
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&aml_bl_pwm_pins>;
-
-		backlight_0 {
-			index = <0>;
-			name = "backlight_0";
-			bl_en_gpio = "GPIOY_6";
-			bl_en_gpio_on = <0>; /** 1=output high, 0=output low **/
-			bl_pwm_port = "PWM_B";
-			bl_pwm_positive = <0>; /* 1: positive 0: negative */
-			bl_pwm_gpio = "GPIOY_7";
-			bl_pwm_gpio_on = <0>; /** 1=output high, 0=output low **/
-
-			bl_level_default_uboot = <100>;
-			bl_level_default_kernel = <100>;
-			bl_level_max_min = <255 10>;
-			bl_pwm_on_delay  = <200>; /* unit: ms */
-			bl_pwm_off_delay = <200>; /* unit: ms */
-			bl_power_on_delay  = <5>; /* unit: ms */
-			bl_power_off_delay = <5>; /* unit: ms */
-			bl_pwm_freq = <1000>;
-			bl_pwm_duty_max_min = <100 25>; /* 100% - 25%*/
-		};
+//		power_pin = "GPIOX_2";
+		pwm_hz = <160>;   /* Hz */
+//		pinctrl-names = "pwm_a","pwm_vs";
+//		pinctrl-0 = <&lcd_bl_pwm_a_pins>;	/* pwma pinmux */
+//		pinctrl-1 = <&lcd_bl_pwm_vs_pins>;	/* pwm_vs pinmux */
 	};
+
+
 
 /// ****************************************************************************
 /// -   DISP&MM-FB
@@ -853,50 +766,37 @@
 
 
 
-
-/// ***************************************************************************************
-///     -       DISP&MM-A/V stream
-//$$ MODULE = "DISP&MM-A/V video dec"
-/// ***************************************************************************************
+/// ****************************************************************************
 ///	-	DISP&MM-A/V stream
 //$$ MODULE = "DISP&MM-A/V stream"
 //$$ DEVICE="mesonstream"
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 4 ="reg"
-	mesonstream{
+	mesonstream {
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
 		status = "okay";
-		//reserve-memory = <0x02000000>; // 32M
-		//reserve-iomap = "true";
+		reserve-memory = <0x02000000>; // 32M
+		reserve-iomap = "true";
 	};
 
-/// ***************************************************************************************
-///     -       DISP&MM-A/V stream
-//$$ MODULE = "DISP&MM-A/V video dec"
-//$$ DEVICE="vdec"
-//$$ L2 PROP_STR = "status"
-//$$ L3 PROP_U32 4 ="reg"
-        vdec{
-                compatible = "amlogic,vdec";
-                dev_name = "vdec.0";
-                status = "okay";
-///				reserve-memory = <0x04000000>; // 64M
-//				reserve-iomap = "true";
-//				linux,contiguous-region = <&mem_4k2k_decoder>;
-        };
 
 
-	codec_mm{
-		compatible = "amlogic, codec, mm";
-		dev_name = "codec_mm";
+
+/// ****************************************************************************
+///	-	DISP&MM-A/V video dec
+// MODULE = "DISP&MM-A/V video dec"
+// DEVICE = "vdec"
+// L2 PROP_STR = "status"
+// L3 PROP_U32 4 ="reg"
+	vdec {
+		compatible = "amlogic,vdec";
+		dev_name = "vdec.0";
 		status = "okay";
-		reserve-memory = <0x04100000>; // 65M
-		//reserve-iomap = "true";
-		//linux,contiguous-region = <&mem_4k2k_decoder>;
+		reserve-memory = <0xc000000>; // 64M
+		reserve-iomap = "true";
+		linux,contiguous-region = <&mem_4k2k_decoder>;
 	};
-
-
 
 
 
@@ -974,12 +874,11 @@
 		compatible = "amlogic,vdin";
 		dev_name = "vdin0";
 		status = "ok";
-		//reserve-memory = <0x02100000>;
-		//max_size = <1920 1080>;//1920x(1080x2)x2x4=33M
+		reserve-memory = <0x01000000>;
+		reserve-iomap = "true";
+		max_size = <1920 1080>;//1920x1080x2x4=17M
 		irq = <115>;
 		vdin_id = <0>;
-		max_size = <33>;//33M
-		linux,contiguous-region = <&cma_vdin0>;
 	};
 
 // DEVICE="vdin1"
@@ -991,12 +890,11 @@
 		compatible = "amlogic,vdin";
 		dev_name = "vdin1";
 		status = "ok";
-		//reserve-memory = <0x01000000>;
-		//miracast_size = <1920 1080>;//1920x1080x2x4=17M
+		reserve-memory = <0x01000000>;
+		reserve-iomap = "true";
+		miracast_size = <1920 1080>;//1920x1080x2x4=17M
 		irq = <117>;
 		vdin_id = <1>;
-		max_size = <16>;//16M
-		linux,contiguous-region = <&cma_vdin1>;
 	};
 
 
@@ -1004,8 +902,8 @@
 		compatible = "amlogic,tvafe";
 		dev_name = "tvafe";
 		status = "ok";
-		//reserve-memory = <0x500000>;
-		//reserve-iomap = "true";
+		reserve-memory = <0x500000>;
+		reserve-iomap = "true";
 		tvafe_id = <0>;
 		pinctrl-names = "default";
 		tvafe_pin_mux = < /*!!particular sequence, no more and no less!!!*/
@@ -1014,17 +912,6 @@
 			2	/*// TVAFE_CVBS_IN1,  //CVBS_IN2*/
 			4	/*// TVAFE_CVBS_IN3,    //CVBS_IN3,*/
 		>;
-		max_size = <5>;//5M
-		linux,contiguous-region = <&cma_tvafe>;
-	};
-
-	amlvecm {
-		compatible = "amlogic,vecm";
-		dev_name = "aml_vecm";
-		status = "okay";
-		gamma_en = <1>;/*  1:enabel ;0:disable*/
-		wb_en = <1>;/*  1:enabel ;0:disable*/
-		cm_en = <1>;/*  1:enabel ;0:disable*/
 	};
 
 
@@ -1757,13 +1644,6 @@
 		fe0_atv_demod = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&dvb_fe_pins>;
-	};
-
-	aml_atv_demod {
-		compatible = "amlogic,aml_atv_demod";
-		dev_name = "aml_atv_demod";
-		status = "okay";
-		reg_23cf = <0x88188832>;/*default:0x88188832;r840 on haier:0x48188832*/
 	};
 
 	/*smartcard {

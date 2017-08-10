@@ -179,16 +179,6 @@ static vpu_mod_t get_vpu_mod(unsigned int vmod)
             case VMODE_4K2K_50HZ:
             case VMODE_4K2K_50HZ_Y420:
             case VMODE_4K2K_5G:
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-            case VMODE_720P_59HZ:
-            case VMODE_1080P_59HZ:
-            case VMODE_1080P_23HZ:
-            case VMODE_1080I_59HZ:
-            case VMODE_4K2K_23HZ:
-            case VMODE_4K2K_29HZ:
-            case VMODE_4K2K_59HZ:
-            case VMODE_4K2K_59HZ_Y420:
-#endif
 				vpu_mod = VPU_VENCP;
 				break;
 			case VMODE_480I:

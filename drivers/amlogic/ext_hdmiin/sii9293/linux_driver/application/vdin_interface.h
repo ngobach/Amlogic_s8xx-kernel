@@ -3,7 +3,7 @@
 
 int sii5293_register_tvin_frontend(struct tvin_frontend_s *frontend);
 
-void sii9293_stop_tvin(sii9293_tvin_t *info);
-int sii9293_start_tvin(sii9293_tvin_t *info, sii_video_timming_link *timming);
+void sii5293_stop_vdin(sii5293_vdin *info);
+void sii5293_start_vdin(sii5293_vdin *info, int width, int height, int frame_rate, int field_flag);
 
 #endif

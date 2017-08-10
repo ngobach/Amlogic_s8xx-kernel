@@ -18,7 +18,7 @@ static int mdio_read(struct mii_bus *bus, int phyaddr, int phyreg)
 	unsigned int mii_address;
 	unsigned int mii_data;
 	unsigned regValue;
-#if defined(CONFIG_AML1220) && !defined(CONFIG_PMU4_V2)
+#ifdef CONFIG_AML1220
 	int data1;
 	uint8_t data_lo;
 	uint8_t data_hi;
@@ -41,7 +41,7 @@ static int mdio_read(struct mii_bus *bus, int phyaddr, int phyreg)
         do {} while (((readl((void*)(priv->base_addr + mii_address))) & MII_BUSY) == 1);
         /* Read the data from the MII data register */
         data = (int)readl((void*)(priv->base_addr + mii_data));
-#if defined(CONFIG_AML1220) && !defined(CONFIG_PMU4_V2)
+#ifdef CONFIG_AML1220
         return data1;
 #else
 	return data;
@@ -64,7 +64,7 @@ static int mdio_write(struct mii_bus *bus, int phyaddr, int phyreg, u16 phydata)
         writel(value, (void*)(priv->base_addr + mii_address));
 
         do {} while (((readl((void*)(priv->base_addr + mii_address))) & MII_BUSY) == 1);
-	
+
 	return 0;
 }
 
@@ -152,7 +152,7 @@ for (addr = 8; addr == 8; addr++) {
 			}
 			if (phydev->phy_id  != 0) {
 				//priv->phydev->addr = addr;
-				if (!((phydev->phy_id  == 0x001cc916)&& (addr == 0))) 
+				if (!((phydev->phy_id  == 0x001cc916)&& (addr == 0)))
 				{
 					priv->phy_addr = addr;
 					phydev->irq = PHY_POLL;

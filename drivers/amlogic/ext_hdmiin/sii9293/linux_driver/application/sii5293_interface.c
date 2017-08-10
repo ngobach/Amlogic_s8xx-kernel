@@ -1,7 +1,6 @@
 
 #include "mhl_linuxdrv.h"
 #include "../../driver/cra_drv/si_cra.h"
-#include "../../component/rx/si_rx_video_mode_detection.h"
 
 #define GET_VIDEO_INFO_FROM_TABLE
 
@@ -36,12 +35,11 @@ int sii_get_pwr5v_status(void)
 // 0xa for 96 kHz
 // 0xc for 176.4 kHz
 // 0xe for 192 kHz
-extern unsigned int get_measured_audio_fs(void);
 int sii_get_audio_sampling_freq(void)
 {
 	unsigned char freq;
 
-	freq = (unsigned char)get_measured_audio_fs();
+	freq = SiiRegRead(RX_A__CHST4)&RX_A__CHST4__BIT_AUD_FS;
 
 	return freq;
 }
@@ -56,14 +54,6 @@ int sii_get_h_active(void)
 {
 	unsigned char index = 0;
 
-	if (gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER)
-	{
-		index = gDriverContext.input_video_mode_other;
-		if (index >= NMB_OF_VIDEO_OTHER_MODES)
-			return -1;
-		return VideoModeTableOther[index].Active.H;
-	}
-
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
 		return -1;
@@ -74,14 +64,6 @@ int sii_get_h_active(void)
 int sii_get_h_total(void)
 {
 	unsigned char index = 0;
-
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].Total.H;
-	}
 
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
@@ -94,14 +76,6 @@ int sii_get_hs_width(void)
 {
 	unsigned char index = 0;
 
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].SyncWidth.H;
-	}
-
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
 		return -1;
@@ -113,14 +87,6 @@ int sii_get_hs_frontporch(void)
 {
 	unsigned char index = 0;
 
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].SyncOffset.H;
-	}
-
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
 		return -1;
@@ -131,14 +97,6 @@ int sii_get_hs_frontporch(void)
 int sii_get_hs_backporch(void)
 {
 	unsigned char index = 0;
-
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].Blank.H - VideoModeTableOther[index].SyncOffset.H - VideoModeTableOther[index].SyncWidth.H;
-	}
 
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
@@ -154,14 +112,6 @@ int sii_get_v_active(void)
 {
 	unsigned char index = 0;
 
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].Active.V;
-	}
-
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
 		return -1;
@@ -172,14 +122,6 @@ int sii_get_v_active(void)
 int sii_get_v_total(void)
 {
 	unsigned char index = 0;
-
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].Total.V;
-	}
 
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
@@ -192,14 +134,6 @@ int sii_get_vs_width(void)
 {
 	unsigned char index = 0;
 
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].SyncWidth.V;
-	}
-
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
 		return -1;
@@ -210,14 +144,6 @@ int sii_get_vs_width(void)
 int sii_get_vs_frontporch(void)
 {
 	unsigned char index = 0;
-
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].SyncOffset.V;
-	}
 
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
@@ -230,14 +156,6 @@ int sii_get_vs_backporch(void)
 {
 	unsigned char index = 0;
 
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].Blank.V - VideoModeTableOther[index].SyncOffset.V - VideoModeTableOther[index].SyncWidth.V;
-	}
-
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
 		return -1;
@@ -248,14 +166,6 @@ int sii_get_vs_backporch(void)
 int sii_get_vs_to_de(void)
 {
 	unsigned char index = 0;
-
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].Blank.V - VideoModeTableOther[index].SyncOffset.V;
-	}
 
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
@@ -271,14 +181,6 @@ int sii_get_pixel_clock(void)
 {
 	unsigned char index = 0;
 
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].PixClk*10000;
-	}
-
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
 		return -1;
@@ -289,14 +191,6 @@ int sii_get_pixel_clock(void)
 int sii_get_h_freq(void)
 {
 	unsigned char index = 0;
-
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].HFreq*10000;
-	}
 
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
@@ -309,14 +203,6 @@ int sii_get_v_freq(void)
 {
 	unsigned char index = 0;
 
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].VFreq;
-	}
-
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
 		return -1;
@@ -328,14 +214,6 @@ int sii_get_interlaced(void)
 {
 	unsigned char index = 0;
 
-	if ( gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER )
-	{
-		index = gDriverContext.input_video_mode_other;
-		if ( index >= NMB_OF_VIDEO_OTHER_MODES )
-			return -1;
-		return VideoModeTableOther[index].Interlaced;
-	}
-
 	index = gDriverContext.input_video_mode & 0x7f;
 	if ( (index==0) || (index>=NMB_OF_CEA861_VIDEO_MODES) )
 		return -1;
@@ -343,27 +221,7 @@ int sii_get_interlaced(void)
 	return VideoModeTable[index].Interlaced;
 }
 
-extern void SiiDrvRxGetSyncInfo(sync_info_type *p_sync_info);
-int sii_get_hs_polar(void)
-{
-	sync_info_type sync_info;
-
-	SiiDrvRxGetSyncInfo(&sync_info);
-
-	return sync_info.HPol;
-}
-
-int sii_get_vs_polar(void)
-{
-	sync_info_type sync_info;
-
-	SiiDrvRxGetSyncInfo(&sync_info);
-
-	return sync_info.VPol;
-}
-
 #else
-
 // !!! read h/v/sync info from 5293 registers, but the value seems not stable.
 
 // offset definitions for registers.
@@ -380,7 +238,7 @@ int sii_get_vs_polar(void)
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 // sii5293 output signal horizontal parameters
 
-static int sii_get_h_active_reg(void)
+int sii_get_h_active(void)
 {
 	unsigned char high,low;
 
@@ -390,7 +248,7 @@ static int sii_get_h_active_reg(void)
 	return ( (high<<8) | low );
 }
 
-static int sii_get_h_total_reg(void)
+int sii_get_h_total(void)
 {
 	unsigned char high,low;
 
@@ -400,7 +258,7 @@ static int sii_get_h_total_reg(void)
 	return ( (high<<8) | low );
 }
 
-static int sii_get_hs_width_reg(void)
+int sii_get_hs_width(void)
 {
 	unsigned char high,low;
 
@@ -410,7 +268,7 @@ static int sii_get_hs_width_reg(void)
 	return ( (high<<8) | low );
 }
 
-static int sii_get_hs_frontporch_reg(void)
+int sii_get_hs_frontporch(void)
 {
 	unsigned char high,low;
 
@@ -420,11 +278,11 @@ static int sii_get_hs_frontporch_reg(void)
 	return ( (high<<8) | low );
 }
 
-static int sii_get_hs_backporch_reg(void)
+int sii_get_hs_backporch(void)
 {
 	int backporch = 0;
 
-	backporch = sii_get_h_total_reg() - sii_get_h_active_reg() - sii_get_hs_frontporch_reg() - sii_get_hs_width_reg();
+	backporch = sii_get_h_total() - sii_get_h_active() - sii_get_hs_frontporch() - sii_get_hs_width();
 
 	return backporch;
 }
@@ -432,7 +290,7 @@ static int sii_get_hs_backporch_reg(void)
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 // sii5293 output signal vertical parameters
 
-static int sii_get_v_active_reg(void)
+int sii_get_v_active(void)
 {
 	unsigned char high,low;
 
@@ -442,7 +300,7 @@ static int sii_get_v_active_reg(void)
 	return ( (high<<8) | low );
 }
 
-static int sii_get_v_total_reg(void)
+int sii_get_v_total(void)
 {
 	unsigned char high,low;
 
@@ -452,12 +310,12 @@ static int sii_get_v_total_reg(void)
 	return ( (high<<8) | low );
 }
 
-static int sii_get_vs_width_reg(void)
+int sii_get_vs_width(void)
 {
 	return 0;
 }
 
-static int sii_get_vs_frontporch_reg(void)
+int sii_get_vs_frontporch(void)
 {
 	unsigned char low;
 
@@ -466,12 +324,12 @@ static int sii_get_vs_frontporch_reg(void)
 	return low;
 }
 
-static int sii_get_vs_backporch_reg(void)
+int sii_get_vs_backporch(void)
 {
 	return 0;
 }
 
-static int sii_get_vs_to_de_reg(void)
+int sii_get_vs_to_de(void)
 {
 	unsigned char low;
 
@@ -480,30 +338,4 @@ static int sii_get_vs_to_de_reg(void)
 	return low;
 }
 
-extern uint16_t SiiDrvRxGetPixelFreq(void);
-extern uint8_t SiiDrvRxGetVideoStatus();
-int sii_get_video_timming(sii_video_timming_t *timming)
-{
-	uint8_t vid_stat_reg = SiiDrvRxGetVideoStatus();
-
-	timming->h_active	= sii_get_h_active_reg();
-	timming->h_total	= sii_get_h_total_reg();
-	timming->hs_fp		= sii_get_hs_frontporch_reg();
-	timming->hs_width	= sii_get_hs_width_reg();
-	timming->hs_bp		= sii_get_hs_backporch_reg();
-
-	timming->v_active	= sii_get_v_active_reg();
-	timming->v_total	= sii_get_v_total_reg();
-	timming->vs_fp		= sii_get_vs_frontporch_reg();
-	timming->vs_to_de	= sii_get_vs_to_de_reg();
-
-	timming->pixelfreq	= SiiDrvRxGetPixelFreq();
-	timming->interlaced = (vid_stat_reg & RX_M__VID_STAT__INTERLACE) ? INTL : PROG;
-	timming->hs_pol = (vid_stat_reg & RX_M__VID_STAT__HSYNC_POL) ? POS : NEG;
-	timming->vs_pol = (vid_stat_reg & RX_M__VID_STAT__VSYNC_POL) ? POS : NEG;
-
-	return 0;
-}
-
 #endif
-

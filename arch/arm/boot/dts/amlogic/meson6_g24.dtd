@@ -67,16 +67,16 @@
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		reg = <0x84100000 0x00600000
-	   	 		0x84700000 0x00100000>;
- 		vmode = <2>; /*0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
- 		display_size_default = <1920 1080 1920 2160 32>;
+				0x84700000 0x00100000>;
+		vmode = <2>; /*0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
+		display_size_default = <1920 1080 1920 2160 32>;
 	};
 
 	mesonfb-ext{
 		compatible = "amlogic,mesonfb-ext";
 		dev_name = "mesonfb-ext";
 		reg = <0x84800000 0x00600000
-	       	 0x84e00000 0x00100000>;
+		 0x84e00000 0x00100000>;
 	       display_size_default = <1024 768 1024 1536 32>;
 	};
 
@@ -430,18 +430,6 @@
 		compatible = "amlogic,mesonvout2";
 		dev_name = "mesonvout2";
 		/*reg = <0 0>;*/
-	};
-
-	tvout {
-		compatible = "amlogic,tvout";
-		dev_name = "tvout";
-		status = "okay";
-	};
-
-	tvout2 {
-		compatible = "amlogic,tvout2";
-		dev_name = "tvout2";
-		status = "okay";
 	};
 
 	backlight{
@@ -1254,4 +1242,3 @@
 	};
 
 }; /* end of / */
-

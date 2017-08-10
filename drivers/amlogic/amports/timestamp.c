@@ -80,7 +80,7 @@ void timestamp_apts_inc(s32 inc)
 	inc = inc*timestamp_inc_factor/PLL_FACTOR;
 #endif
     if(tsync_get_mode()!=TSYNC_MODE_PCRMASTER){//timestamp_enable_resample_flag){
-		if(timestamp_resample_type_flag==0){      
+		if(timestamp_resample_type_flag==0){
 			//0-->no resample  processing
 		}else if(timestamp_resample_type_flag==1){//1-->down resample processing
 			#ifdef CONFIG_AMAUDIO
@@ -195,11 +195,11 @@ void timestamp_pcrscr_inc(s32 inc)
 #endif
 		if(tsync_get_mode()!=TSYNC_MODE_PCRMASTER){//timestamp_enable_resample_flag){
 			if(timestamp_resample_type_flag==0){	  //0-->no resample  processing
-				
+
 			}else if(timestamp_resample_type_flag==1){//1-->down resample processing
 				#ifdef CONFIG_AMAUDIO
 				inc += inc*resample_delta / DEFALT_NUMSAMPS_PERCH;
-		 		acc_pcrscr_inc += inc*resample_delta % DEFALT_NUMSAMPS_PERCH;
+				acc_pcrscr_inc += inc*resample_delta % DEFALT_NUMSAMPS_PERCH;
 				if(acc_pcrscr_inc*resample_delta >= DEFALT_NUMSAMPS_PERCH){
 					inc += acc_pcrscr_inc*resample_delta / DEFALT_NUMSAMPS_PERCH;
 					acc_pcrscr_inc = acc_pcrscr_inc*resample_delta % DEFALT_NUMSAMPS_PERCH;
@@ -208,14 +208,14 @@ void timestamp_pcrscr_inc(s32 inc)
 			}else if(timestamp_resample_type_flag==2){//2-->up resample processing
 				#ifdef CONFIG_AMAUDIO
 				inc -= inc*resample_delta / DEFALT_NUMSAMPS_PERCH;
-		 		acc_pcrscr_dec += inc*resample_delta % DEFALT_NUMSAMPS_PERCH;
+				acc_pcrscr_dec += inc*resample_delta % DEFALT_NUMSAMPS_PERCH;
 				if(acc_pcrscr_dec*resample_delta >= DEFALT_NUMSAMPS_PERCH){
 					inc -= acc_pcrscr_dec*resample_delta / DEFALT_NUMSAMPS_PERCH;
 					acc_pcrscr_dec = acc_pcrscr_dec*resample_delta % DEFALT_NUMSAMPS_PERCH;
 				}
 				#endif
 			}
-		}  
+		}
         system_time += inc + system_time_inc_adj;
     }
 }

@@ -46,8 +46,8 @@ static const unsigned int  signal_set[SIGNAL_SET_MAX][3]=
 	},
 	{
 		VIDEO_SIGNAL_TYPE_CVBS,            	//cvbs&svideo
-		VIDEO_SIGNAL_TYPE_SVIDEO_LUMA,    
-    	VIDEO_SIGNAL_TYPE_SVIDEO_CHROMA,   
+		VIDEO_SIGNAL_TYPE_SVIDEO_LUMA,
+	VIDEO_SIGNAL_TYPE_SVIDEO_CHROMA,
 	},
 	{	VIDEO_SIGNAL_TYPE_PROGRESSIVE_Y,     //progressive.
 		VIDEO_SIGNAL_TYPE_PROGRESSIVE_PB,
@@ -56,12 +56,12 @@ static const unsigned int  signal_set[SIGNAL_SET_MAX][3]=
 };
 static  const  char*   signal_table[]={
 	"INTERLACE_Y ", /**< Interlace Y signal */
-    	"CVBS",            /**< CVBS signal */
-    	"SVIDEO_LUMA",     /**< S-Video luma signal */
-    	"SVIDEO_CHROMA",   /**< S-Video chroma signal */
-    	"INTERLACE_PB",    /**< Interlace Pb signal */
-    	"INTERLACE_PR",    /**< Interlace Pr signal */
-    	"INTERLACE_R",     /**< Interlace R signal */
+	"CVBS",            /**< CVBS signal */
+	"SVIDEO_LUMA",     /**< S-Video luma signal */
+	"SVIDEO_CHROMA",   /**< S-Video chroma signal */
+	"INTERLACE_PB",    /**< Interlace Pb signal */
+	"INTERLACE_PR",    /**< Interlace Pr signal */
+	"INTERLACE_R",     /**< Interlace R signal */
          "INTERLACE_G",     /**< Interlace G signal */
          "INTERLACE_B",     /**< Interlace B signal */
          "PROGRESSIVE_Y",   /**< Progressive Y signal */
@@ -70,7 +70,7 @@ static  const  char*   signal_table[]={
          "PROGEESSIVE_R",   /**< Progressive R signal */
          "PROGEESSIVE_G",   /**< Progressive G signal */
          "PROGEESSIVE_B",   /**< Progressive B signal */
-		
+
 	};
 int 	 get_current_vdac_setting2(void)
 {
@@ -93,7 +93,7 @@ void  change_vdac_setting2(unsigned int  vdec_setting,vmode_t  mode)
 		break;
 		case VMODE_480CVBS:
 		case VMODE_576CVBS:
-		signal_set_index=1;	
+		signal_set_index=1;
 		bit=2;
 		break;
 		default :
@@ -116,7 +116,7 @@ static void enable_vsync_interrupt(void)
     printk("enable_vsync_interrupt\n");
 
     CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<11);
-	
+
     if (READ_MPEG_REG(ENCP_VIDEO_EN) & 1) {
         WRITE_MPEG_REG(VENC_INTCTRL, 0x200);
 
@@ -193,7 +193,7 @@ int tvoutc_setclk2(tvmode_t mode)
 		}
 	else
 		{
-		printk(KERN_WARNING "UNsupport xtal setting for vidoe xtal=%d,default to 24M\n",xtal);	
+		printk(KERN_WARNING "UNsupport xtal setting for vidoe xtal=%d,default to 24M\n",xtal);
 		xtal=0;
 		}
 	switch(mode)
@@ -222,7 +222,7 @@ int tvoutc_setclk2(tvmode_t mode)
 			  }
 			  break;
 		default:
-			printk(KERN_ERR "unsupport tv mode,video clk is not set!!\n");	
+			printk(KERN_ERR "unsupport tv mode,video clk is not set!!\n");
 	}
 
 	return 0;
@@ -331,16 +331,16 @@ int tvoutc_setmode2(tvmode_t mode)
 #endif
 		case TVMODE_1080I_50HZ:
         //WRITE_MPEG_REG(HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV)&(~(0xff)))|0x0); // reg 0x104a
-        break;		    
+        break;
 		case TVMODE_1080P:
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 		case TVMODE_1080P_59HZ:
 #endif
 		case TVMODE_1080P_50HZ:
         //WRITE_MPEG_REG(HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV)&(~(0xff)))|0x1); // reg 0x104a
-        break;		    
+        break;
 		default:
-			printk(KERN_ERR "unsupport tv mode,video clk is not set!!\n");	
+			printk(KERN_ERR "unsupport tv mode,video clk is not set!!\n");
 	}
     //WRITE_MPEG_REG(HHI_VIID_CLK_CNTL, 0x8001f); //reg 0x104b, select vid_pll_clk as source of v2_clk_divN
     //WRITE_MPEG_REG(HHI_VID_CLK_DIV, (READ_MPEG_REG(HHI_VID_CLK_DIV)&(~(0xff<<24)))|(0x88<<24)); // reg 0x1059, select cts_encp_clk and cts_enci_clk from v2_clk_div1
@@ -352,7 +352,7 @@ int tvoutc_setmode2(tvmode_t mode)
     aml_write_reg32(P_HHI_GCLK_OTHER, aml_read_reg32(P_HHI_GCLK_OTHER)|(1<<8));
     #endif
     aml_write_reg32(P_VPP2_POSTBLEND_H_SIZE, tvinfo->xres);
-    
+
 // For debug only
 #if 0
 printk(" clk_util_clk_msr 6 = %d\n", clk_util_clk_msr(6));
@@ -368,6 +368,3 @@ printk(" clk_util_clk_msr 29 = %d\n", clk_util_clk_msr(29));
 
     return 0;
 }
-
-
-

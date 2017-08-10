@@ -152,9 +152,9 @@ static int check_p32_p22(pulldown_detect_info_t* cur_info, pulldown_detect_info_
 {
 
 	di_p22_info[idx] = di_p22_info[idx] << 1;
- 	di_p22_info_2[idx] = di_p22_info_2[idx] << 1;
- 	di_p32_info[idx] = di_p32_info[idx] << 1;
- 	di_p32_info_2[idx] = di_p32_info_2[idx] << 1;
+	di_p22_info_2[idx] = di_p22_info_2[idx] << 1;
+	di_p32_info[idx] = di_p32_info[idx] << 1;
+	di_p32_info_2[idx] = di_p32_info_2[idx] << 1;
 
 	if ( cur_info->field_diff*pd_th->field_diff_chg_th <= pre_info->field_diff &&
 	        pre2_info->field_diff*pd_th->field_diff_chg_th <= pre_info->field_diff &&
@@ -224,7 +224,7 @@ void pattern_check_pre_2(int idx, pulldown_detect_info_t* cur_info, pulldown_det
 			else if ( ((di_p22_info[idx] & PATTERN22_MARK) == (0xaaaaaaaaaaaaaaaaLL & PATTERN22_MARK))
 				&& ((di_p22_info_2[idx] & PATTERN22_MARK) == (0xaaaaaaaaaaaaaaaaLL & PATTERN22_MARK)) )
 			{
-		    	*pre_pulldown_mode = 0;
+			*pre_pulldown_mode = 0;
                 *type=0;
 			}
 			else if ( pattern_len[idx] == 0 ){
@@ -263,7 +263,7 @@ void pattern_check_pre_2(int idx, pulldown_detect_info_t* cur_info, pulldown_det
 								if ( (pattern & (pattern-1)) != 0 )
 								{
 									if ( cur_info->field_diff_num < pre_info->field_diff_num )
-								    	*pre_pulldown_mode = 1;
+									*pre_pulldown_mode = 1;
 									else
 										*pre_pulldown_mode = 0;
                   *type=1;
@@ -303,7 +303,7 @@ void pattern_check_pre_2(int idx, pulldown_detect_info_t* cur_info, pulldown_det
 						if ( (pattern & (pattern-1)) != 0 )
 						{
 							if ( cur_info->field_diff_num < pre_info->field_diff_num )
-						    	*pre_pulldown_mode = 1;
+							*pre_pulldown_mode = 1;
 							else
 								*pre_pulldown_mode = 0;
                                 *type=1;
@@ -408,13 +408,13 @@ int detect_pd32(void)
 	   phis_22 = pd_his(pd22_pattern_len-1,pd22_pattern_len);
 	   if (pd22_th==0xff)
 	   {
- 		printk("phis_22->field_diff_num = %08x\n",phis_22->field_diff_num );
+		printk("phis_22->field_diff_num = %08x\n",phis_22->field_diff_num );
 	   }
 	   if (phis_22->field_diff_num >((phis_22-1)->field_diff_num*pd22_th)){
-	   	blend_mode  =  1;
-	   	for (ii = 0; ii < (pd22_pattern_len>>1) ; ii ++){
-             		if (((phis_22-2*ii)->field_diff_num <= ((phis_22-2*ii-1)->field_diff_num * pd22_th)) ||
-		    	(((phis_22-2*ii-1)->field_diff_num *pd22_th) > (phis_22-2*(ii+1))->field_diff_num))	{
+		blend_mode  =  1;
+		for (ii = 0; ii < (pd22_pattern_len>>1) ; ii ++){
+			if (((phis_22-2*ii)->field_diff_num <= ((phis_22-2*ii-1)->field_diff_num * pd22_th)) ||
+			(((phis_22-2*ii-1)->field_diff_num *pd22_th) > (phis_22-2*(ii+1))->field_diff_num))	{
 			blend_mode = -1;
 			break;
 			}
@@ -424,8 +424,8 @@ int detect_pd32(void)
 	    {
 		 blend_mode = 0;
 		 for (ii = 0; ii < (pd22_pattern_len>>1) ; ii ++){
-             		if ((((phis_22-2*ii)->field_diff_num * pd22_th ) > (phis_22-2*ii-1)->field_diff_num ) ||
-		    	(((phis_22-2*ii-1)->field_diff_num) <=(( phis_22-2*ii-2)->field_diff_num * pd22_th)))	{
+			if ((((phis_22-2*ii)->field_diff_num * pd22_th ) > (phis_22-2*ii-1)->field_diff_num ) ||
+			(((phis_22-2*ii-1)->field_diff_num) <=(( phis_22-2*ii-2)->field_diff_num * pd22_th)))	{
 			blend_mode = -1;
 			break;
 			}
@@ -433,7 +433,7 @@ int detect_pd32(void)
 	     }
             else
             {
-	   	blend_mode = -1;
+		blend_mode = -1;
 */
 	if(cur_pd32_status){
         phis = pd_his(pd32_pattern_len-1,pd32_pattern_len);
@@ -546,4 +546,3 @@ int detect_pd32(void)
 
     return blend_mode;
 }
-

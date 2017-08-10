@@ -407,16 +407,6 @@ typedef enum tvin_color_fmt_e {
         TVIN_COLOR_FMT_MAX,
 }tvin_color_fmt_t;
 
-typedef enum tvin_color_fmt_range_e {
-        TVIN_FMT_RANGE_NULL = 0,  //depend on vedio fromat
-        TVIN_RGB_FULL,  //1
-        TVIN_RGB_LIMIT, // 2
-        TVIN_YUV_FULL,  // 3
-        TVIN_YUV_LIMIT, //4
-        TVIN_COLOR_FMT_RANGE_MAX,
-}tvin_color_fmt_range_t;
-
-
 const char *tvin_color_fmt_str(enum tvin_color_fmt_e color_fmt);
 typedef enum tvin_scan_mode_e {
         TVIN_SCAN_MODE_NULL = 0,

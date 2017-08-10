@@ -106,18 +106,12 @@ int amaudio2_enable = 0;
 int android_left_gain = 256;
 int android_right_gain = 256;
 int set_android_gain_enable = 0;
-int softbuffer_level = 0;
-int soft_buffer_reset = 0;
-#define BUFFER_THRESHOLD_DEFAULT 10240
-#define LATENCY_DEFAULT 2048
-int soft_buffer_threshold = BUFFER_THRESHOLD_DEFAULT;
-int soft_latency = LATENCY_DEFAULT;
 
 static irqreturn_t i2s_out_callback(int irq, void* data);
 static unsigned get_i2s_out_size(void);
 static unsigned get_i2s_out_ptr(void);
 
-#define SOFT_BUFFER_SIZE (PAGE_SIZE*8)
+#define SOFT_BUFFER_SIZE (PAGE_SIZE*16)
 #define MAX_LATENCY (64*32*3)
 #define MIN_LATENCY (64*32)
 static unsigned latency = MIN_LATENCY*2; //20ms
@@ -144,26 +138,26 @@ static int amaudio_open(struct inode *inode, struct file *file)
   amaudio_port_t* this = &amaudio_ports[iminor(inode)];
   amaudio_t * amaudio = kzalloc(sizeof(amaudio_t), GFP_KERNEL);
   int res = 0;
-  
-  if(iminor(inode)== 0){  	
-  	printk(KERN_DEBUG "amaudio2_out opened\n");
-  	if(!this->dev->dma_mask)
-  		this->dev->dma_mask = &amaudio_pcm_dmamask;
-  	if(!this->dev->coherent_dma_mask)
-  		this->dev->coherent_dma_mask = 0xffffffff;
-  		
-  	amaudio->sw.addr = (char*)dma_alloc_coherent(this->dev, SOFT_BUFFER_SIZE, &amaudio->sw.paddr, GFP_KERNEL);
-  	amaudio->sw.size = SOFT_BUFFER_SIZE;
-  	if(!amaudio->sw.addr){
-  		res = -ENOMEM;
-		printk(KERN_ERR "amaudio2 out soft DMA buffer alloc failed\n");
-  		goto error;
-  	}
 
-  	amaudio->hw.addr = (char*)aml_i2s_playback_start_addr;
-  	amaudio->hw.paddr = aml_i2s_playback_phy_start_addr;
-  	amaudio->hw.size = get_i2s_out_size();
-  	amaudio->hw.rd = get_i2s_out_ptr();
+  if(iminor(inode)== 0){
+	printk(KERN_DEBUG "amaudio2_out opened\n");
+	if(!this->dev->dma_mask)
+		this->dev->dma_mask = &amaudio_pcm_dmamask;
+	if(!this->dev->coherent_dma_mask)
+		this->dev->coherent_dma_mask = 0xffffffff;
+
+	amaudio->sw.addr = (char*)dma_alloc_coherent(this->dev, SOFT_BUFFER_SIZE, &amaudio->sw.paddr, GFP_KERNEL);
+	amaudio->sw.size = SOFT_BUFFER_SIZE;
+	if(!amaudio->sw.addr){
+		res = -ENOMEM;
+		printk(KERN_ERR "amaudio2 out soft DMA buffer alloc failed\n");
+		goto error;
+	}
+
+	amaudio->hw.addr = (char*)aml_i2s_playback_start_addr;
+	amaudio->hw.paddr = aml_i2s_playback_phy_start_addr;
+	amaudio->hw.size = get_i2s_out_size();
+	amaudio->hw.rd = get_i2s_out_ptr();
 
 	printk(KERN_DEBUG "sw.addr=%08x,sw.paddr=%08x \n hw.addr=%08x,hw.paddr=%08x\n hw.size=%08x,hw.rd=%08x\n",
 						(unsigned int)amaudio->sw.addr,amaudio->sw.paddr,
@@ -179,30 +173,28 @@ static int amaudio_open(struct inode *inode, struct file *file)
 	spin_lock_init(&amaudio->sw.lock);
   	spin_lock_init(&amaudio->hw.lock);
 	spin_lock_init(&amaudio->sw_read.lock);
-	
-  	if(request_irq(IRQ_OUT, i2s_out_callback, IRQF_SHARED, "i2s_out",amaudio)){
-  		res = -EINVAL;
-  		goto error;
-  	}
-	soft_buffer_threshold = BUFFER_THRESHOLD_DEFAULT;
 
+  	if(request_irq(IRQ_OUT, i2s_out_callback, IRQF_SHARED, "i2s_out",amaudio)){
+		res = -EINVAL;
+		goto error;
+	}
   }else if(iminor(inode) == 1){
-  	printk(KERN_DEBUG "amaudio2_in opened\n");
-  	if(!this->dev->dma_mask)
-  		this->dev->dma_mask = &amaudio_pcm_dmamask;
-  	if(!this->dev->coherent_dma_mask)
-  		this->dev->coherent_dma_mask = 0xffffffff;
-  		
+	printk(KERN_DEBUG "amaudio2_in opened\n");
+	if(!this->dev->dma_mask)
+		this->dev->dma_mask = &amaudio_pcm_dmamask;
+	if(!this->dev->coherent_dma_mask)
+		this->dev->coherent_dma_mask = 0xffffffff;
+
   }else if(iminor(inode) == 2){
-  	printk(KERN_DEBUG "amaudio2_ctl opened\n");
+	printk(KERN_DEBUG "amaudio2_ctl opened\n");
   }else if(iminor(inode) == 3){
-  	printk(KERN_DEBUG "amaudio2_utils opened\n");
+	printk(KERN_DEBUG "amaudio2_utils opened\n");
   }else{
-  	printk(KERN_ERR "BUG:%s,%d, please check\n", __FILE__, __LINE__);
-  	res = -EINVAL;
-  	goto error;
+	printk(KERN_ERR "BUG:%s,%d, please check\n", __FILE__, __LINE__);
+	res = -EINVAL;
+	goto error;
   }
-  
+
   amaudio->type = iminor(inode);
   amaudio->dev = this->dev;
   file->private_data = amaudio;
@@ -211,7 +203,7 @@ static int amaudio_open(struct inode *inode, struct file *file)
 	return res;
 error:
 	kfree(amaudio);
-	return res;	
+	return res;
 }
 
 static int amaudio_release(struct inode *inode, struct file *file)
@@ -219,7 +211,7 @@ static int amaudio_release(struct inode *inode, struct file *file)
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
 
 	free_irq(IRQ_OUT, amaudio);
-	
+
 	if(amaudio->sw.addr){
 		dma_free_coherent(amaudio->dev, amaudio->sw.size, (void*)amaudio->sw.addr, amaudio->sw.paddr);
 		amaudio->sw.addr = 0;
@@ -237,13 +229,13 @@ static int amaudio_mmap(struct file*file, struct vm_area_struct* vma)
 {
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
 	if(amaudio->type == 0){
-		int mmap_flag = dma_mmap_coherent(amaudio->dev, vma, (void*)amaudio->sw.addr, 
+		int mmap_flag = dma_mmap_coherent(amaudio->dev, vma, (void*)amaudio->sw.addr,
 													amaudio->sw.paddr, amaudio->sw.size);
 		//printk(KERN_DEBUG " amaudio->sw.addr=%08x,amaudio->sw.paddr=%08x, mmap_flag = %08x \n",
 		//						(unsigned int)amaudio->sw.addr,amaudio->sw.paddr,mmap_flag);
 		return mmap_flag;
 	}else if(amaudio->type == 1){
-		
+
 	}else{
 		return -ENODEV;
 	}
@@ -259,7 +251,7 @@ static ssize_t amaudio_read(struct file *file, char __user *buf, size_t count, l
 		ret = copy_to_user((void*)buf, (void*)(sw_read->addr+sw_read->rd), count);
 		return (count - ret);
 	}else if(amaudio->type == 1){
-		
+
 	}else{
 		return -ENODEV;
 	}
@@ -301,7 +293,7 @@ void direct_mix_memcpy(BUF *des, int a, BUF *src, int b, unsigned count)
 {
 	int i,j;
 	int samp;
-	
+
 	short *des_left = (short*)(des->addr + a);
 	short *des_right = des_left + 16;
 	short *src_buf = (short*)(src->addr + b);
@@ -328,7 +320,7 @@ void inter_mix_memcpy(BUF *des, int a, BUF *src, int b, unsigned count)
 	int i,j;
 	short sampL,sampR;
 	int samp, sampLR;
-	
+
 	short *des_left = (short*)(des->addr+a);
 	short *des_right = des_left + 16;
 	short *src_buf = (short*)(src->addr+b);
@@ -360,7 +352,7 @@ void interleave_memcpy(BUF *des, int a, BUF *src, int b, unsigned count)
 	short *out = (short*)(des->addr + a);
 	short *in_left = (short*)(src->addr + b);
 	short *in_right = in_left + 16;
-	
+
 	for(i = 0; i < count; i += 64){
 		for(j = 0; j < 16; j ++){
 			*out++ = *in_left++;
@@ -380,33 +372,30 @@ static void i2s_copy(amaudio_t* amaudio)
 	unsigned i2s_out_ptr = get_i2s_out_ptr();
 	unsigned alsa_delay = (aml_i2s_alsa_write_addr + hw->size - i2s_out_ptr)%hw->size;
 	unsigned amaudio_delay = (hw->wr + hw->size - i2s_out_ptr)%hw->size;
-	
+
 	spin_lock_irqsave(&hw->lock,hwirqflags);
 
 	hw->rd = i2s_out_ptr;
 	hw->level = amaudio_delay;
-	if (hw->level <= INT_BLOCK || (alsa_delay - amaudio_delay) < INT_BLOCK) {
-		printk(KERN_DEBUG "Reset hw: hw->wr = %x,hw->rd = %x,hw->level = %x,"
-			"alsa_delay:%x,sw->wr = %x,sw->rd = %x,sw->level = %x\n",
-			hw->wr,hw->rd,hw->level,alsa_delay,sw->wr,sw->rd,sw->level);
+	if(hw->level <= INT_BLOCK || alsa_delay < amaudio_delay){
 		hw->wr = (hw->rd+latency)%hw->size;
 		hw->wr /= INT_BLOCK;
 		hw->wr *= INT_BLOCK;
 		hw->level = latency;
+		printk(KERN_DEBUG "hw reset: hw->wr = %x,hw->rd = %x,alsa_delay:%x,amaudio_delay = %x,hw->level = %x,sw->level = %x\n",
+			hw->wr,hw->rd,alsa_delay,amaudio_delay,hw->level,sw->level);
 		goto EXIT;
 	}
 
-	if (sw->level > BUFFER_THRESHOLD_DEFAULT /*|| soft_buffer_reset == 1*/) {
-		printk(KERN_DEBUG "Reset sw: hw->wr = %x,hw->rd = %x,hw->level = %x,"
-			"alsa_delay:%x,sw->wr = %x,sw->rd = %x,sw->level = %x\n",
-			hw->wr,hw->rd,hw->level,alsa_delay,sw->wr,sw->rd,sw->level);
-		sw->rd = (sw->wr + 1024)%sw->size;
-		sw->level = sw->size - 1024;
-		soft_buffer_reset = 0;
+	if(sw->level < INT_BLOCK) {
+		printk(KERN_DEBUG "i2s copy: sw->wr = %x, sw->rd = %x, sw->level = %x\n",
+			sw->wr,sw->rd,sw->level);
 		goto EXIT;
 	}
 
-	if (sw->level < INT_BLOCK) {
+	if((alsa_delay - amaudio_delay) < INT_BLOCK){
+		printk(KERN_DEBUG "alsa_delay:%x, amaudio_delay:%x, sw->level = %x\n",
+			alsa_delay,amaudio_delay,sw->level);
 		goto EXIT;
 	}
 
@@ -423,23 +412,24 @@ static void i2s_copy(amaudio_t* amaudio)
 
 	if(audio_out_read_enable == 1){
 		spin_lock_irqsave(&sw_read->lock,sw_readirqflags);
-		if (sw_read->level > INT_BLOCK) {
-			interleave_memcpy(sw_read,sw_read->wr,hw,hw->wr,INT_BLOCK);
-			sw_read->wr = (sw_read->wr + INT_BLOCK)%sw_read->size;
-			sw_read->level = sw_read->size - (sw_read->size + sw_read->wr - sw_read->rd)%sw_read->size;
+		if(sw_read->level < INT_BLOCK) {
+			goto EXIT_COPY;
 		}
+		interleave_memcpy(sw_read,sw_read->wr,hw,hw->wr,INT_BLOCK);
+		sw_read->wr = (sw_read->wr + INT_BLOCK)%sw_read->size;
+		sw_read->level = sw_read->size - (sw_read->size + sw_read->wr - sw_read->rd)%sw_read->size;
+EXIT_COPY:
 		spin_unlock_irqrestore(&sw_read->lock,sw_readirqflags);
 	}
-	
+
 	hw->wr = (hw->wr + INT_BLOCK)%hw->size;
 	hw->level = (hw->wr + hw->size - i2s_out_ptr)%hw->size;;
-	
+
 	spin_lock_irqsave(&sw->lock,swirqflags);
 	sw->rd = (sw->rd + INT_BLOCK)%sw->size;
 	sw->level = (sw->size + sw->wr - sw->rd)%sw->size;
-	softbuffer_level = sw->level;
 	spin_unlock_irqrestore(&sw->lock,swirqflags);
-	
+
 EXIT:
 	spin_unlock_irqrestore(&hw->lock,hwirqflags);
 	return;
@@ -453,13 +443,13 @@ static irqreturn_t i2s_out_callback(int irq, void* data)
 	BUF* hw = &amaudio->hw;
 	unsigned tmp = 0;
 	tmp = READ_MPEG_REG_BITS(AIU_MEM_I2S_MASKS, 16, 16);
-  	tmp = (tmp + INT_NUM + (hw->size>>6)) % (hw->size>>6);
-  	WRITE_MPEG_REG_BITS(AIU_MEM_I2S_MASKS, tmp, 16, 16);
+	tmp = (tmp + INT_NUM + (hw->size>>6)) % (hw->size>>6);
+	WRITE_MPEG_REG_BITS(AIU_MEM_I2S_MASKS, tmp, 16, 16);
 #endif
 
-  	i2s_copy(amaudio);
+	i2s_copy(amaudio);
 
-  	return IRQ_HANDLED;
+	return IRQ_HANDLED;
 }
 
 //------------------------control interface-----------------------------------------
@@ -470,7 +460,7 @@ static long amaudio_ioctl(struct file *file,unsigned int cmd, unsigned long arg)
 	s32 r = 0;
 	unsigned long swirqflags, hwirqflags, sw_readirqflags;
 	switch(cmd){
-		case AMAUDIO_IOC_GET_SIZE:		
+		case AMAUDIO_IOC_GET_SIZE:
 			// total size of internal buffer
 			r = amaudio->sw.size;
 			break;
@@ -479,14 +469,13 @@ static long amaudio_ioctl(struct file *file,unsigned int cmd, unsigned long arg)
 			spin_lock_irqsave(&amaudio->sw.lock, swirqflags);
 			r = amaudio->sw.rd;
 			spin_unlock_irqrestore(&amaudio->sw.lock, swirqflags);
-			break;		
+			break;
 		case AMAUDIO_IOC_UPDATE_APP_PTR:
 			// the user space write pointer of the internal buffer
 			{
 				spin_lock_irqsave(&amaudio->sw.lock, swirqflags);
 				amaudio->sw.wr = arg;
 				amaudio->sw.level = (amaudio->sw.size + amaudio->sw.wr - amaudio->sw.rd)%amaudio->sw.size;
-				softbuffer_level = amaudio->sw.level;
 				spin_unlock_irqrestore(&amaudio->sw.lock, swirqflags);
 				if(amaudio->sw.wr % 64){
 					printk(KERN_WARNING "wr:%x, not 64 Bytes align\n", amaudio->sw.wr);
@@ -503,7 +492,7 @@ static long amaudio_ioctl(struct file *file,unsigned int cmd, unsigned long arg)
 			if(latency > MAX_LATENCY)  latency = MAX_LATENCY;
 			if(latency%64)  latency = (latency >> 6) << 6;
 			*/
-			
+
 			amaudio->hw.rd = get_i2s_out_ptr();
 			amaudio->hw.wr = (amaudio->hw.rd+latency)%amaudio->hw.size;
 			amaudio->hw.wr /= INT_BLOCK;
@@ -522,13 +511,13 @@ static long amaudio_ioctl(struct file *file,unsigned int cmd, unsigned long arg)
 			amaudio->sw_read.rd = 0;
 			amaudio->sw_read.level = amaudio->sw_read.size;
 			spin_unlock_irqrestore(&amaudio->sw_read.lock, sw_readirqflags);
-			
+
 			printk(KERN_DEBUG "Reset amaudio2: latency=%d bytes\n", latency);
 			break;
 		case AMAUDIO_IOC_AUDIO_OUT_MODE:
-			// audio_out_mode = 0, covered alsa audio mode; 
+			// audio_out_mode = 0, covered alsa audio mode;
 			// audio_out_mode = 1, karaOK mode, Linein left and right channel inter mixed with android alsa audio;
-			// audio_out_mode = 2, TV in direct mix with android audio; 
+			// audio_out_mode = 2, TV in direct mix with android audio;
 			if(arg < 0 || arg > 2){
               return -EINVAL;
             }
@@ -562,7 +551,7 @@ static long amaudio_ioctl(struct file *file,unsigned int cmd, unsigned long arg)
 			spin_lock_irqsave(&amaudio->sw_read.lock, sw_readirqflags);
 			r = amaudio->sw_read.wr;
 			spin_unlock_irqrestore(&amaudio->sw_read.lock, sw_readirqflags);
-			break;	
+			break;
 		case AMAUDIO_IOC_UPDATE_APP_PTR_READ:
 			// the user space read pointer of the read buffer
 			{
@@ -616,7 +605,7 @@ static long amaudio_ioctl(struct file *file,unsigned int cmd, unsigned long arg)
 		default:
 			break;
 	};
-	
+
 	return r;
 }
 
@@ -640,17 +629,17 @@ static ssize_t status_show(struct class* class, struct class_attribute* attr,
 		spin_lock_irqsave(&rt->sw.lock,swflockflags);
 		memcpy(&sw, &rt->sw, sizeof(BUF));
 		spin_unlock_irqrestore(&rt->sw.lock,swflockflags);
-		
+
 		spin_lock_irqsave(&rt->hw.lock,hwlockflags);
 		memcpy(&hw, &rt->hw, sizeof(BUF));
 		spin_unlock_irqrestore(&rt->sw.lock,hwlockflags);
-		
-		printk("HW:addr=%08x,size=%d,rd=%d,wr=%d,level=%d\n", 
+
+		printk("HW:addr=%08x,size=%d,rd=%d,wr=%d,level=%d\n",
 			(unsigned int)hw.addr, hw.size, hw.rd, hw.wr, hw.level);
-		printk("SW:addr=%08x,size=%d,rd=%d,wr=%d,level=%d\n", 
-			(unsigned int)sw.addr, sw.size, sw.rd, sw.wr, sw.level);	
-		printk("cnt: %d, %d, %d, %d, %d, %d, %d, %d\n", 
-			rt->cnt0, rt->cnt1, rt->cnt2, rt->cnt3, rt->cnt4, rt->cnt5, rt->cnt6, rt->cnt7);			
+		printk("SW:addr=%08x,size=%d,rd=%d,wr=%d,level=%d\n",
+			(unsigned int)sw.addr, sw.size, sw.rd, sw.wr, sw.level);
+		printk("cnt: %d, %d, %d, %d, %d, %d, %d, %d\n",
+			rt->cnt0, rt->cnt1, rt->cnt2, rt->cnt3, rt->cnt4, rt->cnt5, rt->cnt6, rt->cnt7);
 	}
 	return 0;
 }
@@ -687,15 +676,15 @@ static ssize_t store_direct_left_gain(struct class* class, struct class_attribut
    const char* buf, size_t count )
 {
 	int val = 0;
-  	if(buf[0])
+	if(buf[0])
   		val=simple_strtol(buf, NULL, 10);
-	
-  	if(val < 0) val = 0;
-  	if(val > 256) val = 256;
 
-  	direct_left_gain = val;
+	if(val < 0) val = 0;
+	if(val > 256) val = 256;
+
+	direct_left_gain = val;
   	printk(KERN_INFO "direct_left_gain set to %d\n", direct_left_gain);
-  	return count;
+	return count;
 }
 
 static ssize_t show_direct_right_gain(struct class* class, struct class_attribute* attr,
@@ -708,15 +697,15 @@ static ssize_t store_direct_right_gain(struct class* class, struct class_attribu
    const char* buf, size_t count )
 {
 	int val = 0;
-  	if(buf[0])
+	if(buf[0])
   		val=simple_strtol(buf, NULL, 10);
-	
-  	if(val < 0) val = 0;
-  	if(val > 256) val = 256;
 
-  	direct_right_gain = val;
+	if(val < 0) val = 0;
+	if(val > 256) val = 256;
+
+	direct_right_gain = val;
   	printk(KERN_INFO "direct_right_gain set to %d\n", direct_right_gain);
-  	return count;
+	return count;
 }
 
 static ssize_t show_music_gain(struct class* class, struct class_attribute* attr,
@@ -729,13 +718,13 @@ static ssize_t store_music_gain(struct class* class, struct class_attribute* att
    const char* buf, size_t count )
 {
 	int val = 0;
-  	if(buf[0])
+	if(buf[0])
   		val=simple_strtol(buf, NULL, 10);
-	
-  	if(val < 0) val = 0;
-  	if(val > 256) val = 256;
 
-  	music_gain = val;
+	if(val < 0) val = 0;
+	if(val > 256) val = 256;
+
+	music_gain = val;
   	printk(KERN_INFO "music_gain set to %d\n", music_gain);
   	return count;
 }
@@ -779,7 +768,7 @@ static ssize_t store_android_right_gain(struct class* class, struct class_attrib
 
   	android_right_gain = val;
   	printk(KERN_INFO "android_right_gain set to %d\n", android_right_gain);
-  	return count;
+	return count;
 }
 
 static ssize_t show_audio_read_enable(struct class* class, struct class_attribute* attr,
@@ -800,7 +789,7 @@ static ssize_t store_audio_read_enable(struct class* class, struct class_attribu
 	}else{
 		printk(KERN_INFO "Invalid argument!\n");
 	}
-  	return count;
+	return count;
 }
 
 int set_i2s_iec958_samesource(int enable){
@@ -856,69 +845,6 @@ static ssize_t store_set_android_gain_enable(struct class* class, struct class_a
   	return count;
 }
 
-static ssize_t show_softbuffer_level(struct class* class, struct class_attribute* attr,
-	char* buf)
-{
-	return sprintf(buf, "%d\n", softbuffer_level);
-}
-
-static ssize_t store_softbuffer_level(struct class* class, struct class_attribute* attr,
-   const char* buf, size_t count )
-{
-	if (strncmp(buf, "reset", 5) == 0) {
-		if ((soft_buffer_threshold - soft_latency) < 4096) {
-			printk(KERN_INFO "reset error: audio data interval at least 4096, (soft_buffer_threshold - soft_latency) = %d\n",
-								(soft_buffer_threshold - soft_latency));
-			return count;
-		}
-		printk(KERN_INFO "reset soft buffer!\n");
-		soft_buffer_reset = 1;
-	}
-	return count;
-}
-
-static ssize_t show_softbuffer_threshold(struct class* class, struct class_attribute* attr,
-	char* buf)
-{
-	return sprintf(buf, "%d\n", soft_buffer_threshold);
-}
-
-static ssize_t store_softbuffer_threshold(struct class* class, struct class_attribute* attr,
-   const char* buf, size_t count )
-{
-	int val = 0;
-	if (buf[0])
-		val=simple_strtol(buf, NULL, 10);
-	if ( (val%1024) ||(val < 4096) ) {
-		printk(KERN_INFO "soft buffer threshold must 1024*N and at least 4096, soft buffer threshold = %d\n", val);
-		return count;
-	}
-	soft_buffer_threshold = val;
-	printk(KERN_INFO "soft buffer threshold = %d\n", soft_buffer_threshold);
-	return count;
-}
-
-static ssize_t show_soft_latency(struct class* class, struct class_attribute* attr,
-	char* buf)
-{
-	return sprintf(buf, "%d\n", soft_latency);
-}
-
-static ssize_t store_soft_latency(struct class* class, struct class_attribute* attr,
-   const char* buf, size_t count )
-{
-	int val = 0;
-	if (buf[0])
-		val=simple_strtol(buf, NULL, 10);
-	if ( (val%1024) ||(val < 1024) ) {
-		printk(KERN_INFO "soft buffer latency must 1024*N and at least 1024, soft_latency = %d\n", val);
-		return count;
-	}
-	soft_latency = val;
-	printk(KERN_INFO "soft buffer latency = %d\n", soft_latency);
-	return count;
-}
-
 static struct class_attribute amaudio_attrs[]={
 	__ATTR(aml_audio_out_mode,  S_IRUGO | S_IWUSR, show_audio_out_mode, store_audio_out_mode),
 	__ATTR(aml_direct_left_gain,  S_IRUGO | S_IWUSR, show_direct_left_gain, store_direct_left_gain),
@@ -929,9 +855,6 @@ static struct class_attribute amaudio_attrs[]={
 	__ATTR(aml_set_android_gain_enable,  S_IRUGO | S_IWUSR, show_set_android_gain_enable, store_set_android_gain_enable),
 	__ATTR(aml_audio_read_enable,  S_IRUGO | S_IWUSR, show_audio_read_enable, store_audio_read_enable),
 	__ATTR(aml_amaudio2_enable,  S_IRUGO | S_IWUSR | S_IWGRP, show_aml_amaudio2_enable, store_aml_amaudio2_enable),
-	__ATTR(aml_soft_buffer_level, S_IRUGO | S_IWUSR | S_IWGRP, show_softbuffer_level, store_softbuffer_level),
-	__ATTR(aml_soft_buffer_threshold, S_IRUGO | S_IWUSR | S_IWGRP, show_softbuffer_threshold, store_softbuffer_threshold),
-	__ATTR(aml_soft_latency, S_IRUGO | S_IWUSR | S_IWGRP, show_soft_latency, store_soft_latency),
 	__ATTR_RO(status),
 	__ATTR_NULL
 };
@@ -970,9 +893,9 @@ static int __init amaudio2_init(void)
     ret = PTR_ERR(amaudio_clsp);
     goto err1;
   }
-  
+
   create_amaudio_attrs(amaudio_clsp);
-  
+
   amaudio_cdevp = kmalloc(sizeof(struct cdev), GFP_KERNEL);
   if(!amaudio_cdevp){
     printk(KERN_ERR "amaudio2: failed to allocate memory\n");
@@ -987,8 +910,8 @@ static int __init amaudio2_init(void)
   if(ret){
     printk(KERN_ERR "amaudio2:failed to add cdev\n");
     goto err3;
-  } 
-  for(ap = &amaudio_ports[0], i=0; i< AMAUDIO_DEVICE_COUNT; ap++,  i++){    
+  }
+  for(ap = &amaudio_ports[0], i=0; i< AMAUDIO_DEVICE_COUNT; ap++,  i++){
     ap->dev = device_create(amaudio_clsp, NULL, MKDEV(MAJOR(amaudio_devno),i), NULL,amaudio_ports[i].name);
     if(IS_ERR(ap->dev)){
       printk(KERN_ERR "amaudio2: failed to create amaudio device node\n");
@@ -1005,12 +928,12 @@ err3:
   kfree(amaudio_cdevp);
 err2:
   remove_amaudio_attrs(amaudio_clsp);
-  class_destroy(amaudio_clsp);  
+  class_destroy(amaudio_clsp);
 err1:
   unregister_chrdev_region(amaudio_devno, AMAUDIO_DEVICE_COUNT);
 err:
-	
-  return ret;  
+
+  return ret;
 }
 
 static void __exit amaudio2_exit(void)

@@ -24,4 +24,3 @@ config AM_SMARTCARD_GPIO_FOR_RST
 		Select to enable RESET in GPIO mode.
 endif
 endmenu
-

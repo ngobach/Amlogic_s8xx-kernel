@@ -525,7 +525,7 @@ static ssize_t platform_type_read(struct class *cla,struct class_attribute *attr
 	}else if(platform_type ==PLATFORM_MID){
 		return snprintf(buf,80,"current platform is MID\n");
 	}else if(platform_type ==PLATFORM_MID_VERTICAL){
-        	return snprintf(buf,80,"current platform is vertical MID\n");
+		return snprintf(buf,80,"current platform is vertical MID\n");
 	}else{
 		return snprintf(buf,80,"current platform is MBX\n");
 	}
@@ -820,7 +820,7 @@ static ssize_t mirror_write(struct class *cla,
 }
 
 /**************************************************************
- 			3DTV usage
+			3DTV usage
 *******************************************************************/
 extern int  vf_ppmgr_get_states(vframe_states_t *states);
 
@@ -925,7 +925,7 @@ static struct class_attribute ppmgr_class_attrs[] = {
 			read_scale_width,
 			write_scale_width),
     __ATTR(axis,
-    		S_IRUGO | S_IWUSR,
+		S_IRUGO | S_IWUSR,
 		    cut_win_show,
 		    cut_win_store),
 #endif
@@ -978,6 +978,7 @@ void get_ppmgr_buf_info(char** start,unsigned int* size) {
     *start=ppmgr_device.buffer_start;
     *size=ppmgr_device.buffer_size;
 }
+EXPORT_SYMBOL(get_ppmgr_buf_info);
 
 static int ppmgr_open(struct inode *inode, struct file *file)
 {
@@ -1020,10 +1021,10 @@ static long ppmgr_ioctl(struct file *file,
             platform_type_t plarform_type;
             plarform_type = get_platform_type();
             if( plarform_type == PLATFORM_TV){
-            	set_ppmgr_status(mode);
+		set_ppmgr_status(mode);
             }else{
-          	  set_ppmgr_3dmode(mode);
-         	}
+		  set_ppmgr_3dmode(mode);
+		}
             break;
         case PPMGR_IOC_VIEW_MODE:
             mode=(int)argp;
@@ -1271,5 +1272,3 @@ module_exit(ppmgr_remove_module);
 MODULE_DESCRIPTION("AMLOGIC  ppmgr driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("aml-sh <kasin.li@amlogic.com>");
-
-

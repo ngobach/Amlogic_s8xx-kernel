@@ -136,7 +136,7 @@ int cec_ll_rx( unsigned char *msg, unsigned char *len)
         pos += sprintf(msg_log_buf + pos, "CEC: rx msg len: %d   dat: ", rx_msg_length);
         for (n = 0; n < rx_msg_length; n++)
         {
-            pos += sprintf(msg_log_buf + pos, "%02x ", msg_start[n]);
+            pos += sprintf(msg_log_buf + pos, "%02x:", msg_start[n]);
         }
         pos += sprintf(msg_log_buf + pos, "\n");
         msg_log_buf[pos] = '\0';
@@ -177,7 +177,7 @@ int cec_ll_tx_polling(const unsigned char *msg, unsigned char len)
         pos += sprintf(msg_log_buf + pos, "CEC: tx msg len: %d   dat: ", len);
         for (n = 0; n < len; n++)
         {
-            pos += sprintf(msg_log_buf + pos, "%02x ", msg[n]);
+            pos += sprintf(msg_log_buf + pos, "%02x:", msg[n]);
         }
         pos += sprintf(msg_log_buf + pos, "\nCEC: tx state: %d\n", ret);
         msg_log_buf[pos] = '\0';
@@ -290,7 +290,7 @@ static int cec_ll_tx_once(const unsigned char *msg, unsigned char len)
         pos += sprintf(msg_log_buf + pos, "CEC: tx msg len: %d   dat: ", len);
         for (n = 0; n < len; n++)
         {
-            pos += sprintf(msg_log_buf + pos, "%02x ", msg[n]);
+            pos += sprintf(msg_log_buf + pos, "%02x:", msg[n]);
         }
         pos += sprintf(msg_log_buf + pos, "\nCEC: tx state: %d\n", ret);
         msg_log_buf[pos] = '\0';
@@ -425,7 +425,7 @@ void cec_gpi_init(void)
     aml_set_reg32_bits(P_MEDIA_CPU_IRQ_IN2_INTR_STAT_CLR, 1, 0, 1); // Write 1 to clear irq
 
     aml_set_reg32_bits(P_GPIO_INTR_GPIO_SEL0, 0x76, 0, 8);      // set GPIOC_23 as GPIO IRQ #0 source
-    aml_set_reg32_bits(P_GPIO_INTR_EDGE_POL, 1, 0, 1);          // interrupt mode:  0: level     1: edge 
+    aml_set_reg32_bits(P_GPIO_INTR_EDGE_POL, 1, 0, 1);          // interrupt mode:  0: level     1: edge
     aml_set_reg32_bits(P_GPIO_INTR_EDGE_POL, 1, 16, 1);
     request_fiq(INT_GPIO_0, &cec_gpi_receive_bits);
     printk("cec: register fiq\n");

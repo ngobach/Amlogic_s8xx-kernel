@@ -57,13 +57,13 @@ extern void __init meson_timer_init(void);
 static __init void meson8b_reserve(void)
 {
 
-	/*
-	 *   Reserved memory for hotplug:
-	 *   start address: PHYS_OFFSET, size 0x4000,
-	 *   toprevent other getting logical address 0xc0000000 and
-	 *   flushing valid data on "zero address"
-	 */
-	memblock_reserve(PHYS_OFFSET,__pa(swapper_pg_dir) - PHYS_OFFSET);
+    /*
+      * Reserved memory for hotplug:
+      *   start address: PHYS_OFFSET, size 0x4000,
+      *   toprevent other getting logical address 0xc0000000 and
+      *   flushing valid data on "zero address"
+      */
+    memblock_reserve(PHYS_OFFSET,__pa(swapper_pg_dir) - PHYS_OFFSET);
 }
 
 __initdata struct map_desc meson_board_io_desc[1];
@@ -83,16 +83,13 @@ static void __init meson_map_io(void)
 }
 
 static struct of_device_id m8_of_platform_bus_ids[] = {
-	{.compatible = "simple-bus",},
-	{},
+		{.compatible = "simple-bus",},
+		{},
 };
-
-#ifdef CONFIG_OF_LM
 static struct of_device_id m8_of_lm_bus_ids[] = {
-	{.compatible = "logicmodule-bus",},
-	{},
+		{.compatible = "logicmodule-bus",},
+		{},
 };
-#endif
 
 static __init void meson_init_machine_devicetree(void)
 {

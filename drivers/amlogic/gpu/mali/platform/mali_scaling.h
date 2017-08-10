@@ -1,9 +1,9 @@
 /*
  * Copyright (C) 2013 ARM Limited. All rights reserved.
- * 
+ *
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
- * 
+ *
  * A copy of the licence is included with the program, and can also be obtained from Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
@@ -67,8 +67,6 @@ typedef struct mali_plat_info_t {
 	u32 dvfs_table_size;
 
 	mali_scale_info_t scale_info;
-	u32 maxclk_sysfs;
-	u32 maxpp_sysfs;
 
 	/* set upper limit of pp or frequency, for THERMAL thermal or band width saving.*/
 	u32 limit_on;
@@ -101,8 +99,6 @@ void flush_scaling_job(void);
 void get_mali_rt_clkpp(u32* clk, u32* pp);
 u32 set_mali_rt_clkpp(u32 clk, u32 pp, u32 flush);
 void revise_mali_rt(void);
-/* get max gpu clk level of this chip*/
-int get_gpu_max_clk_level(void);
 
 /* get or set the scale mode. */
 u32 get_mali_schel_mode(void);

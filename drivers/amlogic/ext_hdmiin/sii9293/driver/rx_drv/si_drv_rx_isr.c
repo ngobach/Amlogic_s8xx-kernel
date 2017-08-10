@@ -78,7 +78,7 @@ ROM const uint8_t default_interrupt_masks[NMB_OF_RX_INTERRUPTS] =
 	//RX_M__INTR3__PARITY_ERR |
     //RX_M__INTR3__NEW_MPEG_PACKET |
     RX_M__INTR3__NEW_AUD_PACKET |
-	//RX_M__INTR3__NEW_SP_PACKET | 
+	//RX_M__INTR3__NEW_SP_PACKET |
 	RX_M__INTR3__NEW_AVI_PACKET|
 	0,
 
@@ -96,7 +96,7 @@ ROM const uint8_t default_interrupt_masks[NMB_OF_RX_INTERRUPTS] =
 	//RX_M__INTR5__FN_CHANGED |
 	//RX_M__INTR5__AAC_DONE |
 	//RX_M__INTR5__AUDIO_LINK_EROR |
-	//RX_M__INTR5__V_RES_CHANGE |   //There should vid_clk change when resolution change, 
+	//RX_M__INTR5__V_RES_CHANGE |   //There should vid_clk change when resolution change,
 	//RX_M__INTR5__H_RES_CHANGE |
 	//RX_M__INTR5__POLARITY_CHANGE |
 	//RX_M__INTR5__INTERLACED_CHANGED |
@@ -108,7 +108,7 @@ ROM const uint8_t default_interrupt_masks[NMB_OF_RX_INTERRUPTS] =
 	//RX_M__INTR6__AUD_FLAT |
 	// RX_M__INTR6__CHST_READY | // cannot use this interrupt because it is triggered on every CHST receiving even nothing changes
 	//RX_M__INTR6__DSD_MUTE_PATTERN_DETECT |
- 	RX_M__INTR6__NEW_ACP_PACKET |
+	RX_M__INTR6__NEW_ACP_PACKET |
 	RX_M__INTR6__CABLE_UNPLUG | // enabled to clear an AAC exception
 	0,
 
@@ -260,9 +260,9 @@ void RxIsr_SwitchReceiveInfoFrameOnEveryPacket(uint8_t info_type, bool_t switch_
             break;
         default:
             break;
-            
+
     }
-    
+
 }
 #endif
 
@@ -398,71 +398,20 @@ void sii_signal_notify(unsigned int status)
     // signal detection for vdin utility.
     if( (status==1) && (signal_status==0) )
     {
-    	signal_status = status;
+	signal_status = status;
         sii5293_output_mode_trigger(1);
     }
     else if( (status==0) && (signal_status==1) )
     {
-    	signal_status = status;
-    	sii5293_output_mode_trigger(0);
+	signal_status = status;
+	sii5293_output_mode_trigger(0);
     }
 
     return ;
 }
 
-static int is_only_noavi_intr(uint8_t *intrs)
-{
-	if ((intrs[INT1] == 0x00) && (intrs[INT2] == 0x00) && (intrs[INT3] == 0x00) &&
-        (intrs[INT5] == 0x00) && (intrs[INT6] == 0x00) && (intrs[INT7] == 0x00) &&
-        (intrs[INT8] == 0x00))
-    {
-		if (intrs[INT4] == RX_M__INTR4__NO_AVI)
-            return 1;
-    }
-
-    return 0;
-}
-
-static int is_only_newavi_intr(uint8_t *intrs)
-{
-	if ((intrs[INT1] == 0x00) && (intrs[INT2] == 0x00) && (intrs[INT4] == 0x00) &&
-        (intrs[INT5] == 0x00) && (intrs[INT6] == 0x00) && (intrs[INT7] == 0x00) &&
-        (intrs[INT8] == 0x00))
-    {
-		if (intrs[INT3] == RX_M__INTR3__NEW_AVI_PACKET)
-            return 1;
-    }
-
-    return 0;
-}
-
-extern int debug_level;
-unsigned int avi_checksum = 0;
-static int is_duplicated_avi(void)
-{
-    uint8_t d[IF_BUFFER_LENGTH];
-    unsigned int length = IF_MAX_AVI_LENGTH + IF_HEADER_LENGTH;
-    unsigned int checksum = 0;
-
-    SiiRegReadBlock(RX_A__AVI_TYPE, d, length);
-    checksum = (d[length-4]<24) | (d[length-3]<<16) | (d[length-2]<<8) | (d[length-1]);
-
-    if ( debug_level == 2 )
-        printk("[%s] checksum = 0x%x, 0x%x\n", __FUNCTION__, avi_checksum, checksum);
-    if ( avi_checksum == checksum )
-        return 1;
-    if (checksum == 0xffffff)
-        return 1;
-
-    avi_checksum = checksum;
-
-    return 0;
-}
 extern void sii9293_cable_status_notify(unsigned int cable_status);
-// return value:
-//	0 for normal process
-//	1 for invalid status, for repeatly no_avi/new_avi from HA-TV box, it will block 9293.
-int SiiRxInterruptHandler(void)
+void SiiRxInterruptHandler(void)
 {
     uint8_t interrupts[NMB_OF_RX_INTERRUPTS];
 
@@ -491,54 +440,28 @@ int SiiRxInterruptHandler(void)
     SiiRegWriteBlock(RX_A__INTR5, &interrupts[INT5], 2);
     SiiRegWriteBlock(RX_A__INTR7, &interrupts[INT7], 2);
 
-/*---------------------------------------*/
-// for no_avi/new_avi repeatly.
-	if (is_only_noavi_intr(&interrupts[INT1]))
-        return -1;
-
-    interrupts[INT4] &= ~RX_M__INTR4__NO_AVI;
-
-    if (interrupts[INT3] & RX_M__INTR3__NEW_AVI_PACKET)
-    {
-        if (is_duplicated_avi() == 1)
-        {
-            if (is_only_newavi_intr(&interrupts[INT1]))
-                return -2;
-
-            interrupts[INT3] &= ~RX_M__INTR3__NEW_AVI_PACKET;
-        }
-    }
-// for no_avi/new_avi repeatly
-/*---------------------------------------*/
-
     if(interrupts[INT1] & RX_M__INTR1__AUTH_DONE)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR1__AUTH_DONE\n");
         DEBUG_PRINT(MSG_STAT, ("RX: Authentication done!\n"));
         switch_hdcp_failure_check_with_v_sync_rate(OFF);
     }
 
     if(interrupts[INT2] & RX_M__INTR2__VID_CLK_CHANGED)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR2__VID_CLK_CHANGED\n");
         rx_isr.bVidStableChgEvent = true;
         DEBUG_PRINT(MSG_STAT, ("RX: video clock change\n"));
     }
 
     if(interrupts[INT2] & RX_M__INTR2__SCDT)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR2__SCDT\n");
         switch_hdcp_failure_check_with_v_sync_rate(OFF);
         SiiDrvRxMuteVideo(ON);
         rx_isr.bVidStableChgEvent = true;
 
         if(SiiDrvRxIsSyncDetected())
         {
-        	// SCDT detection for vdin utility.
-        	printk("sii9293 irq got SCDT!\n");
+		// SCDT detection for vdin utility.
+		printk("sii9293 irq got SCDT!\n");
 
             rx_isr.bScdtState = true;
 #if defined(__KERNEL__)
@@ -547,11 +470,10 @@ int SiiRxInterruptHandler(void)
         }
         else
         {
-        	// SCDT detection for vdin utility.
+		// SCDT detection for vdin utility.
 			printk("sii9293 irq lost SCDT!\n");
 			sii_signal_notify(0);
 
-			avi_checksum = 0;
             rx_isr.bScdtState = false;
             SiiDrvSoftwareReset(RX_M__SRST__SRST);
             VMD_ResetTimingData();
@@ -564,54 +486,40 @@ int SiiRxInterruptHandler(void)
 
     if(interrupts[INT2] & RX_M__INTR2__HDMI_MODE)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR2__HDMI_MODE\n");
         DEBUG_PRINT(MSG_STAT, ("RX: HDMI mode change!\n"));
         RxIsr_HdmiDviTransition();
     }
 
     if(interrupts[INT2] & RX_M__INTR2__VSYNC)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR2__VSYNC\n");
         hdcp_error_handler(true);
     }
 
     if(interrupts[INT4] & RX_M__INTR4__HDCP)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR4__HDCP\n");
         hdcp_error_handler(false);
     }
 
     if((interrupts[INT5] & RX_M__INTR5__AUDIO_FS_CHANGED) || (interrupts[INT6] & RX_M__INTR6__CHST_READY))
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: OnChannelStatusChange\n");
         // Note: RX_M__INTR6__CHST_READY interrupt may be disabled
         //DEBUG_PRINT(MSG_STAT, ("RX: New Audio Fs\n"));
         RxAudio_OnChannelStatusChange();
     }
     if(interrupts[INT4] & RX_M__INTR4__NO_AVI)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR4__NO_AVI\n");
         RxInfo_NoAviHandler();
         rx_isr.bVidStableChgEvent = true;
     }
 
     if(interrupts[INT3] & RX_M__INTR3__NEW_AVI_PACKET)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR3__NEW_AVI_PACKET\n");
         RxInfo_InterruptHandler(INFO_AVI);
         rx_isr.bVidStableChgEvent = true;
     }
 
     if(interrupts[INT7] & RX_M__INTR7__NO_VSI_PACKET)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR7__NO_VSI_PACKET\n");
         // Clear also vsif_received flag (indicating any VSIF packet detection).
         // If there is any other VSIF packet, the flag will be set again shortly.
         RxInfo_NoVsiHandler();
@@ -619,31 +527,22 @@ int SiiRxInterruptHandler(void)
 
     if(interrupts[INT7] & RX_M__INTR7__NEW_VSI_PACKET)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR7__NEW_VSI_PACKET\n");
         RxInfo_InterruptHandler(INFO_VSI);
     }
 
     if(interrupts[INT3] & RX_M__INTR3__NEW_AUD_PACKET)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR3__NEW_AUD_PACKET\n");
         RxInfo_InterruptHandler(INFO_AUD);
     }
 
     if(interrupts[INT6] & RX_M__INTR6__NEW_ACP_PACKET)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR6__NEW_ACP_PACKET\n");
         RxInfo_InterruptHandler(INFO_AUD);
     }
     if (interrupts[INT6] & RX_M__INTR6__CABLE_UNPLUG)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR6__CABLE_UNPLUG\n");
         if (SiiRegRead(RX_A__INTR6) & RX_M__INTR6__CABLE_UNPLUG)
         {
-            avi_checksum = 0;
             rx_isr.bCableChgEvent = true;
             rx_isr.bCableState = false;
             rx_isr.shadow_interrupt_mask[INT6] &= ~RX_M__INTR6__CABLE_UNPLUG;       // Disable 5v plug-out interrup
@@ -651,12 +550,12 @@ int SiiRxInterruptHandler(void)
             SiiRegWrite(RX_A__INTR6_MASK, rx_isr.shadow_interrupt_mask[INT6]);
             SiiRegWrite(RX_A__INTR8_MASK, rx_isr.shadow_interrupt_mask[INT8]);
             sii9293_cable_status_notify(0);
+
         }
+
     }
     if (interrupts[INT8] & RX_M__INTR8__CABLE_IN)
     {
-        if (debug_level == 2)
-            printk("sii9293_intr: RX_M__INTR8__CABLE_IN\n");
         if (SiiRegRead(RX_A__INTR8) & RX_M__INTR8__CABLE_IN)
         {
             rx_isr.bCableChgEvent = true;
@@ -668,8 +567,6 @@ int SiiRxInterruptHandler(void)
 			sii9293_cable_status_notify(1);
         }
     }
-
-    return 0;
 }
 
 bool_t SiiDrvCableStatusGet ( bool_t *pData )
@@ -693,4 +590,3 @@ bool_t SiiDrvVidStableGet ( bool_t *pData )
     }
     return false;
 }
-

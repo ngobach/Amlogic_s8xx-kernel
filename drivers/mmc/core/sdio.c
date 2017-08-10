@@ -35,8 +35,6 @@
 #include <linux/mmc/sdio_ids.h>
 #endif
 
-extern int sdio_card_irq_get(struct mmc_card *card);
-
 static int sdio_read_fbr(struct sdio_func *func)
 {
 	int ret;
@@ -1226,7 +1224,7 @@ int mmc_attach_sdio(struct mmc_host *host)
 		if (err)
 			goto remove_added;
 	}
-	sdio_card_irq_get(host->card);
+
 	mmc_claim_host(host);
 	return 0;
 
@@ -1275,10 +1273,10 @@ int sdio_reset_comm(struct mmc_card *card)
 		for 8189ETV wifi restart
 	*/
 
-	if(588 == card->cis.vendor)	
+	if(588 == card->cis.vendor)
 		sdio_reset(host);
 
-		
+
 
 	mmc_go_idle(host);
 
@@ -1345,4 +1343,3 @@ void sdio_reinit (void)
     printk("[%s] finish\n", __func__);
 }
 EXPORT_SYMBOL(sdio_reinit);
-

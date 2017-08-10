@@ -21,7 +21,6 @@
 #include <linux/ethtool.h>
 #include <linux/phy.h>
 #include <linux/netdevice.h>
-#include <linux/amlogic/aml_pmu.h>
 
 #define  SMI_ADDR_TSTCNTL     20
 #define  SMI_ADDR_TSTREAD1    21
@@ -206,7 +205,7 @@ static void init_pmu4_phy(struct phy_device *phydev)
         phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A3CFG);//write addr 0x14
         phy_write(phydev,SMI_ADDR_TSTWRITE,0x3404);//write val
         phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A4CFG);//write addr 0x15
-        phy_write(phydev,SMI_ADDR_TSTWRITE,0xa636);//write val
+        phy_write(phydev,SMI_ADDR_TSTWRITE,0x2636);//write val
         phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A5CFG);//write addr 0x16
         phy_write(phydev,SMI_ADDR_TSTWRITE,5);//write val
         phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A7CFG);//write addr 0x18
@@ -237,7 +236,7 @@ void init_pmu4_phy_10B(struct phy_device *phydev)
 	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A3CFG);//write addr 0x14
 	phy_write(phydev,SMI_ADDR_TSTWRITE,0x3404);//write val
 	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A4CFG);//write addr 0x15
-	phy_write(phydev,SMI_ADDR_TSTWRITE,0x8246);//write val
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x246);//write val
 	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A5CFG);//write addr 0x16
 	phy_write(phydev,SMI_ADDR_TSTWRITE,5);//write val
 	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A7CFG);//write addr 0x18
@@ -273,13 +272,13 @@ void init_pmu4_phy_100B(struct phy_device *phydev)
 	phy_write(phydev,SMI_ADDR_TSTWRITE,0x0c00);//write val
 	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A1CFG);//write addr 0x12
 	*/
-	phy_write(phydev,SMI_ADDR_TSTWRITE,0x3400);//write val
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x3000);//write val
 	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A2CFG);//write addr 0x13
 	phy_write(phydev,SMI_ADDR_TSTWRITE,0xb902);//write val
 	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A3CFG);//write addr 0x14
 	phy_write(phydev,SMI_ADDR_TSTWRITE,0x3404);//write val
 	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A4CFG);//write addr 0x15
-	phy_write(phydev,SMI_ADDR_TSTWRITE,0x844c);//write val
+	phy_write(phydev,SMI_ADDR_TSTWRITE,0x8446);//write val
 	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A5CFG);//write addr 0x16
 	phy_write(phydev,SMI_ADDR_TSTWRITE,0x0005);//write val
 	phy_write(phydev,SMI_ADDR_TSTCNTL,TSTCNTL_WR|WR_ADDR_A7CFG);//write addr 0x18
@@ -337,7 +336,7 @@ static int amlogic_phy_config_init(struct phy_device *phydev)
 	if (rc < 0)
 		return rc;
 
-	// Enable energy detect mode for this AML Transceivers 
+	// Enable energy detect mode for this AML Transceivers
 	rc = phy_write(phydev, MII_INTERNAL_CTRL_STATUS,
 		       rc & ~MII_INTERNAL_EDPWRDOWN);
 	if (rc < 0)
@@ -431,18 +430,7 @@ static int internal_read_status(struct phy_device *phydev)
 }
 static int pmu4_read_status(struct phy_device *phydev)
 {
-	int err;
-	uint8_t val;
-
-	if (phydev->link) {
-		aml1220_read(0x7B, &val);
-		aml1220_write(0x7B, val|0x4);
-	} else {
-		aml1220_read(0x7B, &val);
-		aml1220_write(0x7B, val&(~0x4));
-	}
-
-	err = genphy_read_status(phydev);
+	int err = genphy_read_status(phydev);
 	if(phydev->speed == SPEED_10){
 		init_pmu4_phy_10B(phydev);
 	}
@@ -483,15 +471,6 @@ int amlogic_phy_config_aneg(struct phy_device *phydev){
 
 	return genphy_config_aneg(phydev);
 }
-static int amlogic_phy_suspend(struct phy_device *phydev)
-{
-	uint8_t val;
-	/*enable 50M clock,or eth up will fail*/
-	aml1220_read(0x7B, &val);
-	aml1220_write(0x7B, val|0x4);
-	return genphy_suspend(phydev);
-}
-
 static struct phy_driver amlogic_phy_driver[] = {
 	{
 		.phy_id		= 0x79898963,
@@ -534,7 +513,7 @@ static struct phy_driver amlogic_phy_driver[] = {
 		.ack_interrupt	= &amlogic_phy_ack_interrupt,
 		.config_intr	= &amlogic_phy_config_intr,
 
-		.suspend	= amlogic_phy_suspend,
+		.suspend	= genphy_suspend,
 		.resume		= genphy_resume,
 
 		.driver		= { .owner = THIS_MODULE, }

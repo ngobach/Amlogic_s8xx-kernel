@@ -232,55 +232,10 @@ static uint32_t get_tclk_10kHz(void)
 	return tmds_clk_10kHz;
 }
 
-/* calculate fs */
-unsigned int get_measured_audio_fs(void)
-{
-	// non-DSD mode
-	uint8_t fs_code_per_channel = AUDIO_CHST4__FS_UNKNOWN;
-	uint32_t cts = get_cts();
-	uint32_t n = get_n();
-
-	uint32_t tmds_clk_10kHz = get_tclk_10kHz();
-	// Note: tmds_clk_10kHz information may be not available
-	// if audio detection occurs before video detection;
-	// in this case tmds_clk_10kHz is 0
-
-	uint16_t fs_frequency_per_channel = 0;
-
-	if (tmds_clk_10kHz && cts)
-	{
-		uint8_t i;
-
-		// Calculate audio Fs in 100Hz units
-		uint16_t fs_calculated_100Hz = (tmds_clk_10kHz*n/cts)*100 /128;
-		// Note: the order of operations is optimized for the maximum precision.
-		// Overflow should not occur during the operations.
-		// tmds_clk_10kHz - assume maximum value 30,000 (15bit) for 300 MHz
-		// n - assume maximum value 192kHz*128/300=81000 (17bit)
-		// tmds_clk_10kHz*n should fit into 32 bits
-		// Maximum fs_calculated_100Hz is 192000/100=1920 fits into 16bit
-
-		// Find closest standard audio Fs.
-		for (i = 0; i < AUDIO_FS_LIST_LENGTH; i++)
-		{
-			if ((fs_calculated_100Hz <= ( audio_fs_list[i].max_Fs))
-				&& (fs_calculated_100Hz > ( audio_fs_list[i].min_Fs) ))
-			{
-				// search if calculated Fs close to the Fs in the table
-				break;
-			}
-		}
-		fs_code_per_channel = audio_fs_list[i].code_value;
-		fs_frequency_per_channel = audio_fs_list[i].ref_Fs;
-	}
-
-	return fs_code_per_channel;
-}
-
 //-------------------------------------------------------------------------------------------------
 static void set_mclk(void)
 {
-	rxCfgAudioMclk_t mclk = RX_CFG_256FS;   //the minimum MCLK for TDM is 256*fs, set MCLK as 256*fs always 
+	rxCfgAudioMclk_t mclk = RX_CFG_256FS;   //the minimum MCLK for TDM is 256*fs, set MCLK as 256*fs always
 
 	uint8_t fs_code_per_channel = AUDIO_CHST4__FS_UNKNOWN;
 
@@ -340,7 +295,7 @@ static void set_mclk(void)
 
 	SiiRegWrite(RX_A__FREQ_SVAL, (mclk << 6) | (mclk << 4) | fs_code_per_channel);
 
-	if(fs_code_per_channel == AUDIO_CHST4__FS_UNKNOWN) 
+	if(fs_code_per_channel == AUDIO_CHST4__FS_UNKNOWN)
 	{
 		//if DSD mode or calculated Fs invalid
 		SiiRegBitsSet(RX_A__ACR_CTRL1, RX_M__ACR_CTRL1__FS_SEL, OFF);
@@ -430,7 +385,7 @@ void RxAudio_OnChannelStatusChange(void)
 {
 	SiiRegReadBlock(RX_A__CHST1, &audio_vars.channel_status[0], 3);
 
-	audio_vars.encoded = 
+	audio_vars.encoded =
 		(0 != (audio_vars.channel_status[0] & AUDIO_CHST1__ENCODED));
 
 
@@ -575,6 +530,3 @@ void RxAudio_Init(void)
 
 	RxAudio_Start();
 }
-
-
-

@@ -48,21 +48,6 @@ void sii_set_hdmi_port(char port)
 	return ;
 }
 
-// return values: port3status*1000+port2status*100+port1status*100+port0status
-int sii_get_pwr5v_status_all(void)
-{
-	int port_cable_status;
-
-	port_cable_status = RegisterRead(REG__PWR5V_STATUS);
-
-	port_cable_status = ((port_cable_status&0x8)>>3)*1000 + \
-		((port_cable_status&0x4)>>2)*100 + \
-		((port_cable_status&0x2)>>1)*10 + \
-		(port_cable_status&0x1) ;
-
-	return port_cable_status;
-}
-
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 // sii9233a output signal horizontal parameters
 

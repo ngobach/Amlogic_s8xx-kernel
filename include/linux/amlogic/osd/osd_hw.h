@@ -180,17 +180,17 @@ extern void osd_setup(struct osd_ctl_s *osd_ctl,
                 u32 disp_end_x,
                 u32 disp_end_y,
                 u32 fbmem,
-              	  const color_bit_define_t *color,
+		  const color_bit_define_t *color,
                 int index);
 extern void  osddev_update_disp_axis_hw(
 			u32 display_h_start,
-                  	u32 display_h_end,
-                  	u32 display_v_start,
-                  	u32 display_v_end,
+			u32 display_h_end,
+			u32 display_v_start,
+			u32 display_v_end,
 			u32 xoffset,
-                  	u32 yoffset,
-                  	u32 mode_change,
-                  	u32 index) ;
+			u32 yoffset,
+			u32 mode_change,
+			u32 index) ;
 extern void osd_change_osd_order_hw(u32 index,u32 order);
 extern u32 osd_get_osd_order_hw(u32 index);
 extern void osd_free_scale_enable_hw(u32 index,u32 enable);
@@ -248,4 +248,4 @@ extern void osd_init_hw(u32  logo_loaded);
 #if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
 extern void osd_init_scan_mode(void);
 #endif
-#endif 
+#endif

@@ -91,10 +91,10 @@ static int dummy_codec_hw_params(struct snd_pcm_substream *substream,
     /* set cpu DAI configuration */
 	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 	{
-    	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
+	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
 	}
 	else
-    	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
+	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
     if (ret < 0) {
         printk(KERN_ERR "%s: set cpu dai fmt failed!\n", __func__);
         return ret;
@@ -131,11 +131,11 @@ static int dummy_codec_set_bias_level(struct snd_soc_card *card,
     case SND_SOC_BIAS_ON:
         break;
     case SND_SOC_BIAS_PREPARE:
-    	dummy_codec_mute_speaker(0);
+	dummy_codec_mute_speaker(0);
         break;
 
     case SND_SOC_BIAS_OFF:
-    	break;
+	break;
     case SND_SOC_BIAS_STANDBY:
         dummy_codec_mute_speaker(1);
         break;
@@ -170,7 +170,7 @@ static struct snd_soc_dai_link dummy_codec_dai_link[] = {
         .init = NULL,
         .platform_name = "aml-i2s.0",
         .codec_name = "spdif-dit.0",
-        .ops = NULL,      
+        .ops = NULL,
     },
 
 };

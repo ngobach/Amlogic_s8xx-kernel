@@ -173,12 +173,6 @@ void root_func(){
 		status = "okay";
 	};
 
-	tvout {
-		compatible = "amlogic,tvout";
-		dev_name = "tvout";
-		status = "okay";
-	};
-
 /// ***************************************************************************************
 ///	-	vdac hardware switch
 //$$ MODULE = "vdac hardware switch"
@@ -279,7 +273,7 @@ void root_func(){
 //$$ L2 PROP_STR = "status"
 //$$ L2 PROP_STR = "power_gpio"
     wifi_power{
-
+    	
         compatible = "amlogic,wifi_power";
         dev_name = "wifi_power";
 	status = "okay";
@@ -335,7 +329,7 @@ void root_func(){
 //$$ L2 PROP_U32 = "irq_out"
 //$$ L2 PROP_U32 = "card_type"
 	    sd{
-	    	status = "okay";
+		status = "okay";
 	        port = <1>;          /**0:sdio_a, 1:sdio_b, 2:sdio_c, 3:sdhc_a, 4:sdhc_b, 5:sdhc_c */
 	        pinname = "sd";
 	        ocr_avail = <0x200000>;          /**VDD voltage 3.3 ~ 3.4 */
@@ -913,7 +907,7 @@ void root_func(){
 			key-dataformat = "allascii";
 			key-permit = "read","write","del";
 		};
-
+		
 //$$ MATCH "Unifykey_1_match" = <&keysn_1>
 //$$ L2 PROP_STR = "key-name"
 //$$ L2 PROP_STR = "key-device"
@@ -925,7 +919,7 @@ void root_func(){
 			key-dataformat = "hexdata";
 			key-permit = "read","write","del";
 		};
-
+		
 //$$ MATCH "Unifykey_2_match" = <&keysn_2>
 //$$ L2 PROP_STR = "key-name"
 //$$ L2 PROP_STR = "key-device"
@@ -949,7 +943,7 @@ void root_func(){
 			key-dataformat = "hexdata";
 			key-permit = "read","write";
 		};
-
+		
 //$$ MATCH "Unifykey_4_match" = <&keysn_4>
 //$$ L2 PROP_STR = "key-name"
 //$$ L2 PROP_STR = "key-device"
@@ -961,7 +955,7 @@ void root_func(){
 			key-dataformat = "hexdata";
 			key-permit = "read","write","del";
 		};
-
+		
 //$$ MATCH "Unifykey_5_match" = <&keysn_5>
 //$$ L2 PROP_STR = "key-name"
 //$$ L2 PROP_STR = "key-device"
@@ -974,7 +968,7 @@ void root_func(){
 			key-permit = "read","write","del";
 		};
 	};
-
+	
 /// ***************************************************************************************
 ///	-	HDMI
 //$$ MODULE="HDMI"
@@ -1114,7 +1108,7 @@ void root_func(){
 //$$ L2 PROP_U32 2 = "amlogic,clrmask"
 //$$ L2 PROP_STR = "amlogic,pins"
 		aml_pwm_pins:aml_pwm{
-		    	amlogic,setmask=<2 0x4>;
+			amlogic,setmask=<2 0x4>;
 			amlogic,clrmask=<1 0x20000000>;
 			amlogic,pins="GPIOD_0";
 		};
@@ -1488,4 +1482,3 @@ void root_func(){
 
 	};
 }; /* end of / */
-

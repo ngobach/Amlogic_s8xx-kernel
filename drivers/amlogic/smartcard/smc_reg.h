@@ -272,4 +272,3 @@ typedef struct SMCCARD_HW_Reg6
 } SMCCARD_HW_Reg6_t;
 
 #endif
-

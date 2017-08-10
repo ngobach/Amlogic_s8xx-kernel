@@ -1,6 +1,6 @@
-#ifdef CONFIG_AML_LCD_TABLET
+#ifdef CONFIG_AM_LCD_OUTPUT
 //******************************************************************************
-//lcd extern 
+//lcd extern
 //Notice: only one dev support
 //******************************************************************************
 //$$ DEVICE = "lcd_extern_i2c_tc101"

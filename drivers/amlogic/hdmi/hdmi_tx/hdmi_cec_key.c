@@ -36,7 +36,7 @@
 #include <linux/amlogic/hdmi_tx/hdmi_tx_cec.h>
 hdmitx_dev_t *hdmitx_device = NULL;
 
-__u16 cec_key_map[128] = {
+__u16 cec_key_map[160] = {
     KEY_SELECT, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, 0 , 0 , 0 ,//0x00
     0 , KEY_HOMEPAGE , KEY_MENU, 0, 0, KEY_BACK, 0, 0,
     0 , 0, 0, 0, 0, 0, 0, 0,//0x10
@@ -45,7 +45,7 @@ __u16 cec_key_map[128] = {
     KEY_8 , KEY_9, KEY_DOT, 0, 0, 0, 0, 0,
     0 , 0, 0, 0, 0, 0, 0, 0,//0x30
     0 , 0, 0, 0, 0, 0, 0, 0,
-    
+
     KEY_POWER , KEY_VOLUMEUP, KEY_VOLUMEDOWN, KEY_MUTE, KEY_PLAYPAUSE, KEY_STOP, KEY_PLAYPAUSE, KEY_RECORD,//0x40
     KEY_REWIND, KEY_FASTFORWARD, KEY_EJECTCD, KEY_NEXTSONG, KEY_PREVIOUSSONG, 0, 0, 0,
     0 , 0, 0, 0, 0, 0, 0, 0,//0x50
@@ -54,6 +54,10 @@ __u16 cec_key_map[128] = {
     0 , KEY_MEDIA, 0, 0, KEY_POWER, KEY_POWER, 0, 0,
     0 , KEY_BLUE, KEY_RED, KEY_GREEN, KEY_YELLOW, 0, 0, 0,//0x70
     0 , 0, 0, 0, 0, 0, 0, 0x2fd,
+    0 , 0, 0, 0, 0, 0, 0, 0,//0x80
+    0 , 0, 0, 0, 0, 0, 0, 0,
+    0 , KEY_BACK, 0, 0, 0, 0, 0, 0,//0x90
+    0 , 0, 0, 0, 0, 0, 0, 0,
 };
 
 void cec_send_event(cec_rx_message_t* pcec_message)
@@ -100,7 +104,6 @@ void cec_send_event_irq(void)
     int i;
     unsigned char   operand_num_irq;
     unsigned char operands_irq[14];
-    unsigned int mask;
     static unsigned int last_key = -1;
     static s64 last_key_report = 0;
     s64 cur_time;
@@ -109,7 +112,7 @@ void cec_send_event_irq(void)
     operand_num_irq = cec_global_info.cec_rx_msg_buf.cec_rx_message[cec_global_info.cec_rx_msg_buf.rx_write_pos].operand_num;
     for (i = 0; i < operand_num_irq; i++ )
     {
-        operands_irq[i] = cec_global_info.cec_rx_msg_buf.cec_rx_message[cec_global_info.cec_rx_msg_buf.rx_write_pos].content.msg.operands[i]; 
+        operands_irq[i] = cec_global_info.cec_rx_msg_buf.cec_rx_message[cec_global_info.cec_rx_msg_buf.rx_write_pos].content.msg.operands[i];
         hdmi_print(INF, CEC  ":operands_irq[%d]:0x%x\n", i, operands_irq[i]);
     }
 
@@ -123,13 +126,6 @@ void cec_send_event_irq(void)
             break;
         default:
             break;
-    }
-
-    mask = (1 << CEC_FUNC_MSAK) | (1 << ONE_TOUCH_STANDBY_MASK);
-    if (((hdmitx_device->cec_func_config & mask) != mask) &&
-        (cec_key_map[operands_irq[0]] == KEY_POWER)) {
-        hdmi_print(INF, CEC "ignore power key when standby disabled\n");
-        return ;
     }
 
     cur_time = ktime_to_us(now);
@@ -168,7 +164,7 @@ void cec_user_control_pressed_irq(void)
 void cec_user_control_released_irq(void)
 {
     hdmi_print(INF, CEC  ": Key released \n");
-} 
+}
 
 void cec_user_control_pressed(cec_rx_message_t* pcec_message)
 {
@@ -177,7 +173,7 @@ void cec_user_control_pressed(cec_rx_message_t* pcec_message)
     cec_send_event(pcec_message);
 }
 
-void cec_user_control_released(cec_rx_message_t* pcec_message)  
+void cec_user_control_released(cec_rx_message_t* pcec_message)
 {
     hdmi_print(INF, CEC  ": Key released \n");
     cec_global_info.cec_flag.cec_key_flag = 1;
@@ -209,6 +205,7 @@ void cec_standby(cec_rx_message_t* pcec_message)
         input_sync(cec_global_info.remote_cec_dev);
         input_event(cec_global_info.remote_cec_dev, EV_KEY, KEY_POWER, 0);
         input_sync(cec_global_info.remote_cec_dev);
+        //cec_disable_irq();
     }
     last_standby = cur_time;
 }
@@ -218,4 +215,3 @@ void cec_key_init(void)
     extern hdmitx_dev_t * get_hdmitx_device(void);
     hdmitx_device = get_hdmitx_device();
 }
-

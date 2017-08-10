@@ -1,5 +1,5 @@
 
-# Makefile for osd and tv 
+# Makefile for osd and tv
 
 audiodsp-objs=	audiodsp_module.o \
 				dsp_control.o 		\

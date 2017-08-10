@@ -16,7 +16,6 @@ typedef struct deinterlace_dev_s{
 
     struct task_struct *task;
 
-    unsigned int hw_version;
     unsigned char di_event;
 }di_dev_t;
 

@@ -18,27 +18,27 @@ void root_func(){
         #size-cells = <0>;
 //$$ DEVICE="cpu0"
         cpu@0 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x200>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x200>;
         };
 //$$ DEVICE="cpu1"
         cpu@1 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x1>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x1>;
         };
 //$$ DEVICE="cpu2"
         cpu@2 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x2>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x2>;
         };
 //$$ DEVICE="cpu3"
         cpu@3 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x3>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x3>;
         };
     };
 
@@ -138,7 +138,7 @@ void root_func(){
 		dev_name = "mesonfb";
 		status = "okay";
         reserve-memory = <0x0900000  0x0b00000>;//9M+11M=20M 1280x720x4x3=0xa8c000,11MB,for HDMI output.Horizontal panel neend't it.
-	   	reserve-iomap = "true";
+		reserve-iomap = "true";
         vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
         display_size_default = <768 1024 768 3072 32>;//1024x768x4x3==0x0900000,9MB
 	};
@@ -152,13 +152,10 @@ void root_func(){
 		dev_name = "mesonfb-ext";
 		status = "ok";
 		need-memory = <0>; /*0:no need,1:need*/
-	   	reserve-iomap = "true";
+		reserve-iomap = "true";
         display_size_default = <768 1024 768 3072 32>;//768x1024x4x3==0x0900000 < 0x01000000
 	};
 
-/// ***************************************************************************************
-///     -       DISP&MM-A/V stream
-//$$ MODULE = "DISP&MM-A/V video dec"
 /// ***************************************************************************************
 ///	-	DISP&MM-A/V stream
 //$$ MODULE = "DISP&MM-A/V stream"
@@ -169,8 +166,8 @@ void root_func(){
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
 		status = "okay";
-		//reserve-memory = <0x02000000>; // 32M
-		//reserve-iomap = "true";
+		reserve-memory = <0x00a00000>;//10M,you can use 8M if memory isn't enough
+		reserve-iomap = "true";
 	};
 
 /// ***************************************************************************************
@@ -183,20 +180,9 @@ void root_func(){
                 compatible = "amlogic,vdec";
                 dev_name = "vdec.0";
                 status = "okay";
-///				reserve-memory = <0x04000000>; // 64M
-//				reserve-iomap = "true";
-//				linux,contiguous-region = <&mem_4k2k_decoder>;
+                reserve-memory = <0x04000000>;
+		reserve-iomap = "true";
         };
-
-
-	codec_mm{
-		compatible = "amlogic, codec, mm";
-		dev_name = "codec_mm";
-		status = "okay";
-		reserve-memory = <0x04100000>; // 65M
-		//reserve-iomap = "true";
-		//linux,contiguous-region = <&mem_4k2k_decoder>;
-	};
 
 /// ***************************************************************************************
 ///	-	DISP&MM-PostProcess
@@ -306,12 +292,6 @@ void root_func(){
 	mesonvout{
 		compatible = "amlogic,mesonvout";
 		dev_name = "mesonvout";
-		status = "okay";
-	};
-
-	tvout {
-		compatible = "amlogic,tvout";
-		dev_name = "tvout";
 		status = "okay";
 	};
 
@@ -646,7 +626,7 @@ void root_func(){
 		#size-cells = <0>;
 		use_pio = <0>;
 		master_i2c_speed = <300000>;
- 	};
+	};
 
 //$$ DEVICE="I2C_C"
 //$$ L2 PROP_STR = "status"
@@ -713,10 +693,10 @@ void root_func(){
                  600000         825000      825000
                  720000         825000      825000
                  816000         850000      850000
-                1008000        1140000     1140000
-                1200000        1140000     1140000
-                1320000        1140000     1140000
-                1488000        1140000     1140000
+                1008000         875000      875000
+                1200000         925000      925000
+                1320000        1100000     1100000
+                1488000        1100000     1100000
                 1536000        1140000     1140000
             >;
         };
@@ -1169,6 +1149,7 @@ void root_func(){
 //$$ L2 PROP_U32 2 = "dsi_transfer_ctrl"
 //$$ L2 PROP_U32 12 = "dsi_init_on"
 //$$ L2 PROP_U32 12 = "dsi_init_off"
+//$$ L2 PROP_U32 = "lcd_extern_init"
 	lcd_B080XAN01:lcd_B080XAN01{	//k101
 		model_name="B080XAN01";	/** lcd model name */
 		interface="mipi";		/** lcd_interface(mipi, lvds, edp, ttl) */
@@ -1198,6 +1179,7 @@ void root_func(){
 					0x05 1 0x10   //sleep in
 					0xff 10       //delay 10ms
 					0xff 0xff>;/** mipi command(data_type, command, para_num, parameters). 0xff,0xff is ending flag. 0xff,n(n<0xff) means delay n(unit: ms) */
+		lcd_extern_init=<0>;/** lcd extern init command control(0=disable, 1=enable) */
     };
 
 //******************************************************************************
@@ -1251,7 +1233,7 @@ void root_func(){
 //$$ DEVICE="touch"
 //$$ L2 PROP_STR = "status"
 	touch{
- 		compatible = "amlogic,aml_touch";
+		compatible = "amlogic,aml_touch";
 		status = "okay";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -1367,7 +1349,7 @@ void root_func(){
 	    status = "disable";
         };
         pmu3:pmu3{
-        	codec_name = "amlpmu3";
+		codec_name = "amlpmu3";
 			status = "okay";
         };
     };
@@ -1445,7 +1427,7 @@ void root_func(){
 //$$ L2 PROP_U32 = "mirror_flip"
 //$$ L2 PROP_U32 = "vertical_flip"
 //$$ L2 PROP_STR = "bt_path"
-        	cam_0{
+		cam_0{
 			cam_name = "sp0838";
 			front_back = <1>;
 			i2c_bus = "i2c_bus_d";
@@ -1698,8 +1680,8 @@ void root_func(){
 		#thermal-cells=<7>;
 		dev_name = "aml_thermal";
         trip_point=<70 1488001 1488001 511 511 3 2
-                    80 1206001 1206001 435 435 2 2
-                    90  804001  804001 328 328 1 1
+                    80 1200001 1200001 435 435 2 2
+                    90  800001  800001 328 328 1 1
                     260 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff>;
 		cpu_cali_a=<0>;
 		idle_interval=<1000>;
@@ -1742,7 +1724,7 @@ void root_func(){
 //$$ L2 PROP_CHOICE "Unifykey_0_match" = "unifykey-index-0"
 //$$ L2 PROP_CHOICE "Unifykey_1_match" = "unifykey-index-1"
 //$$ L2 PROP_CHOICE "Unifykey_2_match" = "unifykey-index-2"
-    	unifykey{
+	unifykey{
 		compatible = "amlogic,unifykey";
 		status = "ok";
 
@@ -1890,7 +1872,6 @@ void root_func(){
     cpufreq-meson{
         compatible = "amlogic,cpufreq-meson";
         syspll_fixed;
-        fixpll_target = <1536000>;
         status = "okay";
     };
 
@@ -1974,7 +1955,7 @@ void root_func(){
 						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
 			amlogic,enable-output=<1>;
 		};
-
+		
 		nand_cs_pins: nand_cs{
 			amlogic,setmask=<2 0x3000000>;
 			amlogic,clrmask=<7 0x80000

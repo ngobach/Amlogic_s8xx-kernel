@@ -1,4 +1,4 @@
-/* 
+/*
  *Copyright (c) AMLOGIC CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -28,12 +28,12 @@
 #include <../mach-meson8b/include/mach/pm.h>
 /*
  * These are system power hooks to implement power down policy
- * pls add rule and policy notes 
+ * pls add rule and policy notes
  *
  * pm_power_off_prepare will be called before system actually power off
  * pm_power_off will be called after system power off
  *
- * 
+ *
  * now the policy is:
  *     1 poweroff, reboot system go into uboot, and shutdown, this is typical requirement for tablet production
  *

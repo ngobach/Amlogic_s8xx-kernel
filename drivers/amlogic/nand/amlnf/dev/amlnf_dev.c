@@ -56,12 +56,12 @@ static ssize_t nfdev_debug(struct class *class,struct class_attribute *attr,char
 }
 */
 static struct class_attribute phydev_class_attrs[] = {
-    __ATTR(info,       S_IRUGO | S_IWUSR, show_nand_info,    NULL),	
+    __ATTR(info,       S_IRUGO | S_IWUSR, show_nand_info,    NULL),
     __ATTR(verify,       S_IRUGO | S_IWUSR, NULL,    verify_nand_page),
     __ATTR(dump,       S_IRUGO | S_IWUSR, NULL,    dump_nand_page),
     __ATTR(bbt_table,       S_IRUGO | S_IWUSR, NULL,    show_bbt_table),
-    __ATTR(ioctl,       S_IRUGO | S_IWUSR, NULL,    nand_ioctl),  
-    __ATTR(page_read,  S_IRUGO | S_IWUSR, NULL,    nand_page_read),  
+    __ATTR(test_sync_flag,       S_IRUGO | S_IWUSR, NULL,    change_test_sync_flag),
+    __ATTR(page_read,  S_IRUGO | S_IWUSR, NULL,    nand_page_read),
     __ATTR(page_write,  S_IRUGO | S_IWUSR, NULL,    nand_page_write),
     __ATTR(version,       S_IRUGO | S_IWUSR, show_amlnf_version_info,    NULL),
     __ATTR_NULL
@@ -91,9 +91,9 @@ static struct class_attribute nfdev_class_attrs[] = {
 /*
 static int phydev_cls_suspend(struct device *dev, pm_message_t state)
 {
-	
+
 	return 0;
-	
+
 }
 */
 
@@ -123,9 +123,9 @@ int amlnf_pdev_register(struct amlnand_phydev *phydev)
 	int ret = 0;
 
 	//phydev->dev.class = &phydev_class;
-	dev_set_name(&phydev->dev, phydev->name,0); 	
-	dev_set_drvdata(&phydev->dev, phydev);		
-	ret = device_register(&phydev->dev);		
+	dev_set_name(&phydev->dev, phydev->name,0);
+	dev_set_drvdata(&phydev->dev, phydev);
+	ret = device_register(&phydev->dev);
 	if (ret != 0){
 		aml_nand_msg("device register failed for %s", phydev->name);
 		aml_nand_free(phydev);
@@ -134,11 +134,11 @@ int amlnf_pdev_register(struct amlnand_phydev *phydev)
 
 	phydev->cls.name = aml_nand_malloc(strlen((const char*)phydev->name)+8);
 	snprintf((char *)phydev->cls.name, (MAX_DEVICE_NAME_LEN+8),
-	  	 "%s%s", "phy_", (char *)(phydev->name));
+		 "%s%s", "phy_", (char *)(phydev->name));
 	phydev->cls.class_attrs = phydev_class_attrs;
 	ret = class_register(&phydev->cls);
 	if(ret){
-		aml_nand_msg(" class register nand_class fail for %s", phydev->name);	
+		aml_nand_msg(" class register nand_class fail for %s", phydev->name);
 		goto exit_error1;
 	}
 
@@ -201,24 +201,24 @@ static const struct block_device_operations amlnf_blk_ops = {
 	 //amlnand_show_dev_partition(aml_chip);
 	 list_for_each_entry(phydev, &nphy_dev_list, list){
 		 if (phydev!=NULL){
-		 	if (strncmp((char*)phydev->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME)))
-				{			 
+			if (strncmp((char*)phydev->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME)))
+				{
 				ret = add_ntd_partitions(phydev);
-				if(ret < 0){					 
-					aml_nand_msg("nand add nftl failed");					 
+				if(ret < 0){
+					aml_nand_msg("nand add nftl failed");
 					goto exit_error;
 					}
 				}
 			if(!strncmp((char*)phydev->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME))){
 				ret = boot_device_register(phydev);
-				if(ret < 0){	
+				if(ret < 0){
 					aml_nand_msg("boot device registe failed");
 					goto exit_error;
 					}
 				}
 			}
 	 }
- exit_error:	
+ exit_error:
 
 		return ret;
  }
@@ -244,35 +244,35 @@ static void show_partition_table(struct partitions * table)
 		else
 			printk("part: %d, name : %10s, size : %-4llx\n",i,par_table->name,par_table->size);
 	}
-	
+
 	return;
 }
 
 static ssize_t nand_part_table_get(struct class *class, struct class_attribute *attr, char *buf)
 {
 	struct amlnand_phydev *phydev =NULL;
-	struct amlnand_chip *aml_chip = NULL; 	
+	struct amlnand_chip *aml_chip = NULL;
 	struct nand_config *config = NULL;
 	struct dev_para *dev_paramt = NULL;
 	struct partitions *part_table = NULL;
 	int i=0,j=0,k=0,m=0, tmp_num =0;
 
 	list_for_each_entry(phydev, &nphy_dev_list, list){
-		if ((phydev != NULL)  && 
+		if ((phydev != NULL)  &&
 			(!strncmp((char*)phydev->name, NAND_CODE_NAME, strlen((const char*)NAND_CODE_NAME))))
 		break;
 	}
-	
-	aml_chip = (struct amlnand_chip *)phydev->priv;	
-	config =  aml_chip->config_ptr;	
-	
+
+	aml_chip = (struct amlnand_chip *)phydev->priv;
+	config =  aml_chip->config_ptr;
+
 	part_table = aml_nand_malloc(MAX_PART_NUM*sizeof(struct partitions));
 	if(!part_table){
 		aml_nand_msg("nand_part_table_get : malloc failed");
 		return 0;
 	}
 	memset(part_table,0x0,MAX_PART_NUM*sizeof(struct partitions));
-	
+
 	if(boot_device_flag == 1){
 		i += 1;
 		tmp_num = i;
@@ -285,7 +285,7 @@ static ssize_t nand_part_table_get(struct class *class, struct class_attribute *
 				memcpy(&(part_table[j].name),dev_paramt->partitions[j].name,MAX_NAND_PART_NAME_LEN);
 				part_table[j].size = dev_paramt->partitions[j].size;
 				part_table[j].offset = dev_paramt->partitions[j].offset;
-				part_table[j].mask_flags = dev_paramt->partitions[j].mask_flags;	
+				part_table[j].mask_flags = dev_paramt->partitions[j].mask_flags;
 			/*	aml_nand_msg("CODE : partiton name %s, size %llx, offset %llx maskflag %d",
 				part_table[j].name,part_table[j].size,part_table[j].offset,part_table[j].mask_flags);*/
 			}
@@ -302,14 +302,14 @@ static ssize_t nand_part_table_get(struct class *class, struct class_attribute *
 				memcpy(&(part_table[k].name),dev_paramt->partitions[j].name,MAX_NAND_PART_NAME_LEN);
 				part_table[k].size = dev_paramt->partitions[j].size;
 				part_table[k].offset = dev_paramt->partitions[j].offset;
-				part_table[k].mask_flags = dev_paramt->partitions[j].mask_flags;	
+				part_table[k].mask_flags = dev_paramt->partitions[j].mask_flags;
 			/*	aml_nand_msg("CODE : partiton name %s, size %llx, offset %llx maskflag %d",
 				part_table[k].name,part_table[k].size,part_table[k].offset,part_table[k].mask_flags);*/
 			}
 			break;
 		}
 	}
-	
+
 	i = tmp_num;
 	for(; i<PHY_DEV_NUM+1;i++){  //data
 		dev_paramt = &config->dev_para[i];
@@ -320,7 +320,7 @@ static ssize_t nand_part_table_get(struct class *class, struct class_attribute *
 				memcpy(&(part_table[m].name),dev_paramt->partitions[j].name,MAX_NAND_PART_NAME_LEN);
 				part_table[m].size = dev_paramt->partitions[j].size;
 				part_table[m].offset = dev_paramt->partitions[j].offset;
-				part_table[m].mask_flags = dev_paramt->partitions[j].mask_flags;	
+				part_table[m].mask_flags = dev_paramt->partitions[j].mask_flags;
 				/*aml_nand_msg("CODE : partiton name %s, size %llx, offset %llx maskflag %d",
 				part_table[m].name,part_table[m].size,part_table[m].offset,part_table[m].mask_flags);*/
 			}
@@ -330,28 +330,28 @@ static ssize_t nand_part_table_get(struct class *class, struct class_attribute *
 
 	show_partition_table(part_table);
 	memcpy(buf,part_table,MAX_PART_NUM*sizeof(struct partitions));
-	
+
 	if(part_table){
 		kfree(part_table);
 		part_table =NULL;
 	}
-	
-	return 0;	
+
+	return 0;
 }
 
 static ssize_t store_device_flag_get(struct class *class, struct class_attribute *attr, char *buf)
 {
 	sprintf(buf,"%d",boot_device_flag);
-	
+
 	return 0;
 }
 
 static struct class_attribute aml_version =
-	__ATTR(version, S_IRUGO, nand_version_get, NULL);	
+	__ATTR(version, S_IRUGO, nand_version_get, NULL);
 static struct class_attribute aml_part_table =
 	__ATTR(part_table, S_IRUGO, nand_part_table_get, NULL);
 static struct class_attribute aml_store_device =
-	__ATTR(store_device, S_IRUGO, store_device_flag_get, NULL);	
+	__ATTR(store_device, S_IRUGO, store_device_flag_get, NULL);
 
 
 /*****************************************************************************
@@ -367,16 +367,16 @@ int amlnf_dev_init(unsigned flag)
 //	struct amlnf_dev* nf_dev = NULL;
 	struct class * aml_store_class = NULL;
 	int ret = 0;
-	
+
 #ifndef AML_NAND_UBOOT
 	list_for_each_entry(phydev, &nphy_dev_list, list){
-		if ((phydev != NULL)  && 
-			(strncmp((char*)phydev->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME)))){				
+		if ((phydev != NULL)  &&
+			(strncmp((char*)phydev->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME)))){
 			ret = amlnf_pdev_register(phydev);
 			if(ret < 0){
 				aml_nand_msg("nand add nftl failed");
 				goto exit_error0;
-			}			
+			}
 		}
 	}
 
@@ -386,7 +386,7 @@ int amlnf_dev_init(unsigned flag)
 		ret =-1;
 		goto exit_error0;
 	}
-	
+
 	ret = class_create_file(aml_store_class, &aml_version);
 	if (ret) {
 		aml_nand_msg("amlnf_dev_init :  cannot create sysfs file : ");
@@ -402,7 +402,7 @@ int amlnf_dev_init(unsigned flag)
 		aml_nand_msg("amlnf_dev_init : cannot create sysfs file : ");
 		goto out_class3;
 	}
-	
+
 #endif
 
 	return 0;
@@ -411,20 +411,20 @@ out_class3:
 	class_remove_file(aml_store_class, &aml_part_table);
 out_class2:
 	class_remove_file(aml_store_class, &aml_version);
-out_class1 : 
+out_class1 :
 	class_destroy(aml_store_class);
-	
+
 exit_error0:
-	return ret;	
+	return ret;
 }
 
 #ifdef AML_NAND_UBOOT
 static int get_boot_device()
 {
 
-	
+
 	if(POR_SPI_BOOT()){
-		boot_device_flag = 0; // spi boot 
+		boot_device_flag = 0; // spi boot
 		aml_nand_msg("SPI BOOT: boot_device_flag %d",boot_device_flag);
 		return 0;
 	}
@@ -445,22 +445,22 @@ static int get_boot_device()
 		aml_nand_msg("CARD BOOT: not init nand");
 		return -1;
 	}
-	
+
 	return ;
 }
 struct amlnand_phydev *aml_phy_get_dev(char * name)
 {
 	struct amlnand_phydev * phy_dev = NULL;
-	
+
 	list_for_each_entry(phy_dev, &nphy_dev_list, list){
 			if(!strncmp((char*)phy_dev->name, name, MAX_DEVICE_NAME_LEN)){
 				aml_nand_dbg("nand get phy dev %s ",name);
 				return phy_dev;
 			}
 		}
-		
+
 	aml_nand_msg("nand get phy dev %s	failed",name);
-	
+
 	return NULL;
 }
 
@@ -475,9 +475,9 @@ struct amlnf_dev* aml_nftl_get_dev(char * name)
 			return nf_dev;
 		}
 	}
-	
+
 	aml_nand_msg("nand get nftl dev %s  failed",name);
-	
+
 	return NULL;
 }
 #endif
@@ -514,7 +514,7 @@ static int get_nand_platform(struct aml_nand_device *aml_nand_dev,struct platfor
 	//struct device_node *np_config;
 	//struct device_node *np_part;
 	struct device_node *np = pdev->dev.of_node;
-	
+
 	if(pdev->dev.of_node){
 		of_node_get(np);
 		ret = of_property_read_u32(np,"plat-num",&plat_num);
@@ -524,7 +524,7 @@ static int get_nand_platform(struct aml_nand_device *aml_nand_dev,struct platfor
 		}
 	}
 	aml_nand_dbg("plat_num %d ",plat_num);
-	
+
 	return 0;
 //err:
 //	return -1;
@@ -552,12 +552,12 @@ static int get_nand_platform(struct aml_nand_device *aml_nand_dev,struct platfor
 #define POR_CARD_BOOT() 	(POR_BOOT_VALUE == 0)
 
 
-#define SPI_BOOT_FLAG 		0
+#define SPI_BOOT_FLAG 			0
 #define NAND_BOOT_FLAG 		1
 #define EMMC_BOOT_FLAG 		2
 #define CARD_BOOT_FLAG 		3
-#define SPI_NAND_FLAG		4
-#define SPI_EMMC_FLAG		5
+#define SPI_NAND_FLAG			4
+#define SPI_EMMC_FLAG			5
 
 /***
 *boot_device_flag = 0 ; indicate spi+nand boot
@@ -567,28 +567,27 @@ static int get_nand_platform(struct aml_nand_device *aml_nand_dev,struct platfor
 int check_storage_device(void)
 {
 	int value = -1;
-	value = boot_device_flag;	
-	/*  */
+	value = boot_device_flag;
 	if((value == -1)||(value == 0)||(value == SPI_NAND_FLAG) ||(value == NAND_BOOT_FLAG) ){
-		/* not init, check poc */
-		if((value == 0)||(value == -1)){
-			if(POR_NAND_BOOT()){
-				boot_device_flag = 1;
-			}else if(POR_EMMC_BOOT()){
-				boot_device_flag = -1;
-			}else if(POR_SPI_BOOT()){
-				boot_device_flag = 0;
-			}else if(POR_CARD_BOOT()){	//why???
-				boot_device_flag = 1;
-			}
-		}else{ /*  */
-			boot_device_flag = 0;
-			if((value == NAND_BOOT_FLAG)){
-				boot_device_flag = 1;
-			}
-		}
+				if((value == 0)||(value == -1)){
 
-	} else {
+					if(POR_NAND_BOOT()){
+						boot_device_flag = 1;
+					}else if(POR_EMMC_BOOT()){
+						boot_device_flag = -1;
+					}else if(POR_SPI_BOOT()){
+						boot_device_flag = 0;
+					}else if(POR_CARD_BOOT()){
+						boot_device_flag = 1;
+					}
+				}else{
+					boot_device_flag = 0;
+					if((value == NAND_BOOT_FLAG)){
+						boot_device_flag = 1;
+					}
+				}
+
+		}else {
 		boot_device_flag = -1;
 	}
 	aml_nand_msg("boot_device_flag : %d",boot_device_flag);
@@ -610,9 +609,9 @@ static int  __init get_storage_device(char *str)
 	value = simple_strtoul(str, NULL, 16);
 	aml_nand_msg("get storage device: storage %s",str);
 	aml_nand_msg("value=%d",value);
-	
+
 	boot_device_flag = value;
-	
+
 	return 0;
 }
 
@@ -635,7 +634,7 @@ static int amlnf_init(struct platform_device *pdev)
 	}
 
     INIT_LIST_HEAD (&nphy_dev_list);
-    
+
 #ifdef CONFIG_OF
 
 	pdev->dev.platform_data = aml_get_driver_data(pdev);
@@ -644,7 +643,7 @@ static int amlnf_init(struct platform_device *pdev)
 #endif
 	ret = get_nand_platform(pdev->dev.platform_data,pdev);
 #endif
-	
+
 #ifdef AML_NAND_UBOOT
 	ret= amlnf_phy_init(unsigned flag);
 #else
@@ -690,12 +689,12 @@ static int amlnf_exit(struct platform_device *pdev)
 static void amlnf_shutdown(struct platform_device *pdev)
 {
 	struct amlnand_phydev * phy_dev = NULL;
-	
+
 	if(check_storage_device() < 0){
 		aml_nand_msg("without nand");
 		return;
 	}
-	
+
 	list_for_each_entry(phy_dev, &nphy_dev_list, list){
 		if(phy_dev){
 			struct amlnand_chip *aml_chip = (struct amlnand_chip *)phy_dev->priv;
@@ -704,7 +703,7 @@ static void amlnf_shutdown(struct platform_device *pdev)
 			amlnand_release_device(aml_chip);
 		}
 	}
-	
+
 	return ;
 }
 

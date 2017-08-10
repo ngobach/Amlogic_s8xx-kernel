@@ -14,7 +14,7 @@
 #define __AMVECM_VLOCK_REGMAP_H
 
 #include <linux/amlogic/cm.h>
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
 //TV_ENC_LCD720x480
 static am_regs_t vlock_enc_lcd720x480={
 	20,
@@ -48,11 +48,11 @@ static am_regs_t vlock_pll_in50hz_out60hz={
 	20,
 	{
 /* optimize */
-{REG_TYPE_VCBUS, 0x3000,     0xffffffff, 0x07f13f1b   },
+{REG_TYPE_VCBUS, 0x3000,     0xffffffff, 0x04f10f1b   },
 {REG_TYPE_VCBUS, 0x3001,     0xffffffff, 0x04053c32   },
 {REG_TYPE_VCBUS, 0x3002,     0xffffffff, 0x06000000   },
-{REG_TYPE_VCBUS, 0x3003,     0xffffffff, 0x2065c65c   },
-{REG_TYPE_VCBUS, 0x3004,     0xffffffff, 0x0065c65c   },
+{REG_TYPE_VCBUS, 0x3003,     0xffffffff, 0x40210280   },
+{REG_TYPE_VCBUS, 0x3004,     0xffffffff, 0x00210280   },
 {REG_TYPE_VCBUS, 0x3005,     0xffffffff, 0x00080000   },
 {REG_TYPE_VCBUS, 0x3006,     0xffffffff, 0x00070000   },
 {REG_TYPE_VCBUS, 0x3007,     0xffffffff, 0x00000000   },

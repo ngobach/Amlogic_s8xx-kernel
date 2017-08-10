@@ -75,11 +75,11 @@ static u32 tsync_pcr_recovery_span = 3;
 #define RESAMPLE_TYPE_UP        2
 #define RESAMPLE_DOWN_FORCE_PCR_SLOW 3
 
-#define MS_INTERVAL  (HZ/1000)		
-#define TEN_MS_INTERVAL  (HZ/100)		
+#define MS_INTERVAL  (HZ/1000)
+#define TEN_MS_INTERVAL  (HZ/100)
 
 // local system inited check type
-#define TSYNC_PCR_INITCHECK_PCR       0x0001 
+#define TSYNC_PCR_INITCHECK_PCR       0x0001
 #define TSYNC_PCR_INITCHECK_VPTS       0x0002
 #define TSYNC_PCR_INITCHECK_APTS       0x0004
 #define TSYNC_PCR_INITCHECK_RECORD      0x0008
@@ -96,7 +96,7 @@ static u32 tsync_pcr_recovery_span = 3;
 #define MIN_SYNC_ACHACH_TIME   27000
 
 // ------------------------------------------------------------------
-// The const 
+// The const
 
 static u32 tsync_pcr_discontinue_threshold = (TIME_UNIT90K * 1.5);
 static u32 tsync_pcr_ref_latency = (TIME_UNIT90K * 0.3);				//TIME_UNIT90K*0.3
@@ -104,8 +104,8 @@ static u32 tsync_pcr_ref_latency = (TIME_UNIT90K * 0.3);				//TIME_UNIT90K*0.3
 // use for pcr valid mode
 static u32 tsync_pcr_max_cache_time = TIME_UNIT90K*1.5;			//TIME_UNIT90K*1.5;
 static u32 tsync_pcr_up_cache_time = TIME_UNIT90K*1.2;				//TIME_UNIT90K*1.2;
-static u32 tsync_pcr_down_cache_time = TIME_UNIT90K*0.8;			//TIME_UNIT90K*0.6;
-static u32 tsync_pcr_min_cache_time = TIME_UNIT90K*0.4;			//TIME_UNIT90K*0.2;
+static u32 tsync_pcr_down_cache_time = TIME_UNIT90K*0.6;			//TIME_UNIT90K*0.6;
+static u32 tsync_pcr_min_cache_time = TIME_UNIT90K*0.2;			//TIME_UNIT90K*0.2;
 
 
 // use for pcr invalid mode
@@ -115,7 +115,7 @@ static u32 tsync_pcr_down_delay_time = TIME_UNIT90K*1.5;			//TIME_UNIT90K*1.5;
 static u32 tsync_pcr_min_delay_time = TIME_UNIT90K*0.8;			//TIME_UNIT90K*0.8;
 
 
-static u32 tsync_pcr_first_video_frame_pts = 0;				
+static u32 tsync_pcr_first_video_frame_pts = 0;
 static u32 tsync_pcr_first_audio_frame_pts = 0;
 
 // reset control flag
@@ -149,7 +149,7 @@ static int64_t tsync_pcr_stream_delta=0;
 static u32 tsync_pcr_last_tsdemuxpcr = 0;
 static u32 tsync_pcr_discontinue_local_point = 0;
 static u32 tsync_pcr_discontinue_waited = 0;							// the time waited the v-discontinue to happen
-static u8 tsync_pcr_tsdemuxpcr_discontinue = 0;						// the boolean value		
+static u8 tsync_pcr_tsdemuxpcr_discontinue = 0;						// the boolean value
 static u32 tsync_pcr_discontinue_point = 0;
 
 static int abuf_level=0;
@@ -270,7 +270,7 @@ int get_min_cache_delay(void){
 
 u32 tsync_pcr_vstream_delayed(void)
 {
-    int cur_delay = calculation_vcached_delayed();	
+    int cur_delay = calculation_vcached_delayed();
     if (cur_delay == -1)
         return DEFAULT_VSTREAM_DELAY;
 
@@ -377,7 +377,7 @@ void tsync_pcr_pcrscr_set(void)
 
     if (first_vpts && !(tsync_pcr_inited_flag&complete_init_flag) && (first_vpts<min_checkinpts && tsync_pcr_inited_mode >= INIT_PRIORITY_VIDEO)) {
         tsync_pcr_inited_flag|=TSYNC_PCR_INITCHECK_VPTS;
-        ref_pcr = first_vpts - tsync_pcr_ref_latency * 8; //for dobly av sync test
+        ref_pcr = first_vpts - tsync_pcr_ref_latency * 2;
         timestamp_pcrscr_set(ref_pcr);
         if (cur_pcr > 0)
             tsync_pcr_usepcr=1;
@@ -395,7 +395,7 @@ void tsync_pcr_avevent_locked(avevent_t event, u32 param)
     spin_lock_irqsave(&tsync_pcr_lock, flags);
 
     switch (event) {
-    case VIDEO_START:        
+    case VIDEO_START:
         if (tsync_pcr_vstart_flag == 0) {
             //play_mode=PLAY_MODE_NORMAL;
             tsync_pcr_first_video_frame_pts = param;
@@ -432,8 +432,8 @@ void tsync_pcr_avevent_locked(avevent_t event, u32 param)
         play_mode=PLAY_MODE_NORMAL;
         printk("video stop! \n");
         break;
-        
-    case VIDEO_TSTAMP_DISCONTINUITY:  	 
+
+    case VIDEO_TSTAMP_DISCONTINUITY:
         {
             u32 tsdemux_pcr = tsdemux_pcrscr_get();
 
@@ -483,7 +483,7 @@ void tsync_pcr_avevent_locked(avevent_t event, u32 param)
         printk("audio prestart!   \n");
         break;
 
-    case AUDIO_START:		
+    case AUDIO_START:
         timestamp_apts_set(param);
         timestamp_apts_enable(1);
         timestamp_apts_start(1);
@@ -693,11 +693,6 @@ static unsigned long tsync_pcr_check(void)
         else if (tsync_pcr_asynccheck_cnt > 100 && last_checkin_minpts > 0) {
             int64_t  new_pcr =  last_checkin_minpts-tsync_pcr_ref_latency*2;
             int64_t  old_pcr=timestamp_pcrscr_get();
-
-            // add for dobly ddp stream av sync
-            if (new_pcr < cur_apts && cur_apts - new_pcr > 3000) {
-                new_pcr = cur_apts - 3000;
-            }
             timestamp_pcrscr_set(new_pcr);
             printk("[tsync_pcr_check] audio stream underrun,force slow play. apts=%d vpts=%d pcr=%lld new_pcr=%lld checkin_apts=%lld checkin_vpts=%lld\n",
                 cur_apts,cur_vpts,old_pcr,new_pcr,last_checkin_apts,last_checkin_vpts);
@@ -745,7 +740,7 @@ static unsigned long tsync_pcr_check(void)
     }
 /*
     tsync_pcr_debug_pcrscr++;
-    if(tsync_pcr_debug_pcrscr>=100){    	
+    if(tsync_pcr_debug_pcrscr>=100){
         printk("[tsync_pcr_check]debug pcr=%x,refer lock=%x, vpts =%x, apts=%x\n",pcr,tsdemux_pcr,timestamp_vpts_get(),timestamp_apts_get());
         tsync_pcr_debug_pcrscr=0;
     }
@@ -808,7 +803,7 @@ static unsigned long tsync_pcr_check(void)
             }
         }
     }
- 
+
     if (need_recovery && !tsync_pcr_vpause_flag) {
         if (play_mode == PLAY_MODE_SLOW)
             timestamp_pcrscr_set(timestamp_pcrscr_get()-tsync_pcr_recovery_span);
@@ -875,7 +870,7 @@ int tsync_pcr_start(void)
 {
     timestamp_pcrscr_enable(0);
     timestamp_pcrscr_set(0);
-    
+
     tsync_pcr_param_reset();
     if (tsync_get_mode() == TSYNC_MODE_PCRMASTER) {
         printk("[tsync_pcr_start]PCRMASTER started success. \n");

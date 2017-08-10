@@ -18,27 +18,27 @@ void root_func(){
         #size-cells = <0>;
 //$$ DEVICE="cpu0"
         cpu@0 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x200>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x200>;
         };
 //$$ DEVICE="cpu1"
         cpu@1 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x1>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x1>;
         };
 //$$ DEVICE="cpu2"
         cpu@2 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x2>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x2>;
         };
 //$$ DEVICE="cpu3"
         cpu@3 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x3>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x3>;
         };
     };
 
@@ -130,13 +130,12 @@ void root_func(){
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		status = "okay";
-		reserve-memory = <0x01800000  0x00800000>;
-	   	reserve-iomap = "true";
-		mem-usable = "false";
+		reserve-memory = <0x01800000  0x00100000>;
+		reserve-iomap = "true";
                 vmode = <3>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
 		scale_mode = <1>; /*0:default 1:new*/
 		4k2k_fb = <0>;
- 		display_size_default = <1920 1080 1920 3240 32>; //1920*1080*4*3 = 0x17BB000
+		display_size_default = <1920 1080 1920 3240 32>; //1920*1080*4*3 = 0x17BB000
 	};
 
 //$$ DEVICE="deinterlace"
@@ -150,9 +149,6 @@ void root_func(){
 	};
 
 /// ***************************************************************************************
-///     -       DISP&MM-A/V stream
-//$$ MODULE = "DISP&MM-A/V video dec"
-/// ***************************************************************************************
 ///	-	DISP&MM-A/V stream
 //$$ MODULE = "DISP&MM-A/V stream"
 //$$ DEVICE="mesonstream"
@@ -162,7 +158,7 @@ void root_func(){
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
 		status = "okay";
-		//reserve-memory = <0x02000000>; // 32M
+		reserve-memory = <0x02000000>; // 32M
 		//reserve-iomap = "true";
 	};
 
@@ -176,21 +172,9 @@ void root_func(){
                 compatible = "amlogic,vdec";
                 dev_name = "vdec.0";
                 status = "okay";
-///				reserve-memory = <0x04000000>; // 64M
-//				reserve-iomap = "true";
-//				linux,contiguous-region = <&mem_4k2k_decoder>;
+								reserve-memory = <0x04000000>; // 64M
+//		reserve-iomap = "true";
         };
-
-
-	codec_mm{
-		compatible = "amlogic, codec, mm";
-		dev_name = "codec_mm";
-		status = "okay";
-		reserve-memory = <0x04100000>; // 65M
-		//reserve-iomap = "true";
-		//linux,contiguous-region = <&mem_4k2k_decoder>;
-	};
-
 ///	-	picture decoder
 //$$ MODULE="picture decoder"
 //$$ DEVICE="picdec"
@@ -216,7 +200,6 @@ void root_func(){
 		dev_name = "ppmgr";
 		status = "okay";
 		reserve-memory = <0x02000000>; // 32M
-
 	};
 
 /// ***************************************************************************************
@@ -327,12 +310,6 @@ void root_func(){
 	mesonvout{
 		compatible = "amlogic,mesonvout";
 		dev_name = "mesonvout";
-		status = "okay";
-	};
-
-	tvout {
-		compatible = "amlogic,tvout";
-		dev_name = "tvout";
 		status = "okay";
 	};
 
@@ -728,7 +705,7 @@ void root_func(){
 		#size-cells = <0>;
 		use_pio = <0>;
 		master_i2c_speed = <300000>;
- 	};
+	};
 
 //$$ DEVICE="I2C_C"
 //$$ L2 PROP_STR = "status"
@@ -795,10 +772,10 @@ void root_func(){
                  600000         825000      825000
                  720000         825000      825000
                  816000         850000      850000
-                1008000        1140000     1140000
-                1200000        1140000     1140000
-                1320000        1140000     1140000
-                1488000        1140000     1140000
+                1008000         875000      875000
+                1200000         925000      925000
+                1320000        1100000     1100000
+                1488000        1100000     1100000
                 1536000        1140000     1140000
             >;
         };
@@ -1077,7 +1054,7 @@ void root_func(){
 	    status = "disable";
         };
         pmu3:pmu3{
-        	codec_name = "amlpmu3";
+		codec_name = "amlpmu3";
 			status = "okay";
         };
     };
@@ -1302,8 +1279,8 @@ void root_func(){
 		#thermal-cells=<7>;
 		dev_name = "aml_thermal";
         trip_point=<70 1488001 1488001 511 511 3 2
-                    80 1206001 1206001 435 435 2 2
-                    90  804001  804001 328 328 1 1
+                    80 1200001 1200001 435 435 2 2
+                    90  800001  800001 328 328 1 1
                     260 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff>;
 		cpu_cali_a=<0>;
 		idle_interval=<1000>;
@@ -1346,7 +1323,7 @@ void root_func(){
 //$$ L2 PROP_CHOICE "Unifykey_0_match" = "unifykey-index-0"
 //$$ L2 PROP_CHOICE "Unifykey_1_match" = "unifykey-index-1"
 //$$ L2 PROP_CHOICE "Unifykey_2_match" = "unifykey-index-2"
-    	unifykey{
+	unifykey{
 		compatible = "amlogic,unifykey";
 		status = "ok";
 
@@ -1498,7 +1475,6 @@ void root_func(){
     cpufreq-meson{
         compatible = "amlogic,cpufreq-meson";
         syspll_fixed;
-        fixpll_target = <1536000>;
         status = "okay";
     };
 
@@ -1585,7 +1561,7 @@ void root_func(){
 						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
 			amlogic,enable-output=<1>;
 		};
-
+		
 		nand_cs_pins: nand_cs{
 			amlogic,setmask=<2 0x3000000>;
 			amlogic,clrmask=<7 0x80000
@@ -1953,13 +1929,13 @@ void root_func(){
 			amlogic,clrmask = <9 0x378>;
 			amlogic,pins = "GPIOY_9","GPIOY_0","GPIOY_1","GPIOY_8";
 		};
-
+		
 		smc_pins:smc_pins {
 		amlogic,setmask = <4 0xC0000>;
 		amlogic,clrmask = <4 0x3F0
 								3 0x1000>;
 		amlogic,pins= "GPIOX_18","GPIOX_19";
-
+		
 		};
 	};
 /// ***************************************************************************************
@@ -2026,7 +2002,7 @@ void root_func(){
 		fe0_ts = <0>;
 		fe0_dev = <0>;
 	};
-
+	
 	smartcard {
 		compatible = "amlogic,smartcard";
 		smc0_irq = <69>;

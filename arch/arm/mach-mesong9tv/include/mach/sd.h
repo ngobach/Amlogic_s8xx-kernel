@@ -13,7 +13,6 @@
 #include <linux/mmc/host.h>
 #include <linux/earlysuspend.h>
 
-#include <linux/amlogic/jtag.h>
 #include <mach/cpu.h>
 
 #define     AML_ERROR_RETRY_COUNTER         10
@@ -570,28 +569,28 @@ struct sdhc_srst{
 	u32 reserved:26; /*[31:6] reserved*/
 };
 
-struct  sdhc_enhc{
-	union  {
-		struct  {
-			u32 wrrsp_mode:1; /*[0] 0:Wrrsp Check in DMA Rx FSM 1:No Check in FSM*/
-			u32 chk_wrrsp:1; /*[1] Rx Done without checking if Wrrsp count is 0*/
-			u32 chk_dma:1; /*[2] Rx Done without checking if DMA is IDLE*/
-			u32 debug:3;  /*[5:3] debug only*/
-			u32 reserved:2;
-			u32 sdio_irq_period:8; /*[15:8] SDIO IRQ Period Setting*/
-			u32 reserved1:2;
-			u32 rxfifo_th:7; /*[24:18] RXFIFO Full Threshold,default 60*/
-			u32 txfifo_th:7; /*[31:25] TXFIFO Empty Threshold,default 0*/
-		}  meson8m2;
-		struct  {
-			u32 rx_timeout:8; /*[7:0] Data Rx Timeout Setting*/
-			u32 sdio_irq_period:8; /*[15:8] SDIO IRQ Period Setting
-				(IRQ checking window length)*/
-			u32 dma_rd_resp:1; /*[16] No Read DMA Response Check*/
-			u32 dma_wr_resp:1; /*[16] No Write DMA Response Check*/
-			u32 rxfifo_th:7; /*[24:18] RXFIFO Full Threshold,default 60*/
-			u32 txfifo_th:7; /*[31:25] TXFIFO Empty Threshold,default 0*/
-		}  meson;
+struct  sdhc_enhc{	
+	union  {		
+		struct  {			
+			u32 wrrsp_mode:1; /*[0] 0:Wrrsp Check in DMA Rx FSM 1:No Check in FSM*/		    	
+			u32 chk_wrrsp:1; /*[1] Rx Done without checking if Wrrsp count is 0*/		    	
+			u32 chk_dma:1; /*[2] Rx Done without checking if DMA is IDLE*/		    	
+			u32 debug:3;  /*[5:3] debug only*/		    	
+			u32 reserved:2;		    	
+			u32 sdio_irq_period:8; /*[15:8] SDIO IRQ Period Setting*/		    	
+			u32 reserved1:2;		    	
+			u32 rxfifo_th:7; /*[24:18] RXFIFO Full Threshold,default 60*/		    	
+			u32 txfifo_th:7; /*[31:25] TXFIFO Empty Threshold,default 0*/				
+		}  meson8m2;		
+		struct  {			
+			u32 rx_timeout:8; /*[7:0] Data Rx Timeout Setting*/			
+			u32 sdio_irq_period:8; /*[15:8] SDIO IRQ Period Setting					
+				(IRQ checking window length)*/			
+			u32 dma_rd_resp:1; /*[16] No Read DMA Response Check*/			
+			u32 dma_wr_resp:1; /*[16] No Write DMA Response Check*/			
+			u32 rxfifo_th:7; /*[24:18] RXFIFO Full Threshold,default 60*/			
+			u32 txfifo_th:7; /*[31:25] TXFIFO Empty Threshold,default 0*/				
+		}  meson;		
 	}reg;
 };
 
@@ -686,37 +685,29 @@ extern int ext_codec;
 // P_AO_SECURE_REG1 is "Secure Register 1" in <M8-Secure-AHB-Registers.doc>
 #ifdef CONFIG_SND_AML_M8_SOC
 #define aml_jtag_gpioao() do{\
-	if (is_jtag_disable()) {\
     aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \
-	}\
+    if(!ext_codec)\
+        aml_set_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1))); \
 }while(0)
 #else
 #define aml_jtag_gpioao() do{\
-	if (is_jtag_disable()) {\
 	aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \
-	}\
 }while(0)
 #endif
 
 #define aml_jtag_sd() do{\
-	if (is_jtag_disable()) {\
     aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1))); \
     aml_set_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \
-	}\
 }while(0)
 #else
 /* Secure REG can only be accessed in Secure World if TrustZone enabled.*/
 #include <mach/meson-secure.h>
 #define aml_jtag_gpioao() do {\
-	if (is_jtag_disable()) {\
 	meson_secure_reg_write(P_AO_SECURE_REG1, meson_secure_reg_read(P_AO_SECURE_REG1) & (~((1<<5) | (1<<9)))); \
-	}\
 } while(0)
 #define aml_jtag_sd() do {\
-	if (is_jtag_disable()) {\
 	meson_secure_reg_write(P_AO_SECURE_REG1, meson_secure_reg_read(P_AO_SECURE_REG1) & (~(1<<8) | (1<<1))); \
 	meson_secure_reg_write(P_AO_SECURE_REG1, meson_secure_reg_read(P_AO_SECURE_REG1) | ((1<<5) | (1<<9))); \
-	}\
 } while(0)
 #endif /* CONFIG_MESON_TRUSTZONE */
 

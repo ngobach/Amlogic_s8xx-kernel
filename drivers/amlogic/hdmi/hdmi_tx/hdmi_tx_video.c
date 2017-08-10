@@ -606,4 +606,3 @@ static void hdmitx_set_spd_info(hdmitx_dev_t* hdmitx_device)
     }
     hdmitx_device->HWOp.SetPacket(HDMI_SOURCE_DESCRIPTION, SPD_DB, SPD_HB);
 }
-

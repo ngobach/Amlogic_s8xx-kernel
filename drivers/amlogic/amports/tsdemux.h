@@ -97,4 +97,3 @@ void tsdemux_sub_reset(void);
 void tsdemux_set_skipbyte(int skipbyte);
 void tsdemux_set_demux(int dev);
 #endif /* TSDEMUX_H */
-

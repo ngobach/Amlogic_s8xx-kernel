@@ -19,8 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
  *
  * Author:   jianfeng_wang@amlogic
- *
- *
+ *		   
+ *		   
  */
 
 #include <linux/version.h>
@@ -53,8 +53,6 @@
 #include "vout_log.h"
 #include <linux/amlogic/amlog.h>
 #include <mach/power_gate.h>
-#include <linux/delay.h>
-
 
 #define PIN_MUX_REG_0	  0x202c
 #define P_PIN_MUX_REG_0  CBUS_REG_ADDR(PIN_MUX_REG_0)
@@ -69,13 +67,10 @@ SET_TV_CLASS_ATTR(vdac_setting,parse_vdac_setting)
 #define DEFAULT_POLICY_FR_AUTO	1
 
 static int fr_auto_policy = DEFAULT_POLICY_FR_AUTO;
-static int fr_auto_policy_hold = DEFAULT_POLICY_FR_AUTO;
-int fps_playing_flag=0 ;//1:  23.976/29.97/59.94 fps stream is playing
-vmode_t fps_target_mode=VMODE_INIT_NULL;
-static void policy_framerate_automation_switch_store(char* para);
 static void policy_framerate_automation_store(char* para);
+
 SET_TV_CLASS_ATTR(policy_fr_auto, policy_framerate_automation_store)
-SET_TV_CLASS_ATTR(policy_fr_auto_switch, policy_framerate_automation_switch_store)
+
 #endif
 
 
@@ -110,7 +105,6 @@ static struct vmode_tvmode_tab_t mode_tab[] = {
     {TVMODE_720P, VMODE_720P},
     {TVMODE_1080I, VMODE_1080I},
     {TVMODE_1080P, VMODE_1080P},
-    {TVMODE_768P, VMODE_768P},
     {TVMODE_720P_50HZ, VMODE_720P_50HZ},
     {TVMODE_1080I_50HZ, VMODE_1080I_50HZ},
     {TVMODE_1080P_50HZ, VMODE_1080P_50HZ},
@@ -136,8 +130,6 @@ static struct vmode_tvmode_tab_t mode_tab[] = {
     {TVMODE_1080P_23HZ, VMODE_1080P_23HZ}, // for 1080p 23.97hz
     {TVMODE_4K2K_29HZ, VMODE_4K2K_29HZ}, // for 4k2k 29.97hz
     {TVMODE_4K2K_23HZ, VMODE_4K2K_23HZ}, // for 4k2k 23.97hz
-    {TVMODE_4K2K_59HZ, VMODE_4K2K_59HZ}, // for 4k2k 59.94hz
-    {TVMODE_4K2K_59HZ_Y420, VMODE_4K2K_59HZ_Y420}, // for 4k2k 59.94hz420
 #endif
     {TVMODE_4K1K_100HZ, VMODE_4K1K_100HZ},
     {TVMODE_4K1K_100HZ_Y420, VMODE_4K1K_100HZ_Y420},
@@ -160,7 +152,7 @@ static const tvmode_t vmode_tvmode_map(vmode_t mode)
     return TVMODE_MAX;
 }
 
-static const vinfo_t tv_info[] =
+static const vinfo_t tv_info[] = 
 {
     { /* VMODE_480I */
         .name              = "480i",
@@ -173,7 +165,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 27000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_480I_RPT */
         .name              = "480i_rpt",
@@ -186,7 +177,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 27000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_480CVBS*/
         .name              = "480cvbs",
@@ -199,7 +189,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 27000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_480P */
         .name              = "480p",
@@ -212,7 +201,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 27000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
     { /* VMODE_480P_59HZ */
@@ -226,7 +214,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60000,
         .sync_duration_den = 1001,
         .video_clk         = 27000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
 #endif
     { /* VMODE_480P_RPT */
@@ -240,7 +227,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 27000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_576I */
         .name              = "576i",
@@ -253,7 +239,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
         .video_clk         = 27000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_576I_RPT */
         .name              = "576i_rpt",
@@ -266,7 +251,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
         .video_clk         = 27000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_576I */
         .name              = "576cvbs",
@@ -279,7 +263,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
         .video_clk         = 27000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_576P */
         .name              = "576p",
@@ -292,7 +275,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
         .video_clk         = 27000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_576P_RPT */
         .name              = "576p_rpt",
@@ -305,7 +287,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
         .video_clk         = 27000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_720P */
         .name              = "720p",
@@ -318,7 +299,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 74250000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
     { /* VMODE_720P_59HZ */
@@ -332,7 +312,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60000,
         .sync_duration_den = 1001,
         .video_clk         = 74250000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
 #endif
     { /* VMODE_1080I */
@@ -346,9 +325,8 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 74250000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION    
     { /* VMODE_1080I_59HZ */
         .name              = "1080i59hz",
         .mode              = VMODE_1080I_59HZ,
@@ -360,7 +338,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60000,
         .sync_duration_den = 1001,
         .video_clk         = 74250000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
 #endif
     { /* VMODE_1080P */
@@ -374,21 +351,19 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 148500000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
     { /* VMODE_1080P_59HZ */
-        .name			   = "1080p59hz",
-        .mode			   = VMODE_1080P_59HZ,
-        .width			   = 1920,
-        .height 		   = 1080,
-        .field_height	   = 1080,
+        .name              = "1080p59hz",
+        .mode              = VMODE_1080P_59HZ,
+        .width             = 1920,
+        .height            = 1080,
+        .field_height      = 1080,
         .aspect_ratio_num  = 16,
         .aspect_ratio_den  = 9,
         .sync_duration_num = 60000,
         .sync_duration_den = 1001,
-        .video_clk		   = 148500000,
-        .viu_color_fmt	   = TVIN_YUV422,
+        .video_clk         = 148500000,
     },
 #endif
     { /* VMODE_720P_50hz */
@@ -402,7 +377,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
         .video_clk         = 74250000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_1080I_50HZ */
         .name              = "1080i50hz",
@@ -415,7 +389,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
         .video_clk         = 74250000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_1080P_50HZ */
         .name              = "1080p50hz",
@@ -428,20 +401,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
         .video_clk         = 148500000,
-        .viu_color_fmt	   = TVIN_YUV422,
-    },
-    { /* VMODE_768P */
-        .name              = "768p60hz",
-        .mode              = VMODE_768P,
-        .width             = 1366,
-        .height            = 768,
-        .field_height      = 768,
-        .aspect_ratio_num  = 16,
-        .aspect_ratio_den  = 9,
-        .sync_duration_num = 60,
-        .sync_duration_den = 1,
-        //.video_clk         = 148500000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_1080P_24HZ */
         .name              = "1080p24hz",
@@ -454,22 +413,20 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 24,
         .sync_duration_den = 1,
         .video_clk         = 74250000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
     { /* VMODE_1080P_23HZ */
-        .name			   = "1080p23hz",
-        .mode			   = VMODE_1080P_23HZ,
-        .width			   = 1920,
-        .height 		   = 1080,
-        .field_height	   = 1080,
+        .name              = "1080p23hz",
+        .mode              = VMODE_1080P_23HZ,
+        .width             = 1920,
+        .height            = 1080,
+        .field_height      = 1080,
         .aspect_ratio_num  = 16,
         .aspect_ratio_den  = 9,
         .sync_duration_num = 24000,
         .sync_duration_den = 1001,
-        .video_clk		   = 74250000,
-        .viu_color_fmt	   = TVIN_YUV422,
-	},
+        .video_clk         = 74176000,//74250000,
+    },
 #endif
     { /* VMODE_4K2K_30HZ */
         .name              = "4k2k30hz",
@@ -482,21 +439,19 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 30,
         .sync_duration_den = 1,
         .video_clk         = 297000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
     { /* VMODE_4K2K_29HZ */
-        .name			   = "4k2k29hz",
-        .mode			   = VMODE_4K2K_29HZ,
-        .width			   = 3840,
-        .height 		   = 2160,
-        .field_height	   = 2160,
+        .name              = "4k2k29hz",
+        .mode              = VMODE_4K2K_29HZ,
+        .width             = 3840,
+        .height            = 2160,
+        .field_height      = 2160,
         .aspect_ratio_num  = 16,
         .aspect_ratio_den  = 9,
         .sync_duration_num = 2997,
         .sync_duration_den = 100,
-        .video_clk		   = 297000000,
-        .viu_color_fmt	   = TVIN_YUV422,
+        .video_clk         = 297000000,
 	},
 #endif
     { /* VMODE_4K2K_25HZ */
@@ -510,7 +465,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 25,
         .sync_duration_den = 1,
         .video_clk         = 297000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K2K_24HZ */
         .name              = "4k2k24hz",
@@ -523,21 +477,19 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 24,
         .sync_duration_den = 1,
         .video_clk         = 297000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
     { /* VMODE_4K2K_23HZ */
-        .name			   = "4k2k23hz",
-        .mode			   = VMODE_4K2K_23HZ,
-        .width			   = 3840,
-        .height 		   = 2160,
-        .field_height	   = 2160,
+        .name              = "4k2k23hz",
+        .mode              = VMODE_4K2K_23HZ,
+        .width             = 3840,
+        .height            = 2160,
+        .field_height      = 2160,
         .aspect_ratio_num  = 16,
         .aspect_ratio_den  = 9,
         .sync_duration_num = 24000,
         .sync_duration_den = 1001,
         .video_clk         = 297000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
 #endif
     { /* VMODE_4K2K_SMPTE */
@@ -551,7 +503,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 24,
         .sync_duration_den = 1,
         .video_clk         = 297000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K2K_FAKE_5G */
         .name              = "4k2k5g",
@@ -564,7 +515,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
         .video_clk         = 495000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K2K_60HZ_Y420 */
         .name              = "4k2k60hz420",
@@ -577,23 +527,7 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-    { /* VMODE_4K2K_59HZ_Y420 */
-        .name              = "4k2k59hz420",
-        .mode              = VMODE_4K2K_59HZ_Y420,
-        .width             = 3840,
-        .height            = 2160,
-        .field_height      = 2160,
-        .aspect_ratio_num  = 16,
-        .aspect_ratio_den  = 9,
-        .sync_duration_num = 60000,
-        .sync_duration_den = 1001,
-        .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
-    },
-#endif
     { /* VMODE_4K2K_50HZ_Y420 */
         .name              = "4k2k50hz420",
         .mode              = VMODE_4K2K_50HZ_Y420,
@@ -605,7 +539,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K2K_60HZ */
         .name              = "4k2k60hz",
@@ -618,23 +551,7 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-    { /* VMODE_4K2K_59HZ */
-        .name              = "4k2k59hz",
-        .mode              = VMODE_4K2K_59HZ,
-        .width             = 3840,
-        .height            = 2160,
-        .field_height      = 2160,
-        .aspect_ratio_num  = 16,
-        .aspect_ratio_den  = 9,
-        .sync_duration_num = 60000,
-        .sync_duration_den = 1001,
-        .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
-    },
-#endif
     { /* VMODE_4K1K_100HZ_Y420 */
         .name              = "4k1k100hz420",
         .mode              = VMODE_4K1K_100HZ_Y420,
@@ -646,7 +563,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 100,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K1K_100HZ */
         .name              = "4k1k100hz",
@@ -659,7 +575,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 100,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K1K_120HZ_Y420 */
         .name              = "4k1k120hz420",
@@ -672,7 +587,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 120,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K1K_120HZ */
         .name              = "4k1k120hz",
@@ -685,7 +599,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 120,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K05K_200HZ_Y420 */
         .name              = "4k05k200hz420",
@@ -698,7 +611,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 200,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K05K_200HZ */
         .name              = "4k05k200hz",
@@ -711,7 +623,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 200,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K05K_240HZ_Y420 */
         .name              = "4k05k240hz420",
@@ -724,7 +635,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 240,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K05K_240HZ */
         .name              = "4k05k240hz",
@@ -737,7 +647,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 240,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_4K2K_50HZ */
         .name              = "4k2k50hz",
@@ -750,7 +659,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 50,
         .sync_duration_den = 1,
         .video_clk         = 594000000,
-        .viu_color_fmt	   = TVIN_YUV422,
     },
     { /* VMODE_vga */
         .name              = "vga",
@@ -763,8 +671,7 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 25175000,
-        .viu_color_fmt	   = TVIN_RGB444,
-    },
+    }, 
     { /* VMODE_SVGA */
         .name              = "svga",
         .mode              = VMODE_SVGA,
@@ -776,8 +683,7 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 40000000,
-        .viu_color_fmt	   = TVIN_RGB444,
-    },
+    }, 
     { /* VMODE_XGA */
         .name              = "xga",
         .mode              = VMODE_XGA,
@@ -789,8 +695,7 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 65000000,
-        .viu_color_fmt	   = TVIN_RGB444,
-    },
+    }, 
     { /* VMODE_sxga */
         .name              = "sxga",
         .mode              = VMODE_SXGA,
@@ -802,9 +707,8 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 108000000,
-        .viu_color_fmt	   = TVIN_RGB444,
-    },
-    { /* VMODE_wsxga */
+    }, 
+	{ /* VMODE_wsxga */
         .name              = "wsxga",
         .mode              = VMODE_WSXGA,
         .width             = 1440,
@@ -815,7 +719,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 88750000,
-        .viu_color_fmt	   = TVIN_RGB444,
     },
     { /* VMODE_fhdvga */
         .name              = "fhdvga",
@@ -828,7 +731,6 @@ static const vinfo_t tv_info[] =
         .sync_duration_num = 60,
         .sync_duration_den = 1,
         .video_clk         = 148500000,
-        .viu_color_fmt	   = TVIN_RGB444,
     },
 };
 
@@ -865,7 +767,7 @@ static const vinfo_t *tv_get_current_info(void)
     return info->vinfo;
 }
 
-tvmode_t vmode_to_tvmode(vmode_t mod)
+tvmode_t vmode_to_tvmode(vmode_t mod) 
 {
     return vmode_tvmode_map(mod);
 }
@@ -880,29 +782,18 @@ static const vinfo_t *get_tv_info(vmode_t mode)
     return NULL;
 }
 
-extern void cvbs_cntl_output(unsigned int open);
 static int tv_set_current_vmode(vmode_t mod)
 {
-#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB)
-    vmode_t mode_old = info->vinfo->mode;
-#endif
     if ((mod&VMODE_MODE_BIT_MASK)> VMODE_MAX)
-        return -EINVAL;
+	return -EINVAL;
     info->vinfo = get_tv_info(mod & VMODE_MODE_BIT_MASK);
-    if (!info->vinfo) {
+    if(!info->vinfo) {
         printk("don't get tv_info, mode is %d\n", mod);
         return 1;
     }
-#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB)
-    if ((mode_old == VMODE_480CVBS) || (mode_old == VMODE_576CVBS))
-    {
-        cvbs_cntl_output(0);
-    }
-#endif
-
 //	info->vinfo = &tv_info[mod & VMODE_MODE_BIT_MASK];
     printk("mode is %d,sync_duration_den=%d,sync_duration_num=%d\n", mod,info->vinfo->sync_duration_den,info->vinfo->sync_duration_num);
-    if (mod&VMODE_LOGO_BIT_MASK)  return 0;
+    if(mod&VMODE_LOGO_BIT_MASK)  return 0;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     switch_vpu_mem_pd_vmod(info->vinfo->mode, VPU_MEM_POWER_ON);
     request_vpu_clk_vmod(info->vinfo->video_clk, info->vinfo->mode);
@@ -916,7 +807,7 @@ static vmode_t tv_validate_vmode(char *mode)
 {
     const vinfo_t *info = get_valid_vinfo(mode);
     if (info)
-        return info->mode;
+	return info->mode;
 
     return VMODE_MAX;
 }
@@ -1081,12 +972,6 @@ static int get_target_vmode(int framerate_target)
             case VMODE_4K2K_30HZ:
                 mode_target = VMODE_4K2K_29HZ;
                 break;
-            case VMODE_4K2K_60HZ:
-                mode_target = VMODE_4K2K_59HZ;
-                break;
-            case VMODE_4K2K_60HZ_Y420:
-                mode_target = VMODE_4K2K_59HZ_Y420;
-                break;
             default:
                 break;
         }
@@ -1108,7 +993,6 @@ static int get_target_vmode(int framerate_target)
             break;
     }
 */
-    fps_target_mode=mode_target;
     return mode_target;
 }
 
@@ -1140,10 +1024,6 @@ static int get_exchange_mode(vmode_t mode_target)
         ((mode_current == VMODE_1080P_23HZ) && (mode_target == VMODE_1080P_24HZ) ) ||
         ((mode_current == VMODE_4K2K_30HZ) && (mode_target == VMODE_4K2K_29HZ)) ||
         ((mode_current == VMODE_4K2K_29HZ) && (mode_target == VMODE_4K2K_30HZ)) ||
-        ((mode_current == VMODE_4K2K_60HZ) && (mode_target == VMODE_4K2K_59HZ)) ||
-        ((mode_current == VMODE_4K2K_59HZ) && (mode_target == VMODE_4K2K_60HZ)) ||
-        ((mode_current == VMODE_4K2K_60HZ_Y420) && (mode_target == VMODE_4K2K_59HZ_Y420)) ||
-        ((mode_current == VMODE_4K2K_59HZ_Y420) && (mode_target == VMODE_4K2K_60HZ_Y420)) ||
         ((mode_current == VMODE_4K2K_24HZ) && (mode_target == VMODE_4K2K_23HZ)) ||
         ((mode_current == VMODE_4K2K_23HZ) && (mode_target == VMODE_4K2K_24HZ)) )
         return 0x1;
@@ -1182,7 +1062,6 @@ static int clock_fine_tune(void)
         case VMODE_720P:
         case VMODE_1080I:
         case VMODE_1080P:
-        case VMODE_768P:
         case VMODE_1080P_24HZ:
             aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x69c84e00);
             break;
@@ -1219,52 +1098,6 @@ static int clock_fine_tune(void)
 
 #endif
 
-#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
-    switch (pvinfo->mode) {
-        case VMODE_720P_59HZ:
-        case VMODE_1080I_59HZ:
-        case VMODE_1080P_23HZ:
-        case VMODE_1080P_59HZ:
-        case VMODE_4K2K_23HZ:
-        case VMODE_4K2K_29HZ:
-        case VMODE_4K2K_59HZ:
-        case VMODE_4K2K_59HZ_Y420:
-            aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL2, 0xd02, 0, 12); // div_frac
-            /*aml_write_reg32(P_HHI_VID_PLL_CNTL, 0x5000023d);
-            aml_write_reg32(P_HHI_VID_PLL_CNTL, 0x4000023d);
-            aml_write_reg32(P_HHI_VID_CLK_CNTL, 0x90001);
-            aml_write_reg32(P_ENCL_VIDEO_EN, 0x0);
-            msleep_interruptible(10);
-            aml_write_reg32(P_ENCL_VIDEO_EN, 0x1);
-            msleep_interruptible(10);
-            aml_write_reg32(P_ENCL_VIDEO_EN, 0x0);
-            msleep_interruptible(10);
-            aml_write_reg32(P_HHI_VID_CLK_CNTL, 0x80007);*/
-            break;
-        case VMODE_720P:
-        case VMODE_1080I:
-        case VMODE_1080P_24HZ:
-        case VMODE_1080P:
-        case VMODE_4K2K_24HZ:
-        case VMODE_4K2K_30HZ:
-        case VMODE_4K2K_60HZ:
-        case VMODE_4K2K_60HZ_Y420:
-            aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL2, 0xe00, 0, 12); // div_frac
-            /*aml_write_reg32(P_HHI_VID_PLL_CNTL, 0x5000023d);
-            aml_write_reg32(P_HHI_VID_PLL_CNTL, 0x4000023d);
-            aml_write_reg32(P_HHI_VID_CLK_CNTL, 0x90001);
-            aml_write_reg32(P_ENCL_VIDEO_EN, 0x0);
-            msleep_interruptible(10);
-            aml_write_reg32(P_ENCL_VIDEO_EN, 0x1);
-            msleep_interruptible(10);
-            aml_write_reg32(P_ENCL_VIDEO_EN, 0x0);
-            msleep_interruptible(10);
-            aml_write_reg32(P_HHI_VID_CLK_CNTL, 0x80007);*/
-            break;
-        default:
-            break;
-    }
-#endif
     return 0;
 }
 
@@ -1273,11 +1106,12 @@ extern void set_vout_mode_fr_auto(char * name);
 
 static void update_current_vinfo(vmode_t mode)
 {
-    if ((mode&VMODE_MODE_BIT_MASK)> VMODE_FHDVGA)
-        return ;
-    info->vinfo = get_tv_info(mode & VMODE_MODE_BIT_MASK);
-    if (!info->vinfo)
-        printk("don't get tv_info, mode is %d\n", mode);
+	if ((mode&VMODE_MODE_BIT_MASK)> VMODE_FHDVGA)
+		return ;
+
+	info->vinfo = &tv_info[mode & VMODE_MODE_BIT_MASK];
+
+	return ;
 }
 
 static int framerate_automation_set_mode(vmode_t mode_target)
@@ -1298,7 +1132,7 @@ static int framerate_automation_set_mode(vmode_t mode_target)
 		 	update_vmode_status(get_name_from_vmode(mode_target));
 			update_current_vinfo(mode_target);
 			clock_fine_tune();
-			vout_notifier_call_chain(VOUT_EVENT_MODE_CHANGE_SIMILAR,&mode_target) ;
+			vout_notifier_call_chain(VOUT_EVENT_MODE_CHANGE,&mode_target) ;
 			break;
 		case 2:
 			// change vmode and notify all client
@@ -1327,23 +1161,13 @@ static int framerate_automation_process(int duration)
 
 	fr_vsource = get_vsource_frame_rate(duration);
 	fr_target = get_target_frame_rate(fr_vsource, policy);
-
+	
 	pvinfo = tv_get_current_info();
 	if( (pvinfo->sync_duration_num==fr_target) || (pvinfo->sync_duration_num==(fr_target/100)) )
 		return 0;
-	switch(fr_vsource){
-	case 5994:
-	case 2997:
-	case 2397:
-    	fps_playing_flag=1;
-		break;
-	default:
-		fps_playing_flag=0;
-		break;
-	}
-	printk("%s[%d] fps_playing_flag = %d\n", __FUNCTION__,__LINE__, fps_playing_flag);
-	mode_target = get_target_vmode(fr_target);
 
+	mode_target = get_target_vmode(fr_target);
+	
 	framerate_automation_set_mode(mode_target);
 
 	return 0;
@@ -1374,7 +1198,6 @@ static int tv_set_vframe_rate_end_hint(void)
 	printk("vout [%s] return mode = %d, policy = %d!\n", __FUNCTION__, mode_by_user, fr_auto_policy);
 	if( fr_auto_policy != 0 )
 	{
-		fps_playing_flag=0;
 		framerate_automation_set_mode(mode_by_user);
 	}
 
@@ -1409,10 +1232,10 @@ static int tv_resume(int pm_event)
 	tv_set_current_vmode(info->vinfo->mode);
 	return 0;
 }
-#endif
+#endif 
 static vout_server_t tv_server={
 	.name = "vout_tv_server",
-	.op = {
+	.op = {	
 		.get_vinfo=tv_get_current_info,
 		.set_vmode=tv_set_current_vmode,
 		.validate_vmode=tv_validate_vmode,
@@ -1420,10 +1243,10 @@ static vout_server_t tv_server={
 		.disable = tv_module_disable,
 		.set_vframe_rate_hint = tv_set_vframe_rate_hint,
 		.set_vframe_rate_end_hint = tv_set_vframe_rate_end_hint,
-#ifdef  CONFIG_PM
+#ifdef  CONFIG_PM  
 		.vout_suspend=tv_suspend,
 		.vout_resume=tv_resume,
-#endif
+#endif	
 	},
 };
 
@@ -1443,15 +1266,15 @@ static void _init_vout(void)
 **	The 6th digit control s-video chroma output DAC number
 ** 	examble :
 **		echo  120120 > /sys/class/display/vdac_setting
-**		the first digit from the left side .
+**		the first digit from the left side .	
 ******************************************************/
-static void  parse_vdac_setting(char *para)
+static void  parse_vdac_setting(char *para) 
 {
 	int  i;
 	char  *pt=strstrip(para);
 	int len=strlen(pt);
 	u32  vdac_sequence=get_current_vdac_setting();
-
+	
 	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"origin vdac setting:0x%x,strlen:%d\n",vdac_sequence,len);
 	if(len!=6)
 	{
@@ -1466,7 +1289,7 @@ static void  parse_vdac_setting(char *para)
 		pt++;
 	}
 	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"current vdac setting:0x%x\n",vdac_sequence);
-
+	
 	change_vdac_setting(vdac_sequence,get_current_vmode());
 }
 
@@ -1475,40 +1298,19 @@ static void  parse_vdac_setting(char *para)
 // 0: disable frame_rate_automation feature
 // 1: enable frame_rate_automation feature, same with frame rate of video source
 // 2: enable frame_rate_automation feature, use 59.94 instead of 23.97/29.97
-// 3: reset frame_rate_automatio
+//
 static void policy_framerate_automation_store(char* para)
 {
-    int policy = 0;
+	int policy = 0;
 
-    policy = simple_strtoul(para, NULL, 10);
+	policy = simple_strtoul(para, NULL, 10);
 
-    if ((policy >=0 ) && (policy < 3))
-    {
-        fr_auto_policy_hold = policy;
-        fr_auto_policy = fr_auto_policy_hold;
-        snprintf(policy_fr_auto_switch, 40, "%d\n", fr_auto_policy);
-    }
-    snprintf(policy_fr_auto, 40, "%d\n", fr_auto_policy_hold);
+	if( (policy>=0) && (policy<3) )
+	{
+		fr_auto_policy = policy;
+	}
 
-    return ;
-}
-
-static void policy_framerate_automation_switch_store(char* para)
-{
-    int policy = 0;
-    policy = simple_strtoul(para, NULL, 10);
-
-    if ((policy >= 0) && (policy < 3))
-    {
-        fr_auto_policy = policy;
-    }
-    else if (policy == 3)
-    {
-        fr_auto_policy = fr_auto_policy_hold;
-        tv_set_vframe_rate_end_hint();
-    }
-    snprintf(policy_fr_auto_switch, 40, "%d\n", fr_auto_policy);
-   return ;
+	return ;
 }
 
 #endif
@@ -1517,7 +1319,6 @@ static  struct  class_attribute   *tv_attr[]={
 &class_TV_attr_vdac_setting,
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 &class_TV_attr_policy_fr_auto,
-&class_TV_attr_policy_fr_auto_switch,
 #endif
 };
 static int  create_tv_attr(disp_module_info_t* info)
@@ -1543,7 +1344,6 @@ static int  create_tv_attr(disp_module_info_t* info)
 
 #ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 	sprintf(policy_fr_auto, "%d", DEFAULT_POLICY_FR_AUTO);
-  sprintf(policy_fr_auto_switch, "%d", DEFAULT_POLICY_FR_AUTO);
 #endif
 
 	return   0;
@@ -1569,7 +1369,7 @@ static struct syscore_ops tvconf_ops = {
 };
 #endif
 
-static int tvout_probe(struct platform_device *pdev)
+static int __init tv_init_module(void)
 {
 	int  ret ;
 
@@ -1578,7 +1378,7 @@ static int tvout_probe(struct platform_device *pdev)
 	register_syscore_ops(&tvconf_ops);
 #endif
 
-	info = &disp_module_info;
+	info=&disp_module_info;
 	printk("%s\n", __func__);
 
 	/*if (!info)
@@ -1591,7 +1391,7 @@ static int tvout_probe(struct platform_device *pdev)
 
 	sprintf(info->name,TV_CLASS_NAME) ;
 	ret=register_chrdev(0,info->name,&am_tv_fops);
-	if (ret < 0)
+	if(ret <0)
 	{
 		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"register char dev tv error\n");
 		return  ret ;
@@ -1599,7 +1399,7 @@ static int tvout_probe(struct platform_device *pdev)
 	info->major=ret;
 	_init_vout();
 	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"major number %d for disp\n",ret);
-	if (vout_register_server(&tv_server))
+	if(vout_register_server(&tv_server))
 	{
 		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"register tv module server fail\n");
 	}
@@ -1611,30 +1411,27 @@ static int tvout_probe(struct platform_device *pdev)
 	return 0;
 
 }
-
-
-static int __exit tvout_remove(struct platform_device *pdev)
+static __exit void tv_exit_module(void)
 {
 	int i;
-
-	if (info->base_class)
+	
+	if(info->base_class)
 	{
-		for (i=0; i<ARRAY_SIZE(tv_attr); i++)
+		for(i=0;i<ARRAY_SIZE(tv_attr);i++)
 		{
 			class_remove_file(info->base_class,tv_attr[i]) ;
 		}
-
+		
 		class_destroy(info->base_class);
-	}
-	if (info)
+	}	
+	if(info)
 	{
 		unregister_chrdev(info->major,info->name)	;
 		//kfree(info);
 	}
 	vout_unregister_server(&tv_server);
-
+	
 	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"exit tv module\n");
-	return 0;
 }
 
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8)
@@ -1668,47 +1465,8 @@ static int __init cvbs_performance_setup(char* line)
 }
 __setup("cvbsdrv=", cvbs_performance_setup);
 
-
-#ifdef CONFIG_USE_OF
-static const struct of_device_id tvout_dt_match[] = {
-	{
-		.compatible = "amlogic,tvout",
-	},
-	{},
-};
-#endif
-
-static struct platform_driver tvout_driver = {
-	.driver = {
-		.name = TV_CLASS_NAME,
-		.owner = THIS_MODULE,
-#ifdef CONFIG_USE_OF
-		.of_match_table = tvout_dt_match,
-#endif
-	},
-	.probe = tvout_probe,
-	.remove = __exit_p(tvout_remove),
-};
-
-static int __init tvout_init_module(void)
-{
-	printk("%s module init\n", __func__);
-	if (platform_driver_register(&tvout_driver)) {
-		printk("%s failed to register module\n", __func__);
-		return -ENODEV;
-	}
-
-	return 0;
-}
-
-static void __exit tvout_exit_module(void)
-{
-	printk("%s module exit\n", __func__);
-	platform_driver_unregister(&tvout_driver);
-}
-
-arch_initcall(tvout_init_module);
-module_exit(tvout_exit_module);
+arch_initcall(tv_init_module);
+module_exit(tv_exit_module);
 
 MODULE_DESCRIPTION("display configure  module");
 MODULE_LICENSE("GPL");

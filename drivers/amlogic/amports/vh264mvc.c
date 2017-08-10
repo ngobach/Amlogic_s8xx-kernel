@@ -419,14 +419,14 @@ static vframe_t *vh264mvc_vf_get(void* op_arg)
         }
         else{
 #ifdef CONFIG_POST_PROCESS_MANAGER_3D_PROCESS
-    		  //      vf->trans_fmt = TVIN_TFMT_3D_LRH_ELOR
+		  //      vf->trans_fmt = TVIN_TFMT_3D_LRH_ELOR
 #endif
             vf->canvas0Addr = spec2canvas(&buffer_spec0[view0_buf_id]);
             vf->canvas1Addr = spec2canvas(&buffer_spec1[view1_buf_id]);
         }
     }
-    }
-    vf->type_original = vf->type;
+	}
+    
     if (((vfpool_idx[get_ptr].view0_drop != 0)||(vfpool_idx[get_ptr].view1_drop != 0))&&((no_dropping_cnt >= DROPPING_FIRST_WAIT))){
     	vf->frame_dirty	= 1;
     }else{
@@ -726,10 +726,7 @@ static void vh264mvc_isr(void)
                 printk("End H264 display buffer allocation for view 0\n");
             }
             if(frame_width == 0){
-                if (vh264mvc_amstream_dec_info.width)
-                    frame_width = vh264mvc_amstream_dec_info.width;
-                else
-                    frame_width = mb_width<<4;
+                frame_width = mb_width<<4;
             }
             if(frame_height == 0){
                 frame_height = mb_height<<4;
@@ -808,10 +805,7 @@ static void vh264mvc_isr(void)
                 printk("End H264 display buffer allocation for view 1\n");
             }
             if(frame_width == 0){
-                if (vh264mvc_amstream_dec_info.width)
-                    frame_width = vh264mvc_amstream_dec_info.width;
-                else
-                    frame_width = mb_width<<4;
+                frame_width = mb_width<<4;
             }
             if(frame_height == 0){
                 frame_height = mb_height<<4;
@@ -849,7 +843,7 @@ static void vh264mvc_isr(void)
                 }
             }
             else{
-            	unsigned char in_list_flag = 0;
+		unsigned char in_list_flag = 0;
 
 				int slot =0 ;
 				in_list_flag  =  check_in_list(display_POC ,&slot);
@@ -893,7 +887,7 @@ static void vh264mvc_isr(void)
 					vf = &vfpool[slot];
 #if 0					
 					if (pts_lookup_offset(PTS_TYPE_VIDEO, vfpool_idx[slot].stream_offset, &vf->pts, 0) != 0) {
-                    	vf->pts = 0;
+			vf->pts = 0;
                     }
 #endif                
 					if(vfpool_idx[slot].stream_offset == 0){
@@ -951,8 +945,8 @@ static void vh264mvc_put_timer_func(unsigned long arg)
 
 
     while ((putting_ptr != put_ptr) && (READ_VREG(BUFFER_RECYCLE) == 0)) {
-    	int view0_buf_id = vfpool_idx[put_ptr].view0_buf_id;
-    	int view1_buf_id = vfpool_idx[put_ptr].view1_buf_id;
+	int view0_buf_id = vfpool_idx[put_ptr].view0_buf_id;
+	int view1_buf_id = vfpool_idx[put_ptr].view1_buf_id;
 		if((view0_buf_id >= 0)&&(view0_vfbuf_use[view0_buf_id] == 1)){
                     if(dbg_mode&0x100){
                         printk("round 0: put_ptr is %d ; view0_buf_id is %d==\n", put_ptr, view0_buf_id);
@@ -1189,9 +1183,9 @@ static void vh264mvc_local_init(void)
     }
 
     for(i=0 ;i < VF_POOL_SIZE ; i++){
-    	vfpool_idx[i].display_pos = -1;
+	vfpool_idx[i].display_pos = -1;
     	vfpool_idx[i].view0_buf_id = DISPLAY_INVALID_POS;
-    	vfpool_idx[i].view1_buf_id = -1;
+	vfpool_idx[i].view1_buf_id = -1;
     	vfpool_idx[i].view0_drop = 0;
     	vfpool_idx[i].view1_drop = 0;    	
     	vfpool_idx[i].used = 0;
@@ -1374,8 +1368,6 @@ static int amvdec_h264mvc_remove(struct platform_device *pdev)
     printk("amvdec_h264mvc_remove\n");
     cancel_work_sync(&error_wd_work);
     vh264mvc_stop();
-    frame_width = 0;
-    frame_height = 0;
 
     atomic_set(&vh264mvc_active, 0);
 
@@ -1417,7 +1409,7 @@ static int __init amvdec_h264mvc_driver_init_module(void)
         printk("failed to register amvdec_h264mvc driver\n");
         return -ENODEV;
     }
-	
+
     vcodec_profile_register(&amvdec_hmvc_profile);
 
     return 0;

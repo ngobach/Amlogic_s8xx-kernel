@@ -7,8 +7,6 @@ stream_buf_t *get_buf_by_type(u32  type);
 
 /*video.c provide*/
 struct amvideocap_req;
-extern u32 set_blackout_policy(int policy);
-extern u32 get_blackout_policy(void);
 int calculation_stream_ext_delayed_ms(u8 type);
 int ext_get_cur_video_frame(vframe_t **vf,int *canvas_index);
 int ext_put_video_frame(vframe_t *vf);
@@ -17,4 +15,3 @@ int request_video_firmware(const char * file_name,char *buf,int size);
 void set_vsync_pts_inc_mode(int inc);
 
 #endif
-

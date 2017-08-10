@@ -6,7 +6,7 @@
 //#include <linux/amlogic/aml_gpio_consumer.h>
 
 /*****************************
-*    hdmitx attr management 
+*    hdmitx attr management
 ******************************/
 
 /************************************
@@ -18,7 +18,7 @@ typedef struct
 {
     unsigned char audio_format_code;
     unsigned char channel_num_max;
-    unsigned char freq_cc;        
+    unsigned char freq_cc;
     unsigned char cc3;
 } rx_audio_cap_t;
 
@@ -44,12 +44,12 @@ typedef struct rx_cap_
     rx_audio_cap_t RxAudioCap[AUD_MAX_NUM];
     unsigned char AUD_count;
     unsigned char RxSpeakerAllocation;
-    /*vendor*/    
+    /*vendor*/
     unsigned int IEEEOUI;
     unsigned char ReceiverBrandName[4];
     unsigned char ReceiverProductName[16];
     unsigned int ColorDeepSupport;
-    unsigned int Max_TMDS_Clock; 
+    unsigned int Max_TMDS_Clock;
     unsigned int Video_Latency;
     unsigned int Audio_Latency;
     unsigned int Interlaced_Video_Latency;
@@ -96,12 +96,11 @@ typedef struct hdmi_tx_dev_s {
     struct task_struct *task_monitor;
     struct task_struct *task_hdcp;
     struct task_struct *task_cec;
-    struct notifier_block nb;
     struct workqueue_struct *hdmi_wq;
     struct delayed_work work_hpd_plugin;
     struct delayed_work work_hpd_plugout;
     struct work_struct work_internal_intr;
-	struct delayed_work cec_work;
+	struct work_struct cec_work;
     wait_queue_head_t cec_wait_rx;
     struct {
         void (*SetPacket)(int type, unsigned char* DB, unsigned char* HB);
@@ -138,7 +137,7 @@ typedef struct hdmi_tx_dev_s {
     int audio_param_update_flag;
     /*status*/
 #define DISP_SWITCH_FORCE       0
-#define DISP_SWITCH_EDID        1    
+#define DISP_SWITCH_EDID        1
     unsigned char disp_switch_config; /* 0, force; 1,edid */
     unsigned char cur_VIC;
     unsigned char unplug_powerdown;
@@ -146,7 +145,7 @@ typedef struct hdmi_tx_dev_s {
     unsigned char hpd_event; /* 1, plugin; 2, plugout */
     unsigned char hpd_state; /* 1, connect; 0, disconnect */
     unsigned char force_audio_flag;
-    unsigned char mux_hpd_if_pin_high_flag; 
+    unsigned char mux_hpd_if_pin_high_flag;
 	unsigned char cec_func_flag;
     int  auth_process_timer;
     HDMI_TX_INFO_t hdmi_info;
@@ -160,7 +159,6 @@ typedef struct hdmi_tx_dev_s {
     unsigned int  tv_no_edid;           // For some un-well-known TVs, no edid at all
     unsigned int  hpd_lock;
     unsigned int  mode420;
-	unsigned int  gpio_hpd_int; /* Used for other GPIO as HPD */
     unsigned int  output_blank_flag;    // if equals to 1, means current video & audio output are blank
     unsigned int  audio_notify_flag;
     unsigned int  audio_step;
@@ -234,8 +232,7 @@ typedef struct hdmi_tx_dev_s {
 #define MISC_COMP_AUDIO         (CMD_MISC_OFFSET + 0x09)
     #define COMP_AUDIO_SET_N_6144x2          0x1
     #define COMP_AUDIO_SET_N_6144x3          0x2
-	#define COMP_AUDIO_SET_N_6144x4          0x3
-	#define COMP_AUDIO_SET_N_5120x2			 0x4
+
 /***********************************************************************
  *                          Get State //GetState
  **********************************************************************/
@@ -380,4 +377,3 @@ extern void hdmi_print(int level, const char *fmt, ...);
 #endif
 
 #endif
-

@@ -72,23 +72,23 @@ int read_memory_to_file(struct aml_cap_data *cap)
 		char buf_in[32];
 		x=0;
 	//	printf("set read addr (KB) is");scanf("%d",&tmp);
- 	    i=0<<10;
- 	 //   printf("set length (KB) is");scanf("%d",&tmp);
- 	    j=4096<<10;
- 	    n=j+i;
+	    i=0<<10;
+	 //   printf("set length (KB) is");scanf("%d",&tmp);
+	    j=4096<<10;
+	    n=j+i;
 
 		for(i=0;i<n/32;i++){
-		    	for(k=0;k<8;k++){
-			    		buf[k]=read_reg(read_start+(k+(8*i))*4);
+			for(k=0;k<8;k++){
+					buf[k]=read_reg(read_start+(k+(8*i))*4);
 							buf_in[4*k + 0] = (buf[k] >> 0)&0xff;
 							buf_in[4*k + 1] = (buf[k] >> 8)&0xff;
 							buf_in[4*k + 2] = (buf[k] >> 16)&0xff;
 							buf_in[4*k + 3] = (buf[k] >> 24)&0xff;
-		    	}
-		    	for(k=0;k<32;k++){
-		    		buf_all[32*x+k]=buf_in[k];
-		    	}
-		    	x++;
+			}
+			for(k=0;k<32;k++){
+				buf_all[32*x+k]=buf_in[k];
+			}
+			x++;
 		    //	if((32*x+k)>(128*1024)){
 		    //		fwrite(buf_all,128*1024,1,fp);
 		   // 		x=0;
@@ -97,18 +97,18 @@ int read_memory_to_file(struct aml_cap_data *cap)
 			//		hcap_bin2dec(buf_out, buf_in);
 
 				/*	if (tmp){
-			    	for(j=0;j<25;j++){
-			    		fprintf(fp,"%x\n",buf_out[j]);
+				for(j=0;j<25;j++){
+					fprintf(fp,"%x\n",buf_out[j]);
 					  //	usleep(2);
 						//  printf("%x\n",buf_out[j]);
-			    	}
+				}
 			    }
 			    else{
-			    	for(j=0;j<32;j++){
-			    		fprintf(fp,"%x\n",buf_in[j]);
+				for(j=0;j<32;j++){
+					fprintf(fp,"%x\n",buf_in[j]);
 					  //	usleep(2);
 						//  printf("%x\n",buf_in[j]);
-			    	}
+				}
 			    }*/
 			     if((read_start+(k+(8*i))*4-0x40000000)>app_apb_read_reg(0x9e)){
 				read_start=app_apb_read_reg(0x9d)+0x40000000;
@@ -131,13 +131,13 @@ void wait_capture(int cap_cur_addr, int depth_MB, int start)
 	tmp = depth_MB<<20;
   while (tmp&&(time_out<1000)) //10seconds time out
   {
-  	time_out = time_out + 1;
-  	msleep(1);
-   	readfirst = app_apb_read_reg(cap_cur_addr);
-   	if((last-readfirst)>0)
-   		tmp=0;
-   	else
-   		last=readfirst;
+	time_out = time_out + 1;
+	msleep(1);
+	readfirst = app_apb_read_reg(cap_cur_addr);
+	if((last-readfirst)>0)
+		tmp=0;
+	else
+		last=readfirst;
 	//	usleep(1000);
 	//	readsecond= app_apb_read_reg(cap_cur_addr);
 
@@ -170,7 +170,7 @@ int cap_adc_data(struct aml_cap_data *cap)
   //  scanf("%x",&tmp);
 	cap->cap_afifo=0x60;
     app_apb_write_reg(0x15, 0x18715f2);
-  	app_apb_write_reg(0x15, (app_apb_read_reg(0x15)&0xfff00fff) | ((cap->cap_afifo&0xff) << 12) ); // set afifo
+	app_apb_write_reg(0x15, (app_apb_read_reg(0x15)&0xfff00fff) | ((cap->cap_afifo&0xff) << 12) ); // set afifo
 
     app_apb_write_reg(0x9b, 0x1c9);// capture ADC 10bits
     app_apb_write_reg(0x7f, 0x00008000); // enable testbus 0x8000
@@ -183,7 +183,7 @@ int cap_adc_data(struct aml_cap_data *cap)
     app_apb_write_reg(0x9c, tmp);// by ADC data enable
   //  printf("Set test mode. (0 is normal ,1 is testmode) :  ");  //0
   //  scanf("%d",&tmp);
-  	tmp=0;
+	tmp=0;
     if (tmp ==1) app_apb_write_reg(0x9b, app_apb_read_reg(0x9b) | (1 << 10)); // set test mode;
     else         app_apb_write_reg(0x9b, app_apb_read_reg(0x9b) &~ (1 << 10)); // close test mode;
 
@@ -297,7 +297,7 @@ static long aml_demod_ioctl(struct file *file,
 	int i=0;
 	int step;
 
-#if ((defined CONFIG_AM_SI2177) || (defined CONFIG_AM_SI2157) || (defined CONFIG_AM_SI2151) ||(defined CONFIG_AM_MXL661))
+#if ((defined CONFIG_AM_SI2177) || (defined CONFIG_AM_SI2157))
 	int strength=0;
 	struct dvb_frontend *dvbfe;
 #endif
@@ -311,7 +311,7 @@ static long aml_demod_ioctl(struct file *file,
     switch (cmd) {
 	case AML_DEMOD_GET_RSSI :
 		printk("Ioctl Demod GET_RSSI. \n");
-#if ((defined CONFIG_AM_SI2177) || (defined CONFIG_AM_SI2157) || (defined CONFIG_AM_SI2151)  ||(defined CONFIG_AM_MXL661))
+#if ((defined CONFIG_AM_SI2177) || (defined CONFIG_AM_SI2157))
 		dvbfe = get_tuner();
 		if (dvbfe != NULL)
 			strength=dvbfe->ops.tuner_ops.get_strength(dvbfe);
@@ -329,7 +329,7 @@ static long aml_demod_ioctl(struct file *file,
 
 	case AML_DEMOD_SET_TUNER :
 		 printk("Ioctl Demod Set Tuner.\n");
-#if ((defined CONFIG_AM_SI2177) || (defined CONFIG_AM_SI2157) || (defined CONFIG_AM_SI2151)  ||(defined CONFIG_AM_MXL661))
+#if ((defined CONFIG_AM_SI2177) || (defined CONFIG_AM_SI2157))
 		printk("1234 \n");
 		dvbfe = get_tuner();
 		printk("1234999 \n");
@@ -346,25 +346,25 @@ static long aml_demod_ioctl(struct file *file,
 #endif
 		break;
 
-    	case AML_DEMOD_SET_SYS :
+	case AML_DEMOD_SET_SYS :
 		printk("Ioctl Demod Set System\n");
 		demod_set_sys(&demod_sta, &demod_i2c, (struct aml_demod_sys *)arg);
 		break;
 
-    	case AML_DEMOD_GET_SYS :
+	case AML_DEMOD_GET_SYS :
 		printk("Ioctl Demod Get System\n");
 
 	//	demod_get_sys(&demod_i2c, (struct aml_demod_sys *)arg);
 		break;
 
-    	case AML_DEMOD_TEST :
+	case AML_DEMOD_TEST :
 		printk("Ioctl Demod Test. It is blank now\n");
 		//demod_msr_clk(13);
 		//demod_msr_clk(14);
 		//demod_calc_clk(&demod_sta);
 		break;
 
-    	case AML_DEMOD_TURN_ON :
+	case AML_DEMOD_TURN_ON :
 		printk("Ioctl Demod Turn ON.It is blank now\n");
 		//demod_turn_on(&demod_sta, (struct aml_demod_sys *)arg);
 		break;
@@ -379,7 +379,7 @@ static long aml_demod_ioctl(struct file *file,
 		dvbc_set_ch(&demod_sta, &demod_i2c, (struct aml_demod_dvbc *)arg);
 		break;
 
-    	case AML_DEMOD_DVBC_GET_CH :
+	case AML_DEMOD_DVBC_GET_CH :
 	//	printk("Ioctl DVB-C Get Channel. It is blank\n");
 		dvbc_status(&demod_sta, &demod_i2c, (struct aml_demod_sts *)arg);
 		break;
@@ -392,12 +392,12 @@ static long aml_demod_ioctl(struct file *file,
 		dvbt_set_ch(&demod_sta, &demod_i2c, (struct aml_demod_dvbt *)arg);
 		break;
 
-    	case AML_DEMOD_DVBT_GET_CH :
+	case AML_DEMOD_DVBT_GET_CH :
 		printk("Ioctl DVB-T Get Channel\n");
 	//	dvbt_status(&demod_sta, &demod_i2c, (struct aml_demod_sts *)arg);
 		break;
 
-    	case AML_DEMOD_DVBT_TEST :
+	case AML_DEMOD_DVBT_TEST :
 		printk("Ioctl DVB-T Test. It is blank\n");
 		//dvbt_get_test_out(0x1e, 1000, (u32 *)arg);
 		break;
@@ -425,18 +425,18 @@ static long aml_demod_ioctl(struct file *file,
 
 	case AML_DEMOD_SET_REG :
 	//	printk("Ioctl Set Register\n");
-   		demod_set_reg((struct aml_demod_reg *)arg);
+		demod_set_reg((struct aml_demod_reg *)arg);
 		break;
 
 	case AML_DEMOD_GET_REG :
 	//	printk("Ioctl Get Register\n");
-   		demod_get_reg((struct aml_demod_reg *)arg);
+		demod_get_reg((struct aml_demod_reg *)arg);
 		break;
 
- 	case AML_DEMOD_SET_REGS :
+	case AML_DEMOD_SET_REGS :
 		break;
 
- 	case AML_DEMOD_GET_REGS :
+	case AML_DEMOD_GET_REGS :
 		break;
 
 	case AML_DEMOD_RESET_MEM :
@@ -444,7 +444,7 @@ static long aml_demod_ioctl(struct file *file,
 		printk("set mem ok\n");
 		break;
 
- 	case AML_DEMOD_READ_MEM :
+	case AML_DEMOD_READ_MEM :
 		step=arg;
 		printk("[%x]0x%lx------------------\n",i,mem_buf[step]);
 		for(i=step;i<step+1024;i++){
@@ -753,4 +753,3 @@ MODULE_LICENSE("GPL");
 //MODULE_AUTHOR(DRV_AUTHOR);
 //MODULE_DESCRIPTION(DRV_DESC);
 #endif
-

@@ -36,11 +36,9 @@
 #include "streambuf_reg.h"
 #include "streambuf.h"
 #include "amports_config.h"
-#include <linux/amlogic/codec_mm/codec_mm.h>
 
 #define STBUF_SIZE   (64*1024)
 #define STBUF_WAIT_INTERVAL  HZ/100
-#define MEM_NAME "streambuf"
 
 ulong fetchbuf = 0;
 ulong *fetchbuf_remap = NULL;
@@ -51,49 +49,20 @@ static s32 _stbuf_alloc(stream_buf_t *buf)
         return -ENOBUFS;
     }
 
-    while (buf->buf_start == 0) {
-        int flags = CODEC_MM_FLAGS_DMA;
+    if (buf->buf_start == 0) {
+        buf->buf_start = __get_free_pages(GFP_KERNEL, get_order(buf->buf_size));
 
-        buf->buf_page_num = PAGE_ALIGN(buf->buf_size) / PAGE_SIZE;
-        if (buf->type == BUF_TYPE_SUBTITLE)
-            flags = CODEC_MM_FLAGS_DMA_CPU;
-
-        /*if 4k,
-        used cma first,for less mem fragments.
-        */
-        if (buf->buf_size > 20 * 1024 * 1024)
-            flags = CODEC_MM_FLAGS_CMA_FIRST;
-
-        buf->buf_start = codec_mm_alloc_for_dma(MEM_NAME,
-        buf->buf_page_num, 4 + PAGE_SHIFT, flags);
         if (!buf->buf_start) {
-            int is_video = (buf->type == BUF_TYPE_HEVC) ||
-                (buf->type == BUF_TYPE_VIDEO);
-            if (is_video && buf->buf_size >= 9 * SZ_1M) {/*min 6M*/
-                int old_size = buf->buf_size;
-                buf->buf_size  = PAGE_ALIGN(buf->buf_size * 2/3);
-                pr_info("%s stbuf alloced size = %d failed try small %d size\n",
-                    (buf->type == BUF_TYPE_HEVC) ? "HEVC" :
-                    (buf->type == BUF_TYPE_VIDEO) ? "Video" :
-                    (buf->type == BUF_TYPE_AUDIO) ? "Audio" :
-                    "Subtitle", old_size, buf->buf_size);
-                continue;
-            }
-            pr_info("%s stbuf alloced size = %d failed\n",
-                (buf->type == BUF_TYPE_HEVC) ? "HEVC" :
-                (buf->type == BUF_TYPE_VIDEO) ? "Video" :
-                (buf->type == BUF_TYPE_AUDIO) ? "Audio" :
-                "Subtitle", buf->buf_size);
             return -ENOMEM;
         }
-        pr_info("%s stbuf alloced at %p, size = %d\n",
-            (buf->type == BUF_TYPE_HEVC) ? "HEVC" :
-            (buf->type == BUF_TYPE_VIDEO) ? "Video" :
-            (buf->type == BUF_TYPE_AUDIO) ? "Audio" :
-            "Subtitle", (void *)buf->buf_start,
-            buf->buf_size);
-    }
 
+        printk("%s stbuf alloced at 0x%x, size = %d\n",
+               (buf->type == BUF_TYPE_HEVC) ? "HEVC" :
+               (buf->type == BUF_TYPE_VIDEO) ? "Video" :
+               (buf->type == BUF_TYPE_AUDIO) ? "Audio" :
+                "Subtitle",
+               buf->buf_start, buf->buf_size);
+    }
 
     buf->flag |= BUF_FLAG_ALLOC;
 
@@ -102,11 +71,10 @@ static s32 _stbuf_alloc(stream_buf_t *buf)
 
 int stbuf_change_size(struct stream_buf_s *buf, int size)
 {
-    u32 old_buf;
-    int old_size, old_pagenum;
+    u32 old_buf, old_size;
     int ret;
 
-    printk("buffersize=%d,%d,start=%p\n", size, buf->buf_size, (void *)buf->buf_start);
+    printk("buffersize=%d,%d,start=%x\n", size, buf->buf_size, buf->buf_start);
 
     if (buf->buf_size == size && buf->buf_start != 0) {
         return 0;
@@ -114,7 +82,7 @@ int stbuf_change_size(struct stream_buf_s *buf, int size)
 
     old_buf = buf->buf_start;
     old_size = buf->buf_size;
-    old_pagenum = buf->buf_page_num;
+
     buf->buf_start = 0;
     buf->buf_size = size;
     ret = size;
@@ -125,7 +93,7 @@ int stbuf_change_size(struct stream_buf_s *buf, int size)
          * alloc ok,changed to new buffer
          */
         if (old_buf != 0) {
-            codec_mm_free_for_dma(MEM_NAME, old_buf);
+            free_pages(old_buf, get_order(old_size));
         }
 
         printk("changed the (%d) buffer size from %d to %d\n", buf->type, old_size, size);
@@ -133,7 +101,6 @@ int stbuf_change_size(struct stream_buf_s *buf, int size)
         /* alloc failed */
         buf->buf_start = old_buf;
         buf->buf_size = old_size;
-        buf->buf_page_num = old_pagenum;
         printk("changed the (%d) buffer size from %d to %d,failed\n", buf->type, old_size, size);
     }
 
@@ -228,7 +195,7 @@ u32 stbuf_space(struct stream_buf_s *buf)
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     if (HAS_HEVC_VDEC && buf->type == BUF_TYPE_HEVC)
         size = buf->canusebuf_size - READ_VREG(HEVC_STREAM_LEVEL);
-    else 
+    else
 #endif
         size = (buf->canusebuf_size - _READ_ST_REG(LEVEL)) ;
 
@@ -275,7 +242,7 @@ s32 stbuf_init(struct stream_buf_s *buf)
         if (r < 0) {
             return r;
         }
-        phy_addr = buf->buf_start;
+        phy_addr = virt_to_phys((void *)buf->buf_start);
     }
 
     init_waitqueue_head(&buf->wq);
@@ -351,7 +318,7 @@ void stbuf_vdec2_init(struct stream_buf_s *buf)
     _WRITE_VDEC2_ST_REG(BUF_CTRL, MEM_BUFCTRL_INIT);
     _WRITE_VDEC2_ST_REG(BUF_CTRL, 0);
 
-    _WRITE_VDEC2_ST_REG(CONTROL, (0x11 << 16) | MEM_FILL_ON_LEVEL | MEM_CTRL_FILL_EN | MEM_CTRL_EMPTY_EN); 
+    _WRITE_VDEC2_ST_REG(CONTROL, (0x11 << 16) | MEM_FILL_ON_LEVEL | MEM_CTRL_FILL_EN | MEM_CTRL_EMPTY_EN);
 }
 #endif
 
@@ -365,7 +332,7 @@ s32 stbuf_wait_space(struct stream_buf_s *stream_buf, size_t count)
     setup_timer(&p->timer, _stbuf_timer_func, (ulong)p);
 
     mod_timer(&p->timer, jiffies + STBUF_WAIT_INTERVAL);
-    
+
     if (wait_event_interruptible_timeout(p->wq, stbuf_space(p) >= count, time_out) == 0) {
         del_timer_sync(&p->timer);
 
@@ -380,13 +347,12 @@ s32 stbuf_wait_space(struct stream_buf_s *stream_buf, size_t count)
 void stbuf_release(struct stream_buf_s *buf)
 {
     buf->first_tstamp = INVALID_PTS;
-    stbuf_init(buf);	/* reinit buffer */
-    if (buf->flag & BUF_FLAG_ALLOC && buf->buf_start) {
-        codec_mm_free_for_dma(MEM_NAME, buf->buf_start);
-        buf->flag &= ~BUF_FLAG_ALLOC;
-        buf->buf_start = 0;
+	stbuf_init(buf);	//reinit buffer
+    if (buf->flag & BUF_FLAG_IOMEM) {
+        buf->flag = BUF_FLAG_IOMEM;
+    } else {
+        buf->flag = 0;
     }
-    buf->flag &= ~BUF_FLAG_IN_USE;
 }
 
 u32 stbuf_sub_rp_get(void)

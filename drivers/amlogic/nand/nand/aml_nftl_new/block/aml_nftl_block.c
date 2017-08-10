@@ -175,9 +175,9 @@ int aml_nftl_init_bounce_buf(struct mtd_blktrans_dev *dev, struct request_queue 
     }
     else{
         aml_nftl_dbg("%s, use cache here\n",__func__);
-        buf_cnt = NFTL_CACHE_FORCE_WRITE_LEN;        
+        buf_cnt = NFTL_CACHE_FORCE_WRITE_LEN;
     }
-        
+
 	bouncesz = (aml_nftl_blk->mbd.mtd->writesize * buf_cnt);
 	if(bouncesz < AML_NFTL_BOUNCE_SIZE)
 		bouncesz = AML_NFTL_BOUNCE_SIZE;
@@ -206,19 +206,19 @@ int aml_nftl_init_bounce_buf(struct mtd_blktrans_dev *dev, struct request_queue 
 }
 
 uint32 write_sync_flag(struct aml_nftl_blk_t *aml_nftl_blk)
-{    
-#if NFTL_CACHE_FLUSH_SYNC   	
-//for USB burning tool using cache/preloader.. as media partition, 
+{
+#if NFTL_CACHE_FLUSH_SYNC
+//for USB burning tool using cache/preloader.. as media partition,
 //so just disable sync flag for usb burning case.
 	struct mtd_info *mtd = aml_nftl_blk->mbd.mtd;
-    	
+
 	if(memcmp(mtd->name, "NFTL_Part", 9)==0)
 		return 0;
 	else
 		return (aml_nftl_blk->req->cmd_flags & REQ_SYNC);
 #else
 	return 0;
-	
+
 #endif
 }
 #if 0
@@ -253,7 +253,7 @@ static int do_nftltrans_request(struct mtd_blktrans_ops *tr,struct mtd_blktrans_
 	//when notifer coming,nftl didnot respond to request.
 	if(aml_nftl_blk->reboot_flag)
 		return 0;
-	
+
 	memset((unsigned char *)buf_addr, 0, (max_segm+1)*4);
 	memset((unsigned char *)offset_addr, 0, (max_segm+1)*4);
 	block = blk_rq_pos(req) << SHIFT_PER_SECTOR >> tr->blkshift;
@@ -336,7 +336,7 @@ uint32 _nand_read(struct aml_nftl_blk_t *aml_nftl_blk,uint32 start_sector,uint32
 {
 	uint32 ret;
 	mutex_lock(aml_nftl_blk->aml_nftl_lock);
-   	 ret = __nand_read(aml_nftl_blk->aml_nftl_part,start_sector,len,buf);
+	 ret = __nand_read(aml_nftl_blk->aml_nftl_part,start_sector,len,buf);
 	mutex_unlock(aml_nftl_blk->aml_nftl_lock);
 	 return ret;
 }
@@ -440,7 +440,7 @@ static int aml_nftl_reboot_notifier(struct notifier_block *nb, unsigned long pri
 {
 	int error = 0;
 	struct aml_nftl_blk_t *aml_nftl_blk = nftl_notifier_to_blk(nb);
-	
+
 
     if(aml_nftl_blk->nftl_thread!=NULL){
         kthread_stop(aml_nftl_blk->nftl_thread); //add stop thread to ensure nftl quit safely
@@ -483,7 +483,7 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 {
 	struct aml_nftl_blk_t *aml_nftl_blk;
 	unsigned long part_size ;
-	
+
 	if (mtd->type != MTD_NANDFLASH)
 		return;
 /*
@@ -494,11 +494,11 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
     if(mtd->writesize < 4096)
 	 part_size = 0x1400000;	//20M
    else
-	 part_size = 0x8000000;     //128	M	
-	
-    if(mtd->size < part_size)   
+	 part_size = 0x8000000;     //128	M
+
+    if(mtd->size < part_size)
         return;
-   
+
     PRINT("mtd->name: %s,mtd->size = 0x%llx\n",mtd->name,mtd->size);
 
 	aml_nftl_blk = aml_nftl_malloc(sizeof(struct aml_nftl_blk_t));
@@ -583,7 +583,7 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 *****************************************************************************/
 static int aml_nftl_getgeo(struct mtd_blktrans_dev *dev,  struct hd_geometry *geo)
 {
-	
+
 	u_long sect;
 	sect = 8;
 	geo->heads = 1;

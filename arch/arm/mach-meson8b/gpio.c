@@ -76,7 +76,7 @@ extern int gpio_flag;
 //#define debug
 #ifdef debug
 	#define gpio_print(...) printk(__VA_ARGS__)
-#else 
+#else
 	#define gpio_print(...)
 #endif
 //gpio subsystem set pictrl subsystem gpio owner
@@ -412,7 +412,7 @@ int gpio_amlogic_requst(struct gpio_chip *chip,unsigned offset)
 /* amlogic request gpio interface*/
 
 void	 gpio_amlogic_free(struct gpio_chip *chip,unsigned offset)
-{	
+{
 	 pinctrl_free_gpio(offset);
 	return;
 }
@@ -535,11 +535,11 @@ int gpio_amlogic_name_to_num(const char *name)
 		return GPIO_BSD_EN;
 	if(!strcmp(name,"GPIO_TEST_N"))
 		return GPIO_TEST_N;
-	if (!strstr(name, "_P") && sscanf(name, "DIF_TTL_%d_P", &num))
+	if (sscanf(name, "DIF_TTL_%d_P", &num))
 		return DIF_TTL_0_P+num*2;
 	if (sscanf(name, "DIF_TTL_%d_N", &num))
 		return DIF_TTL_0_N+num*2;
-	if (!strstr(name, "_P") && sscanf(name, "HDMI_TTL_%d_P", &num))
+	if (sscanf(name, "HDMI_TTL_%d_P", &num))
 		return HDMI_TTL_0_P+num*2;
 	if (sscanf(name, "HDMI_TTL_%d_N", &num))
 		return HDMI_TTL_0_N+num*2;
@@ -556,7 +556,7 @@ int gpio_amlogic_name_to_num(const char *name)
 		return -1;
 	}
 	p=strcpy(p,name);
-	for(i=0;i<len;p++,i++){		
+	for(i=0;i<len;p++,i++){
 		if(*p=='_'){
 			*p='\0';
 			tmp=i;
@@ -580,7 +580,7 @@ int gpio_amlogic_name_to_num(const char *name)
 	else if(!strcmp(p,"GPIOX"))
 		num=num+97;
 	else
-		num= -1;	
+		num= -1;
 	kzfree(start);
 	return num;
 }
@@ -596,7 +596,7 @@ static struct gpio_chip amlogic_gpio_chip={
 };
 
 
-static const struct of_device_id amlogic_gpio_match[] = 
+static const struct of_device_id amlogic_gpio_match[] =
 {
 	{
 	.compatible = "amlogic,m8b-gpio",
@@ -670,7 +670,7 @@ static int amlogic_gpio_probe(struct platform_device *pdev)
 		gpio_flag=AML_GPIO_IRQ(GPIO_IRQ0,FILTER_NUM7,i);
 		gpio_amlogic_to_irq(NULL,50);
 	}
-	
+
 #endif
 #ifdef pull_dump
 

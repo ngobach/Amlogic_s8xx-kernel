@@ -9,7 +9,7 @@
  *
  * This program is distributed .as is. WITHOUT ANY WARRANTY of any
  * kind, whether express or implied; without even the implied warranty
- * of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR
  * PURPOSE.  See the GNU General Public License for more details.
 */
 
@@ -43,7 +43,7 @@
 #include <linux/platform_device.h>
 
 #include <linux/amlogic/tvin/tvin_v4l2.h>
-#include "../../../../drivers/amlogic/tvin/tvin_frontend.h"
+#include "../../../../../../../../../hardware/tvin/tvin_frontend.h"
 
 #include "vdin_interface.h"
 #include "sii5293_interface.h"
@@ -82,7 +82,6 @@ module_param(input_dev_ucp, int, S_IRUGO);
 MODULE_PARM_DESC(input_dev_ucp, "UCP Input Device (default: 1)");
 
 
-extern uint8_t SiiDrvRxGetPixelReplicate(void);
 
 const char strVersion[] = "CP5293-v0.90.01";
 
@@ -156,26 +155,26 @@ int32_t StartMhlTxDevice(void)
     osalStatus = SiiOsInit(0);
     if (osalStatus != SII_OS_STATUS_SUCCESS)
     {
-    	SII_DEBUG_PRINT(MSG_ERR,"Initialization of OSAL failed, error code: %d\n",osalStatus);
-    	return -EIO;
+	SII_DEBUG_PRINT(MSG_ERR,"Initialization of OSAL failed, error code: %d\n",osalStatus);
+	return -EIO;
     }
 
     halStatus = HalInit();
     if (halStatus != HAL_RET_SUCCESS)
     {
-    	SII_DEBUG_PRINT(MSG_ERR,"Initialization of HAL failed, error code: %d\n",halStatus);
-    	SiiOsTerm();
-    	return -EIO;
+	SII_DEBUG_PRINT(MSG_ERR,"Initialization of HAL failed, error code: %d\n",halStatus);
+	SiiOsTerm();
+	return -EIO;
     }
 
     halStatus = HalOpenI2cDevice(MHL_DEVICE_NAME, MHL_DRIVER_NAME);
     if (halStatus != HAL_RET_SUCCESS)
     {
-    	SII_DEBUG_PRINT(MSG_ERR,"Opening of I2c device %s failed, error code: %d\n",
-    			MHL_DEVICE_NAME, halStatus);
-    	HalTerm();
-    	SiiOsTerm();
-    	return -EIO;
+	SII_DEBUG_PRINT(MSG_ERR,"Opening of I2c device %s failed, error code: %d\n",
+			MHL_DEVICE_NAME, halStatus);
+	HalTerm();
+	SiiOsTerm();
+	return -EIO;
     }
 
 	HalAcquireIsrLock();
@@ -188,12 +187,12 @@ int32_t StartMhlTxDevice(void)
     halStatus = HalInstallIrqHandler(SiiDrvDeviceManageInterrupts);
     if (halStatus != HAL_RET_SUCCESS)
     {
-    	SII_DEBUG_PRINT(MSG_ERR,"Initialization of HAL interrupt support failed, error code: %d\n",
-    			halStatus);
-    	HalCloseI2cDevice();
-    	HalTerm();
-    	SiiOsTerm();
-    	return -EIO;
+	SII_DEBUG_PRINT(MSG_ERR,"Initialization of HAL interrupt support failed, error code: %d\n",
+			halStatus);
+	HalCloseI2cDevice();
+	HalTerm();
+	SiiOsTerm();
+	return -EIO;
     }
 	printk("sii5293 [%s] end!\n", __FUNCTION__);
 
@@ -206,12 +205,12 @@ int32_t StartMhlTxDevice(void)
  * @brief Stop the MHL transmitter device
  * This function shuts down control of the transmitter device so that
  * the driver can exit
- * 
- * 
+ *
+ *
  * @return 0 if successful, negative error code otherwise
- * 
+ *
  * @param void
- * 
+ *
  */
 int32_t StopMhlTxDevice(void)
 {
@@ -228,17 +227,17 @@ int32_t StopMhlTxDevice(void)
 	halStatus = HalCloseI2cDevice();
     if (halStatus != HAL_RET_SUCCESS)
     {
-    	SII_DEBUG_PRINT(MSG_ERR,
-    			"Closing of I2c device failed, error code: %d\n",halStatus);
-    	return -EIO;
+	SII_DEBUG_PRINT(MSG_ERR,
+			"Closing of I2c device failed, error code: %d\n",halStatus);
+	return -EIO;
     }
 
 	halStatus = HalTerm();
     if (halStatus != HAL_RET_SUCCESS)
     {
-    	SII_DEBUG_PRINT(MSG_ERR,
-    			"Termination of HAL failed, error code: %d\n",halStatus);
-    	return -EIO;
+	SII_DEBUG_PRINT(MSG_ERR,
+			"Termination of HAL failed, error code: %d\n",halStatus);
+	return -EIO;
     }
 
 	SiiOsTerm();
@@ -365,7 +364,7 @@ static ssize_t set_mhl_devcap_local(struct device *dev,
         goto done;
     }
     SiiRegWrite(REG_CBUS_DEVICE_CAP_0+gDriverContext.devcap_local_offset, value);
-    
+
 	HalReleaseIsrLock();
 done:
 	return retval;
@@ -503,7 +502,7 @@ static ssize_t set_mhl_rap_in_status(struct device *dev,
 		pr_info("sii5293, Command not available in cbus not connected.\n");
 		return -ENODEV;
 	}
-    
+
     if(HalAcquireIsrLock() != HAL_RET_SUCCESS)
     {
         return -ERESTARTSYS;
@@ -539,7 +538,7 @@ static ssize_t set_mhl_rap_out(struct device *dev,
 		pr_info("sii5293, Command not available in cbus not connected.\n");
 		return -ENODEV;
 	}
-    
+
     if(HalAcquireIsrLock() != HAL_RET_SUCCESS)
     {
         return -ERESTARTSYS;
@@ -648,7 +647,7 @@ static ssize_t set_mhl_rcp_in_status(struct device *dev,
 		pr_info("sii5293, Command not available in cbus not connected.\n");
 		return -ENODEV;
 	}
-    
+
     if(HalAcquireIsrLock() != HAL_RET_SUCCESS)
     {
         return -ERESTARTSYS;
@@ -688,7 +687,7 @@ static ssize_t set_mhl_rcp_out(struct device *dev,
 		pr_info("sii5293, Command not available in cbus not connected.\n");
 		return -ENODEV;
 	}
-    
+
     if(HalAcquireIsrLock() != HAL_RET_SUCCESS)
     {
         return -ERESTARTSYS;
@@ -794,7 +793,7 @@ static ssize_t set_mhl_ucp_in_status(struct device *dev,
 		pr_info("sii5293, Command not available in cbus not connected.\n");
 		return -ENODEV;
 	}
-    
+
     if(HalAcquireIsrLock() != HAL_RET_SUCCESS)
     {
         return -ERESTARTSYS;
@@ -833,7 +832,7 @@ static ssize_t set_mhl_ucp_out(struct device *dev,
 		pr_info("sii5293, Command not available in cbus not connected.\n");
 		return -ENODEV;
 	}
-    
+
     if(HalAcquireIsrLock() != HAL_RET_SUCCESS)
     {
         return -ERESTARTSYS;
@@ -1404,7 +1403,7 @@ static ssize_t set_debug_register(struct device *dev,
 
 			data[idx] = value;
 		}
-		
+
 
 	} else {
 		idx = 0;
@@ -1467,656 +1466,177 @@ static struct attribute_group sii5293_debug_attr_group = {
 };
 #endif
 
-static sii_video_timming_link sii_video_mode_map[] =
+/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+// according to the <<CEA-861-D>>
+typedef enum
 {
-	{
-		.name	= "480p",
-		.vmode	= HDMIIN_CEA_480P60,
-		.h_active = 720,				.h_total = 858,
-		.v_active = 480,				.v_total = 525,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 1,				.vs_pol_inv = 1,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
+	CEA_480P60	= 2,
+	CEA_720P60	= 4,
+	CEA_1080I60	= 5,
+	CEA_480I60	= 6,
+
+	CEA_1080P60	= 16,
+	CEA_576P50	= 17,
+	CEA_720P50	= 19,
+	CEA_1080I50	= 20,
+	CEA_576I50	= 21,
+
+	CEA_1080P50	= 31,
+	CEA_1080P30 = 34,
+
+	CEA_MAX = 60
+}SII5293_VIDEO_MODE;
 
-		.ext_field_sel = 0,				.de_mode = 3,
-		.data_comp_map = 0,				.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 60,		.active_start_pix_fo = 60,
-		.active_start_line_fe = 31,		.active_start_line_fo = 31,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_720X480P_60HZ
-	},
-
-	{
-		.name	= "720p",
-		.vmode	= HDMIIN_CEA_720P60,
-		.h_active = 1280,				.h_total = 1650,
-		.v_active = 720,				.v_total = 750,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0,				.de_mode = 3,
-		.data_comp_map = 0,				.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 260,		.active_start_pix_fo = 260,
-		.active_start_line_fe = 25,		.active_start_line_fo = 25,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1280X720P_60HZ
-	},
-
-	{
-		.name	= "1080i",
-		.vmode	= HDMIIN_CEA_1080I60,
-		.h_active = 1920,				.h_total = 2200,
-		.v_active = 1080,				.v_total = 1125,
-		.frame_rate = 60,				.interlaced = 1,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 1,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 192, 	.active_start_pix_fo = 192,
-		.active_start_line_fe = 20, 	.active_start_line_fo = 21,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1920X1080I_60HZ
-	},
-
-	{
-		.name	= "480i",
-		.vmode	= HDMIIN_CEA_480I60,
-		.h_active = 720,				.h_total = 1716,
-		.v_active = 240,				.v_total = 525,
-		.frame_rate = 60,				.interlaced = 1,
-		.hs_pol_inv = 1,				.vs_pol_inv = 1,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 400,		.hs_lead_vs_odd_max = 1200,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 114, 	.active_start_pix_fo = 114,
-		.active_start_line_fe = 14, 	.active_start_line_fo = 15,
-
-		.tvin_mode = TVIN_SIG_FMT_MAX
-	},
-
-	{
-		.name	= "1080p",
-		.vmode	= HDMIIN_CEA_1080P60,
-		.h_active = 1920,				.h_total = 2200,
-		.v_active = 1080,				.v_total = 1125,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 192, 	.active_start_pix_fo = 192,
-		.active_start_line_fe = 41, 	.active_start_line_fo = 41,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1920X1080P_60HZ
-	},
-
-	{
-		.name	= "576p",
-		.vmode	= HDMIIN_CEA_576P50,
-		.h_active = 720,				.h_total = 864,
-		.v_active = 576,				.v_total = 625,
-		.frame_rate = 50,				.interlaced = 0,
-		.hs_pol_inv = 1,				.vs_pol_inv = 1,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 68, 	.active_start_pix_fo = 68,
-		.active_start_line_fe = 39, 	.active_start_line_fo = 39,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_720X576P_50HZ
-	},
-
-	{
-		.name	= "720p50",
-		.vmode	= HDMIIN_CEA_720P50,
-		.h_active = 1280,				.h_total = 1980,
-		.v_active = 720,				.v_total = 750,
-		.frame_rate = 50,				.interlaced = 0,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 260,	.active_start_pix_fo = 260,
-		.active_start_line_fe = 25, 	.active_start_line_fo = 25,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1280X720P_50HZ
-	},
-
-	{
-		.name	= "1080i50",
-		.vmode	= HDMIIN_CEA_1080I50,
-		.h_active = 1920,				.h_total = 2640,
-		.v_active = 1080,				.v_total = 1125,
-		.frame_rate = 50,				.interlaced = 1,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 1,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 192, .active_start_pix_fo = 192,
-		.active_start_line_fe = 20, 	.active_start_line_fo = 21,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1920X1080I_50HZ_A
-	},
-
-	{
-		.name	= "576i",
-		.vmode	= HDMIIN_CEA_576I50,
-		.h_active = 720,				.h_total = 1728,
-		.v_active = 288,				.v_total = 625,
-		.frame_rate = 50,				.interlaced = 1,
-		.hs_pol_inv = 1,				.vs_pol_inv = 1,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 400,		.hs_lead_vs_odd_max = 1200,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 138, .active_start_pix_fo = 138,
-		.active_start_line_fe = 19, 	.active_start_line_fo = 20,
-
-		.tvin_mode = TVIN_SIG_FMT_MAX
-	},
-
-	{
-		.name	= "1080p50",
-		.vmode	= HDMIIN_CEA_1080P50,
-		.h_active = 1920,				.h_total = 2640,
-		.v_active = 1080,				.v_total = 1125,
-		.frame_rate = 50,				.interlaced = 0,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 192, .active_start_pix_fo = 192,
-		.active_start_line_fe = 41, 	.active_start_line_fo = 41,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1920X1080P_50HZ
-	},
-
-	{
-		.name	= "1080p24",
-		.vmode	= HDMIIN_CEA_1080P24,
-		.h_active = 1920,				.h_total = 2750,
-		.v_active = 1080,				.v_active = 1125,
-		.frame_rate = 24,				.interlaced = 0,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0,				.de_mode = 3,
-		.data_comp_map = 0,				.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 192, .active_start_pix_fo = 192,
-		.active_start_line_fe = 41, 	.active_start_line_fo = 41,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1920X1080P_24HZ,
-	},
-
-	{
-		.name	= "1080p30",
-		.vmode	= HDMIIN_CEA_1080P30,
-		.h_active = 1920,				.h_total = 2200,
-		.v_active = 1080,				.v_total = 1125,
-		.frame_rate = 30,				.interlaced = 0,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 192, .active_start_pix_fo = 192,
-		.active_start_line_fe = 41, 	.active_start_line_fo = 41,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1920X1080P_30HZ,
-	},
-
-	{
-		.name	= "640x480p60",
-		.vmode	= HDMIIN_640X480_P_60,
-		.h_active = 640,				.h_total = 800,
-		.v_active = 480,				.v_total = 525,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 1,				.vs_pol_inv = 1,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 48, .active_start_pix_fo = 48,
-		.active_start_line_fe = 33, 	.active_start_line_fo = 33,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_640X480P_60HZ
-	},
-
-	{
-		.name	= "800x600p60",
-		.vmode	= HDMIIN_800X600_P_60,
-		.h_active = 800,				.h_total = 1056,
-		.v_active = 600,				.v_total = 628,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 216, .active_start_pix_fo = 216,
-		.active_start_line_fe = 27, 	.active_start_line_fo = 27,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_800X600_00HZ
-	},
-
-	{
-		.name	= "1024x768p60",
-		.vmode	= HDMIIN_1024X768_P_60,
-		.h_active = 1024,				.h_total = 1344,
-		.v_active = 768,				.v_total = 806,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 1,				.vs_pol_inv = 1,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 160, .active_start_pix_fo = 160,
-		.active_start_line_fe = 29, 	.active_start_line_fo = 29,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1024X768_00HZ
-	},
-
-	{
-		.name	= "1152x864p60",
-		.vmode	= HDMIIN_1152X864_P_60,
-		.h_active = 1152,				.h_total = 1600,
-		.v_active = 864,				.v_total = 900,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 1,				.vs_pol_inv = 1,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 256, .active_start_pix_fo = 256,
-		.active_start_line_fe = 32, 	.active_start_line_fo = 32,
-
-		.tvin_mode = TVIN_SIG_FMT_VGA_1152X864P_60HZ_D000
-	},
-
-	{
-		.name	= "1280x768p60",
-		.vmode	= HDMIIN_1280X768_P_60,
-		.h_active = 1280,				.h_total = 1664,
-		.v_active = 768,				.v_total = 798,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 1,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 192, 	.active_start_pix_fo = 192,
-		.active_start_line_fe = 27, 	.active_start_line_fo = 27,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1280X768_00HZ
-	},
-
-	{
-		.name	= "1280x800p60",
-		.vmode	= HDMIIN_1280X800_P_60,
-		.h_active = 1280,				.h_total = 1680,
-		.v_active = 800,				.v_total = 831,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 1,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 200, 	.active_start_pix_fo = 200,
-		.active_start_line_fe = 28, 	.active_start_line_fo = 28,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1280X800_00HZ
-	},
-
-	{
-		.name	= "1280x960p60",
-		.vmode	= HDMIIN_1280X960_P_60,
-		.h_active = 1280,				.h_total = 1800,
-		.v_active = 960,				.v_total = 1000,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 424, 	.active_start_pix_fo = 424,
-		.active_start_line_fe = 39, 	.active_start_line_fo = 39,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1280X960_00HZ
-	},
-
-	{
-		.name	= "1280x1024p60",
-		.vmode	= HDMIIN_1280X1024_P_60,
-		.h_active = 1280,				.h_total = 1688,
-		.v_active = 1024,				.v_total = 1066,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 360, 	.active_start_pix_fo = 360,
-		.active_start_line_fe = 41, 	.active_start_line_fo = 41,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1280X1024_00HZ
-	},
-
-	{
-		.name	= "1366x768p60",
-		.vmode	= HDMIIN_1366X768_P_60,
-		.h_active = 1366,				.h_total = 1792,
-		.v_active = 768,				.v_total = 798,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 356, 	.active_start_pix_fo = 356,
-		.active_start_line_fe = 27, 	.active_start_line_fo = 27,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1366X768_00HZ
-	},
-
-	{
-		.name	= "1600x1200p60",
-		.vmode	= HDMIIN_1600X1200_P_60,
-		.h_active = 1600,				.h_total = 2160,
-		.v_active = 1200,				.v_total = 1250,
-		.frame_rate = 60,				.interlaced = 0,
-		.hs_pol_inv = 0,				.vs_pol_inv = 0,
-		.de_pol_inv = 0,				.field_pol_inv = 0,
-
-		.ext_field_sel = 0, 			.de_mode = 3,
-		.data_comp_map = 0, 			.mode_422to444 = 0,
-		.dvin_clk_inv = 0,				.vs_hs_tim_ctrl = 0,
-		.hs_lead_vs_odd_min = 0,		.hs_lead_vs_odd_max = 0,
-
-		//according to vs_hs_tim_ctrl
-		.active_start_pix_fe = 496, 	.active_start_pix_fo = 496,
-		.active_start_line_fe = 40, 	.active_start_line_fo = 40,
-
-		.tvin_mode = TVIN_SIG_FMT_HDMI_1600X1200_00HZ
-	},
-};
-
-static char* sii_get_mode_name(sii9293_vmode_e mode)
-{
-	int i = 0, max = sizeof(sii_video_mode_map)/sizeof(sii_video_timming_link);
-
-	for (i=0; i<max; i++)
-	{
-		if (mode == sii_video_mode_map[i].vmode)
-			return sii_video_mode_map[i].name;
-	}
-
-	return "invalid";
-}
 //static unsigned int vdin_state = 0;
-sii9293_tvin_t	sii9293_tvin_info;
+sii5293_vdin sii5293_vdin_info;
 sii9293_info_t sii9293_info;
 
 void dump_input_video_info(void)
 {
 	unsigned char index = 0;
-	int height,width,h_total,v_total;
-	int hs_fp,hs_width,hs_bp;
-	int vs_fp,vs_width,vs_bp;
-	int clk,h_freq,v_freq,interlaced;
 
 	index = gDriverContext.input_video_mode;
 
-	if (0 == index) {
+	if (0 == index)
+    {
         printk("sii5293 input video not stable!\n");
-    } else if (SI_VIDEO_MODE_NON_STD == index) {
+    }
+    else if (SI_VIDEO_MODE_NON_STD == index)
+    {
         printk("sii5293 input video out of range!\n");
-    } else {
-		if (SI_VIDEO_MODE_PC_OTHER == index)
-printk("sii5293 input pc resolution!\n");
+    }
+    else if (SI_VIDEO_MODE_PC_OTHER == index)
+    {
+        printk("sii5293 input pc resolution!\n");
+    }
+    else
+    {
+	index = gDriverContext.input_video_mode & 0x7f;
+	if( index >= NMB_OF_CEA861_VIDEO_MODES )
+		printk("sii5293 input video index = %d\n", index);
+	else
+	{
+			int height,width,h_total,v_total;
+			int hs_fp,hs_width,hs_bp;
+			int vs_fp,vs_width,vs_bp;
+			int clk,h_freq,v_freq,interlaced;
 
-index = gDriverContext.input_video_mode & 0x7f;
-		if ( index >= NMB_OF_CEA861_VIDEO_MODES )
-printk("sii5293 input video index = %d\n", index);
+			height = sii_get_h_active();
+			width = sii_get_v_active();
+
+			h_total = sii_get_h_total();
+			v_total = sii_get_v_total();
+
+			hs_fp = sii_get_hs_frontporch();
+			hs_width = sii_get_hs_width();
+			hs_bp = sii_get_hs_backporch();
+
+			vs_fp = sii_get_vs_frontporch();
+			vs_width = sii_get_vs_width();
+			vs_bp = sii_get_vs_backporch();
+			clk = sii_get_pixel_clock();
+			h_freq = sii_get_h_freq();
+			v_freq = sii_get_v_freq();
+			interlaced = sii_get_interlaced();
+
+			printk("sii5293 hdmi-in video info:\n\n\
+	height * width = %4d x %4d, ( %4d x %4d )\n\
+	h sync = %4d, %4d, %4d\n\
+	v sync = %4d, %4d, %4d\n\
+	pixel_clk = %9d, h_freq = %5d, v_freq = %2d\n\
+	interlaced = %d\n",
+				height,width,h_total,v_total,
+				hs_fp,hs_width,hs_bp,
+				vs_fp,vs_width,vs_bp,
+				clk,h_freq,v_freq,interlaced
+				);
+		}
 	}
-
-	height = sii_get_h_active();
-	width = sii_get_v_active();
-
-	h_total = sii_get_h_total();
-	v_total = sii_get_v_total();
-
-	hs_fp = sii_get_hs_frontporch();
-	hs_width = sii_get_hs_width();
-	hs_bp = sii_get_hs_backporch();
-
-	vs_fp = sii_get_vs_frontporch();
-	vs_width = sii_get_vs_width();
-	vs_bp = sii_get_vs_backporch();
-	clk = sii_get_pixel_clock();
-	h_freq = sii_get_h_freq();
-	v_freq = sii_get_v_freq();
-	interlaced = sii_get_interlaced();
-
-	printk("sii5293 hdmi-in video info:\n\n\
-		height * width = %4d x %4d, ( %4d x %4d )\n\
-		h sync = %4d, %4d, %4d\n\
-		v sync = %4d, %4d, %4d\n\
-		pixel_clk = %9d, h_freq = %5d, v_freq = %2d\n\
-		interlaced = %d\n",
-	height,width,h_total,v_total,
-	hs_fp,hs_width,hs_bp,
-	vs_fp,vs_width,vs_bp,
-	clk,h_freq,v_freq,interlaced);
-
 }
 
 unsigned int sii5293_get_output_mode(void)
 {
 	unsigned int mode = 0;
 
-//	printk("sii9293 output mode = %d, %d\n", gDriverContext.input_video_mode, gDriverContext.input_video_mode_other);
-	if (gDriverContext.input_video_mode == SI_VIDEO_MODE_PC_OTHER)
-	{
-		// index of array VideoModeTableOther[]
-		switch (gDriverContext.input_video_mode_other)
-		{
-			case 0:		mode = HDMIIN_640X480_P_60;		break;
-			case 1:		mode = HDMIIN_800X600_P_60;		break;
-			case 2:		mode = HDMIIN_1024X768_P_60;	break;
-			case 3:		mode = HDMIIN_1152X864_P_60;	break;
-			case 4:		mode = HDMIIN_1280X768_P_60;	break;
-			case 5:		mode = HDMIIN_1280X800_P_60;	break;
-			case 6:		mode = HDMIIN_1280X960_P_60;	break;
-			case 7:		mode = HDMIIN_1280X1024_P_60;	break;
-			case 8:		mode = HDMIIN_1366X768_P_60;	break;
-			case 9:		mode = HDMIIN_1600X1200_P_60;	break;
-			default:
-				break;
-		}
-
-		return mode;
-	}
-
 	if( (gDriverContext.input_video_mode == 0) || (gDriverContext.input_video_mode >= NMB_OF_CEA861_VIDEO_MODES) )
 		return mode;
 
 	switch( gDriverContext.input_video_mode & 0x7f )
 	{
-		case 11:		mode = HDMIIN_CEA_1080P60;		break;
-		case 24:		mode = HDMIIN_CEA_1080P50;		break;
-		case 25:		mode = HDMIIN_CEA_1080P24;		break;
-		case 27:		mode = HDMIIN_CEA_1080P30;		break;
-		case  3:		mode = HDMIIN_CEA_1080I60;		break;
-		case 14:		mode = HDMIIN_CEA_1080I50;		break;
-		case  2:		mode = HDMIIN_CEA_720P60;		break;
-		case 13:		mode = HDMIIN_CEA_720P50;		break;
-		case 12:		mode = HDMIIN_CEA_576P50;		break;
-		case  1:		mode = HDMIIN_CEA_480P60;		break;
-		case 15:		mode = HDMIIN_CEA_576I50;		break;
-		case  4:		mode = HDMIIN_CEA_480I60;		break;
-		default:
-			break;
+		case 11:		mode = CEA_1080P60;		break;
+		case 24:		mode = CEA_1080P50;		break;
+		case 27:		mode = CEA_1080P30;		break;
+		case  3:		mode = CEA_1080I60;		break;
+		case 14:		mode = CEA_1080I50;		break;
+		case  2:		mode = CEA_720P60;		break;
+		case 13:		mode = CEA_720P50;		break;
+		case 12:		mode = CEA_576P50;		break;
+		case  1:		mode = CEA_480P60;		break;
+		case 15:		mode = CEA_576I50;		break;
+		case  4:		mode = CEA_480I60;		break;
 	}
 
 	return mode;
 }
 
-static void sii5293_start_vdin_mode(sii9293_vmode_e mode)
+static void sii5293_start_vdin_mode(unsigned int mode)
 {
-	int i = 0, max = sizeof(sii_video_mode_map)/sizeof(sii_video_timming_link);
-	sii_video_timming_link timming;
-	int found = 0;
-
-	memset(&timming, 0x00, sizeof(sii_video_timming_link));
+	unsigned int height = 0, width = 0, frame_rate = 0, field_flag = 0;
 
 	printk("[%s], start with mode = %d\n", __FUNCTION__, mode);
-	for (i=0; i<max; i++)
+	switch(mode)
 	{
-		if ( mode == sii_video_mode_map[i].vmode )
-		{
-			memcpy(&timming, &sii_video_mode_map[i], sizeof(sii_video_timming_link));
-			found = 1;
-		}
+		case CEA_480I60:
+			width = 720;	height = 240;	frame_rate = 60;	field_flag = 1;
+			break;
+
+		case CEA_480P60:
+			width = 720;	height = 480;	frame_rate = 60;	field_flag = 0;
+			break;
+
+		case CEA_576I50:
+			width = 720;	height = 288;	frame_rate = 50;	field_flag = 1;
+			break;
+
+		case CEA_576P50:
+			width = 720;	height = 576;	frame_rate = 50;	field_flag = 0;
+			break;
+
+		case CEA_720P50:
+			width = 1280;	height = 720;	frame_rate = 50;	field_flag = 0;
+			break;
+
+		case CEA_720P60:
+			width = 1280;	height = 720;	frame_rate = 60;	field_flag = 0;
+			break;
+
+		case CEA_1080I60:
+			width = 1920;	height = 1080;	frame_rate = 60;	field_flag = 1;
+			break;
+
+		case CEA_1080P60:
+			width = 1920;	height = 1080;	frame_rate = 60;	field_flag = 0;
+			break;
+
+		case CEA_1080I50:
+			width = 1920;	height = 1080;	frame_rate = 50;	field_flag = 1;
+			break;
+
+		case CEA_1080P50:
+			width = 1920;	height = 1080;	frame_rate = 50;	field_flag = 0;
+			break;
+
+		case CEA_1080P30:
+			width = 1920;	height = 1080;	frame_rate = 30;	field_flag = 0;
+			break;
+
+		default:
+			printk("[%s], invalid video mode!\n",__FUNCTION__);
+			return ;
 	}
 
-	if (1 != found)
-	{
-		printk("[%s], don't start vdin for invalid mode = %d\n", __FUNCTION__, mode);
-		return;
-	}
+	sii5293_start_vdin(&sii5293_vdin_info,width,height,frame_rate,field_flag);
 
-	if ((mode == HDMIIN_CEA_480I60) || (mode == HDMIIN_CEA_576I50))
-	{
-		// if it is repeated signal, then set h_active as default 720
-		// if it is not repeated signal, then set h_active as 1440
-		uint8_t pix_repl = SiiDrvRxGetPixelReplicate();
-
-		if (0 == pix_repl)
-			timming.h_active = 1440;
-	}
-	else //get sync info from original signal
-	{
-		timming.hs_pol_inv = (sii_get_hs_polar()==POS)?0:1;
-		timming.vs_pol_inv = (sii_get_vs_polar()==POS)?0:1;
-
-		// active_start_pix_fe/fo is based on vs_hs_tim_ctrl, currently is 0 (rising edge)
-		if ( timming.hs_pol_inv == 0 )
-		{
-			timming.active_start_pix_fe = sii_get_hs_backporch()+sii_get_hs_width();
-			timming.active_start_pix_fo = sii_get_hs_backporch()+sii_get_hs_width();
-		}
-		else
-		{
-			timming.active_start_pix_fe = sii_get_hs_backporch();
-			timming.active_start_pix_fo = sii_get_hs_backporch();
-		}
-
-		// active_start_line_fe/fo is based on vs_hs_tim_ctrl, currently is 0 (rising edge)
-		if ( timming.vs_pol_inv == 0 )
-		{
-			timming.active_start_line_fe = sii_get_vs_backporch()+sii_get_vs_width();
-			timming.active_start_line_fo = sii_get_vs_backporch()+sii_get_vs_width();
-		}
-		else
-		{
-			timming.active_start_line_fe = sii_get_vs_backporch();
-			timming.active_start_line_fo = sii_get_vs_backporch();
-		}
-	}
-
-	sii9293_start_tvin(&sii9293_tvin_info, &timming);
 	return ;
 }
 
@@ -2126,6 +1646,7 @@ void sii5293_output_mode_trigger(unsigned int flag)
 	unsigned int mode = 0xff;
 
 	sii9293_info.signal_status = flag;
+	printk("[%s] set signal_status = %d\n", __FUNCTION__, sii9293_info.signal_status);
 
 	if( (sii9293_info.user_cmd==0) || (sii9293_info.user_cmd==0x4) || (sii9293_info.user_cmd==0xff) )
 		return ;
@@ -2134,17 +1655,17 @@ void sii5293_output_mode_trigger(unsigned int flag)
 	{
 		printk("[%s], lost signal, stop vdin!\n", __FUNCTION__);
 		sii_output_mode = 0xff;
-		sii9293_stop_tvin(&sii9293_tvin_info);
+		sii5293_stop_vdin(&sii5293_vdin_info);
 		return ;
 	}
 
 	if( (1==flag) && ((sii9293_info.user_cmd==2)||(sii9293_info.user_cmd==3)) )
 	{
 		mode = sii5293_get_output_mode();
-		if ( mode != sii_output_mode )
+		if( mode != sii_output_mode )
 		{
 			printk("[%s], trigger new mode = %d, old mode = %d\n", __FUNCTION__, mode, sii_output_mode);
-			if ( mode < HDMIIN_VMODE_MAX )
+			if( mode < CEA_MAX )
 			{
 				sii5293_start_vdin_mode(mode);
 				sii_output_mode = mode;
@@ -2183,14 +1704,10 @@ static ssize_t user_enable_store(struct class *class, struct class_attribute *at
 	int argn;
 	char *p=NULL, *para=NULL, *argv[5] = {NULL,NULL,NULL,NULL,NULL};
 	unsigned int mode = 0, enable=0;
-	char *vmode[] = {"480i\n","480p\n","576i\n","576p\n","720p50\n","720p\n","1080i\n","1080p\n","1080i50\n","1080p50\n","1080p24\n","1080p30\n",
-						"640x480\n","800x600\n","1024x768\n","1152x864\n", "1280x768\n","1280x800\n","1280x960\n","1280x1024\n","1366x768\n","1600x1200\n"};
+	char *vmode[10] = {"480i\n","480p\n","576i\n","576p\n","720p50\n","720p\n","1080i\n","1080p\n","1080i50\n","1080p50\n"};
 	int i = 0;
 
 	p = kstrdup(buf, GFP_KERNEL);
-	if (p == NULL)
-		goto MALLOC_FAILED;
-
 	for( argn=0; argn<4; argn++ )
 	{
 		para = strsep(&p, " ");
@@ -2212,10 +1729,9 @@ static ssize_t user_enable_store(struct class *class, struct class_attribute *at
 		enable = 4;
 	else
 	{
-		int max = sizeof(vmode);
-		for ( i=0; i<max; i++ )
+		for( i=0; i<10; i++ )
 		{
-			if ( !strcmp(argv[0], vmode[i]) )
+			if( !strcmp(argv[0], vmode[i]) )
 			{
 				mode = i;
 				enable = 0xff;
@@ -2225,86 +1741,55 @@ static ssize_t user_enable_store(struct class *class, struct class_attribute *at
 
 	sii9293_info.user_cmd = enable;
 
-	if ( (enable == 1) && (argn != 5) && (argn != 1) )
+	if( (enable==1) && (argn!=5) && (argn!=1) )
 	{
 		printk("invalid parameters to enable cmd !\n");
-		goto PROCESS_END;
+		return count;
 	}
 
-	if ( (enable == 0) && (sii9293_tvin_info.vdin_started == 1) )
+	if( (enable==0) && (sii5293_vdin_info.vdin_started==1) )
 	{
-		sii9293_stop_tvin(&sii9293_tvin_info);
+		sii5293_stop_vdin(&sii5293_vdin_info);
 		printk("sii9293 disable dvin !\n");
 	}
-	else if ( ( (enable == 1)||(enable == 2)||(enable == 3)||(enable == 4) ) && (sii9293_tvin_info.vdin_started == 0) )
+	else if( ( (enable==1)||(enable==2)||(enable==3)||(enable==4) ) && (sii5293_vdin_info.vdin_started==0) )
 	{
 		mode = sii5293_get_output_mode();
 		sii5293_start_vdin_mode(mode);
 		printk("sii9293 enable(0x%x) dvin !\n", enable);
 	}
-	else if ( (enable == 0xff) && (sii9293_tvin_info.vdin_started == 0) )
+	else if( (enable==0xff) && (sii5293_vdin_info.vdin_started==0) )
 	{
-		
-		switch (mode)
+
+		switch(mode)
 		{
 			case 0: // 480i
-				mode = HDMIIN_CEA_480I60;		break;
+				mode = CEA_480I60;		break;
 			case 1: // 480p
-				mode = HDMIIN_CEA_480P60;		break;
+				mode = CEA_480P60;		break;
 			case 2: // 576i
-				mode = HDMIIN_CEA_576I50;		break;
+				mode = CEA_576I50;		break;
 			case 3: // 576p
-				mode = HDMIIN_CEA_576P50;		break;
+				mode = CEA_576P50;		break;
 			case 4: // 720p50
-				mode = HDMIIN_CEA_720P50;		break;
+				mode = CEA_720P50;		break;
 			case 5: // 720p60
-				mode = HDMIIN_CEA_720P60;		break;
+			default:
+				mode = CEA_720P60;		break;
 			case 6: // 1080i60
-				mode = HDMIIN_CEA_1080I60;		break;
+				mode = CEA_1080I60;		break;
 			case 7: // 1080p60
-				mode = HDMIIN_CEA_1080P60;		break;
+				mode = CEA_1080P60;		break;
 			case 8: // 1080i50
-				mode = HDMIIN_CEA_1080I50;		break;
+				mode = CEA_1080I50;		break;
 			case 9: // 1080p50
-				mode = HDMIIN_CEA_1080P50;		break;
-			case 10: // 1080p24
-				mode = HDMIIN_CEA_1080P24;		break;
-			case 11: // 1080p30
-				mode = HDMIIN_CEA_1080P30;		break;
-			case 12: // 640x480 p60
-				mode = HDMIIN_640X480_P_60;		break;
-			case 13: // 800x600 p60
-				mode = HDMIIN_800X600_P_60;		break;
-			case 14: // 1024x768 p60
-				mode = HDMIIN_1024X768_P_60;	break;
-			case 15: // 1152x864 p60
-				mode = HDMIIN_1152X864_P_60;	break;
-			case 16: // 1280x768 p60
-				mode = HDMIIN_1280X768_P_60;	break;
-			case 17: // 1280x800 p60
-				mode = HDMIIN_1280X800_P_60;	break;
-			case 18: // 1280x960 p60
-				mode = HDMIIN_1280X960_P_60;	break;
-			case 19: // 1280x1024 p60
-				mode = HDMIIN_1280X1024_P_60;	break;
-			case 20: // 1366x768 p60
-				mode = HDMIIN_1366X768_P_60;	break;
-			case 21: // 1600x1200 p60
-				mode = HDMIIN_1600X1200_P_60;	break;
-			default: // default 720p
-				mode = HDMIIN_CEA_720P60;		break;
+				mode = CEA_1080P50;		break;
 		}
 
 		sii5293_start_vdin_mode(mode);
 		printk("sii9293 enable(0x%x) dvin !\n", enable);
 	}
 
-PROCESS_END:
-	kfree(p);
-	return count;
-
-MALLOC_FAILED:
-	printk("[%s] kstrdup failed!\n", __FUNCTION__);
 	return count;
 }
 
@@ -2344,9 +1829,6 @@ static ssize_t debug_store(struct class *class, struct class_attribute *attr,
 //	int ret = 0;
 
 	p = kstrdup(buf, GFP_KERNEL);
-	if (p == NULL)
-		goto MALLOC_FAILED;
-
 	for( argn=0; argn<4; argn++ )
 	{
 		para = strsep(&p, " ");
@@ -2372,14 +1854,16 @@ static ssize_t debug_store(struct class *class, struct class_attribute *attr,
 	else
 	{
 		printk("invalid cmd = %s\n", argv[0]);
-		goto PROCESS_END;
+		return count;
 	}
+
 
 	printk(" cmd = %d - \"%s\"\n", cmd, argv[0]);
 	if( (argn<1) || ((cmd==0)&&argn!=2) || ((cmd==1)&&(argn!=3)) || ((cmd==2)&&(argn!=3)) )
 	{
 		printk("invalid command format!\n");
-		goto PROCESS_END;
+		kfree(p);
+		return count;
 	}
 
 	if( cmd == 0 ) // read
@@ -2396,7 +1880,7 @@ static ssize_t debug_store(struct class *class, struct class_attribute *attr,
 		reg_start 	= (unsigned int)simple_strtoul(argv[1],NULL,16);
 		reg_end 	= (unsigned int)simple_strtoul(argv[2],NULL,16);
 		printk("sii5293 dump reg, [ 0x%x, 0x%x] :\n", reg_start, reg_end);
-		
+
 		for( i=reg_start; i<=reg_end; i++ )
 		{
 			value = SiiRegRead(i);
@@ -2411,7 +1895,7 @@ static ssize_t debug_store(struct class *class, struct class_attribute *attr,
 	else if( cmd == 2 ) // write
 	{
 		reg_start 	= (unsigned int)simple_strtoul(argv[1],NULL,16);
-		value 		= (unsigned int)simple_strtoul(argv[2],NULL,16); 
+		value 		= (unsigned int)simple_strtoul(argv[2],NULL,16);
 
 		SiiRegWrite(reg_start, value);
 		printk("sii5293 write reg[0x%x] = 0x%x\n", reg_start, value);
@@ -2443,7 +1927,7 @@ static ssize_t debug_store(struct class *class, struct class_attribute *attr,
 				v1 = sii9293_test_get_id();
 				msleep(2);
 				v2 = sii9293_test_get_h_total();
-				
+
 				if( v1 != 0x9293 )
 				{
 					err1 ++;
@@ -2462,12 +1946,7 @@ static ssize_t debug_store(struct class *class, struct class_attribute *attr,
 			printk("sii2ctest invalid type!\n");
 	}
 
-PROCESS_END:
 	kfree(p);
-	return count;
-
-MALLOC_FAILED:
-	printk("[%s] kstrdup failed!\n", __FUNCTION__);
 	return count;
 }
 
@@ -2485,7 +1964,22 @@ static ssize_t sii5293_input_mode_show(struct class *class, struct class_attribu
 	strcpy(hdmi_mode_str,(value==0)?"DVI:":"HDMI:");
 
 	mode = sii5293_get_output_mode();
-	strcpy(mode_str, sii_get_mode_name(mode));
+
+	switch(mode)
+	{
+		case CEA_480I60:	strcpy(mode_str, "480i");		break;
+		case CEA_480P60:	strcpy(mode_str, "480p");		break;
+		case CEA_576I50:	strcpy(mode_str, "576i");		break;
+		case CEA_576P50:	strcpy(mode_str, "576p");		break;
+		case CEA_720P60:	strcpy(mode_str, "720p");		break;
+		case CEA_720P50:	strcpy(mode_str, "720p50hz");	break;
+		case CEA_1080I60:	strcpy(mode_str, "1080i");		break;
+		case CEA_1080I50:	strcpy(mode_str, "1080i50hz");	break;
+		case CEA_1080P60:	strcpy(mode_str, "1080p");		break;
+		case CEA_1080P50:	strcpy(mode_str, "1080p50hz");	break;
+		case CEA_1080P30:	strcpy(mode_str, "1080p30hz");	break;
+		default:			strcpy(mode_str, "invalid");	break;
+	}
 
 	if( strcmp(mode_str, "invalid") != 0 )
 		strcat(hdmi_mode_str, mode_str);
@@ -2654,9 +2148,6 @@ static ssize_t sii9293_frame_skip_store(struct class *class, struct class_attrib
 //	int ret = 0;
 
 	p = kstrdup(buf, GFP_KERNEL);
-	if (p == NULL)
-		goto MALLOC_FAILED;
-
 	for( argn=0; argn<3; argn++ )
 	{
 		para = strsep(&p, " ");
@@ -2668,7 +2159,7 @@ static ssize_t sii9293_frame_skip_store(struct class *class, struct class_attrib
 	if( argn != 3 )
 	{
 		printk("please input 3 skip num!\n");
-		goto PROCESS_END;
+		return count;
 	}
 
 	skip_normal 	= (unsigned int)simple_strtoul(argv[0],NULL,10);
@@ -2682,12 +2173,6 @@ static ssize_t sii9293_frame_skip_store(struct class *class, struct class_attrib
 	printk("reconfig skip num: normal=%d, standby=%d, cable=%d\n",
 		sii9293_skip.skip_num_normal, sii9293_skip.skip_num_standby, sii9293_skip.skip_num_cable);
 
-PROCESS_END:
-	kfree(p);
-	return count;
-
-MALLOC_FAILED:
-	printk("[%s] kstrdup failed!\n", __FUNCTION__);
 	return count;
 }
 #endif
@@ -2718,7 +2203,7 @@ static int aml_sii5293_create_attrs(struct class *cls)
 	if( cls == NULL )
 		return 1;
 
-	ret = class_create_file(cls, &class_attr_enable);	
+	ret = class_create_file(cls, &class_attr_enable);
 	ret |= class_create_file(cls, &class_attr_debug);
 //	ret |= class_create_file(cls, &class_attr_pinmux);
 	ret |= class_create_file(cls, &class_attr_input_mode);
@@ -2738,7 +2223,7 @@ static void aml_sii5293_remove_attrs(struct class *cls)
 	if( cls == NULL )
 		return ;
 
-	class_remove_file(cls, &class_attr_enable);	
+	class_remove_file(cls, &class_attr_enable);
 	class_remove_file(cls, &class_attr_debug);
 //	class_remove_file(cls, &class_attr_pinmux);
 	class_remove_file(cls, &class_attr_input_mode);
@@ -2762,7 +2247,7 @@ static int sii5293_get_of_data(struct device_node *pnode)
 //	struct i2c_board_info board_info;
 //	struct i2c_adapter *adapter;
 	unsigned int i2c_index;
-	
+
 	const char *str;
 	int ret = 0;
 
@@ -2786,9 +2271,9 @@ static int sii5293_get_of_data(struct device_node *pnode)
 		else if (!strncmp(str, "i2c_bus_d", 9))
 			i2c_index = AML_I2C_MASTER_D;
 		else
-			return -1; 
+			return -1;
 	}
-	
+
 	devinfo->config.i2c_bus_index = i2c_index;
 
 // for gpio_reset
@@ -2833,7 +2318,7 @@ static int sii5293_get_of_data(struct device_node *pnode)
 	hdmirx_info.i2c_client = i2c_new_device(adapter, &board_info);
 	printk("[%s] new i2c device i2c_client = 0x%x\n",hdmirx_info.i2c_client);
 #endif
-	printk("sii5293 get i2c_idx = %d, gpio_reset = %d, gpio_irq = %d\n", 
+	printk("sii5293 get i2c_idx = %d, gpio_reset = %d, gpio_irq = %d\n",
 		devinfo->config.i2c_bus_index, devinfo->config.gpio_reset, devinfo->config.gpio_intr);
 	return 0;
 }
@@ -2855,7 +2340,7 @@ static int sii5293_probe(struct platform_device *pdev)
 
 	//amlogic_gpio_request(hdmirx_info.gpio_reset, HDMIRX_SII9233A_NAME);
 
-	ret = sii5293_register_tvin_frontend(&(sii9293_tvin_info.tvin_frontend));
+	ret = sii5293_register_tvin_frontend(&(sii5293_vdin_info.tvin_frontend));
 	if( ret < 0 )
 	{
 		printk("[%s] register tvin frontend failed !\n", __FUNCTION__);
@@ -2866,7 +2351,7 @@ static int sii5293_probe(struct platform_device *pdev)
 
 static int sii5293_remove(struct platform_device *pdev)
 {
-	return 0;	
+	return 0;
 }
 
 #ifdef CONFIG_USE_OF
@@ -2877,7 +2362,7 @@ static const struct of_device_id sii5293_dt_match[] = {
 };
 #endif
 
-static struct platform_driver sii5293_driver = 
+static struct platform_driver sii5293_driver =
 {
 	.probe		= sii5293_probe,
 	.remove 	= sii5293_remove,
@@ -2885,7 +2370,7 @@ static struct platform_driver sii5293_driver =
 					.name 				= MHL_DEVICE_NAME,
 					.owner				= THIS_MODULE,
 #ifdef CONFIG_USE_OF
-					.of_match_table 	= sii5293_dt_match, 
+					.of_match_table 	= sii5293_dt_match,
 #endif
 					}
 };
@@ -2893,89 +2378,8 @@ static struct platform_driver sii5293_driver =
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
 /*
-* modelue init interface 
+* modelue init interface
 */
-static void sii9293_stable_audio_handler(struct work_struct *work)
-{
-	int audio_sr = 1;
-	char *audio_sr_array[] =
-	{
-		"44.1 kHz",			// 0x0
-		"Not indicated",	// 0x1
-		"48 kHz",			// 0x2
-		"32 kHz",			// 0x3
-		"22.05 kHz",		// 0x4
-		"reserved",			// 0x5
-		"24 kHz",			// 0x6
-		"reserved",			// 0x7
-		"88.2 kHz",			// 0x8
-		"768 kHz (192*4)",	// 0x9
-		"96 kHz",			// 0xa
-		"reserved",			// 0xb
-		"176.4 kHz",		// 0xc
-		"reserved",			// 0xd
-		"192 kHz",			// 0xe
-		"reserved"			// 0xf
-	};
-
-	pr_info("[%s] invoked!\n", __func__);
-
-	audio_sr = sii_get_audio_sampling_freq()&0xf;
-
-	send_sii5293_uevent(devinfo->device, DEVICE_EVENT, DEV_INPUT_AUDIO_STABLE_EVENT, audio_sr_array[audio_sr]);
-
-	return;
-}
-
-static void sii9293_stable_video_handler(struct work_struct *work)
-{
-	unsigned int mode = 0xff;
-	char hdmi_mode_str[16], mode_str[16] ;
-	unsigned char value;
-
-	pr_info("[%s] invoked!\n", __func__);
-
-	value = SiiRegRead(RX_A__AUDP_STAT)&RX_M__AUDP_STAT__HDMI_MODE_ENABLED;
-
-	memset(hdmi_mode_str, 0x00, 16);
-	memset(mode_str, 0x00, 16);
-
-	strcpy(hdmi_mode_str,(value==0)?"DVI:":"HDMI:");
-
-	mode = sii5293_get_output_mode();
-	strcpy(mode_str, sii_get_mode_name(mode));
-
-	if (strcmp(mode_str, "invalid") != 0)
-		strcat(hdmi_mode_str, mode_str);
-	else
-		strcpy(hdmi_mode_str, mode_str);
-
-	send_sii5293_uevent(devinfo->device, DEVICE_EVENT, DEV_INPUT_VIDEO_MODE_EVENT, hdmi_mode_str);
-	queue_delayed_work(devinfo->wq, &devinfo->work_stable_audio, HZ*2);
-
-	return;
-}
-
-static void sii9293_workqueue_init(void)
-{
-	if (devinfo == NULL)
-	{
-		pr_info("[%s] invalid device!\n", __func__);
-		return;
-	}
-
-	devinfo->wq = alloc_workqueue("sii9293", WQ_HIGHPRI | WQ_CPU_INTENSIVE, 0);
-	INIT_DELAYED_WORK(&devinfo->work_stable_video, sii9293_stable_video_handler);
-	PREPARE_DELAYED_WORK(&devinfo->work_stable_video,
-			sii9293_stable_video_handler);
-	INIT_DELAYED_WORK(&devinfo->work_stable_audio, sii9293_stable_audio_handler);
-	PREPARE_DELAYED_WORK(&devinfo->work_stable_audio,
-			sii9293_stable_audio_handler);
-
-	pr_info("[%s] workqueue init ok!\n", __func__);
-	return;
-}
-
 static int __init SiiMhlInit(void)
 {
     int32_t	ret = -1;
@@ -2997,8 +2401,8 @@ static int __init SiiMhlInit(void)
                         0, NUMBER_OF_DEVS,
                         DEVNAME);
     if (ret) {
-    	pr_info("sii5293, register_chrdev %s failed, error code: %d\n",
-    					MHL_DRIVER_NAME, ret);
+	pr_info("sii5293, register_chrdev %s failed, error code: %d\n",
+					MHL_DRIVER_NAME, ret);
         goto free_devinfo;
     }
 
@@ -3006,7 +2410,7 @@ static int __init SiiMhlInit(void)
     devinfo->cdev->owner = THIS_MODULE;
     ret = cdev_add(devinfo->cdev, devinfo->devnum, MHL_DRIVER_MINOR_MAX);
     if (ret) {
-    	pr_info("sii5293, cdev_add %s failed %d\n", MHL_DRIVER_NAME, ret);
+	pr_info("sii5293, cdev_add %s failed %d\n", MHL_DRIVER_NAME, ret);
         goto free_chrdev;
     }
 
@@ -3017,7 +2421,7 @@ static int __init SiiMhlInit(void)
 
     devinfo->dev_class = class_create(THIS_MODULE, CLASS_NAME);
     if (IS_ERR(devinfo->dev_class)) {
-    	pr_info("sii5293, class_create failed %d\n", ret);
+	pr_info("sii5293, class_create failed %d\n", ret);
         ret = PTR_ERR(devinfo->dev_class);
         goto free_mhl_cdev;
     }
@@ -3025,10 +2429,10 @@ static int __init SiiMhlInit(void)
     //devinfo->dev_class->dev_attrs = driver_attribs;
 
     devinfo->device  = device_create(devinfo->dev_class, NULL,
-    									 devinfo->devnum,  NULL,
-    									 "%s", DEVNAME);
+									 devinfo->devnum,  NULL,
+									 "%s", DEVNAME);
     if (IS_ERR(devinfo->device)) {
-    	pr_info("sii5293, class_device_create failed %s %d\n", DEVNAME, ret);
+	pr_info("sii5293, class_device_create failed %s %d\n", DEVNAME, ret);
         ret = PTR_ERR(devinfo->device);
         goto free_class;
     }
@@ -3077,22 +2481,20 @@ static int __init SiiMhlInit(void)
 	register_early_suspend(&sii9293_early_suspend_handler);
 #endif
 
-	sii9293_workqueue_init();
-
     ret = StartMhlTxDevice();
     if(ret == 0) {
         printk(KERN_NOTICE"sii5293 mhldrv initialized successfully !\n");
-    	return 0;
+	return 0;
     } else {
-    	// Transmitter startup failed so fail the driver load.
-    	printk(KERN_NOTICE"sii5293 mhldrv initialized failed !\n");
-    	mhl_dev_exit(devinfo);
+	// Transmitter startup failed so fail the driver load.
+	printk(KERN_NOTICE"sii5293 mhldrv initialized failed !\n");
+	mhl_dev_exit(devinfo);
     }
 
 free_dev:
     if (devinfo->device)
     {
-    	aml_sii5293_remove_attrs(devinfo->dev_class);
+	aml_sii5293_remove_attrs(devinfo->dev_class);
 #ifdef DEBUG
         sysfs_remove_group(&devinfo->device->kobj, &sii5293_debug_attr_group);
 #endif
@@ -3126,7 +2528,7 @@ free_devinfo:
 	return ret;
 }
 /*
-* modelue remove interface 
+* modelue remove interface
 */
 static void __exit SiiMhlExit(void)
 {
@@ -3135,7 +2537,7 @@ static void __exit SiiMhlExit(void)
     mhl_dev_exit(devinfo);
     if (devinfo->device)
     {
-    	aml_sii5293_remove_attrs(devinfo->dev_class);
+	aml_sii5293_remove_attrs(devinfo->dev_class);
 #ifdef DEBUG
         sysfs_remove_group(&devinfo->device->kobj, &sii5293_debug_attr_group);
 #endif
@@ -3167,7 +2569,7 @@ int send_sii5293_uevent(struct device *device, const char *event_cat,
 	char event_string[MAX_EVENT_STRING_LEN];
 	char *envp[] = {event_string, NULL};
 
-	if ((NULL == event_cat) || (NULL == event_type)) 
+	if ((NULL == event_cat) || (NULL == event_type))
 	{
 		pr_info("sii5293, Invalid parameters\n");
 		retval = -EINVAL;

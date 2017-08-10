@@ -14,7 +14,7 @@
 
 void RxIsr_Init(void);
 
-int SiiRxInterruptHandler(void);
+void SiiRxInterruptHandler(void);
 
 bool_t SiiDrvCableStatusGet ( bool_t *pData );
 

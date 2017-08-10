@@ -57,6 +57,12 @@
 #define DRV_NAME	DRIVER_NAME
 #define DRV_VERSION	"v2.0.0"
 
+#ifdef CONFIG_LEDS_TRIGGER_NETWORK
+#include <linux/leds.h>
+extern void ledtrig_eth_linkup(struct led_classdev *led_cdev);
+extern void ledtrig_eth_linkdown(struct led_classdev *led_cdev);
+#endif
+
 #undef CONFIG_HAS_EARLYSUSPEND
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -886,6 +892,45 @@ static int mac_pmt_enable(unsigned int enable)
 	return 0;
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+ * @brief  phy_reset
+ *
+ * @param  ndev
+ *
+ * @return
+ */
+/* --------------------------------------------------------------------------*/
+//#undef CONFIG_AML_NAND_KEY
+#if defined (CONFIG_AML_NAND_KEY) || defined (CONFIG_SECURITYKEY)
+extern int get_aml_key_kernel(const char* key_name, unsigned char* data, int ascii_flag);
+extern int extenal_api_key_set_version(char *devvesion);
+static char print_buff[1025];
+void read_mac_from_nand(struct net_device *ndev)
+{
+	int ret;
+	u8 mac[ETH_ALEN];
+	char *endp;
+	int j;
+	for (j=0; j < 2; j++)
+	{
+		ret = get_aml_key_kernel("mac", print_buff, 0);
+		extenal_api_key_set_version("auto3");
+		printk("ret = %d\nprint_buff=%s\n", ret, print_buff);
+		if (ret >=0) break;
+	}
+	if (ret >= 0) {
+		strcpy(ndev->dev_addr, print_buff);
+	for(j=0; j < ETH_ALEN; j++)
+	{
+		mac[j] = simple_strtol(&ndev->dev_addr[3 * j], &endp, 16);
+		printk("%d : %d\n", j, mac[j]);
+	}
+	memcpy(ndev->dev_addr, mac, ETH_ALEN);
+	}
+
+}
+#endif
 static int aml_mac_init(struct net_device *ndev)
 {
 	struct am_net_private *np = netdev_priv(ndev);
@@ -893,6 +938,15 @@ static int aml_mac_init(struct net_device *ndev)
 
 	writel(1, (void*)(np->base_addr + ETH_DMA_0_Bus_Mode));
 	writel(0x00100800,(void*)(np->base_addr + ETH_DMA_0_Bus_Mode));
+	printk("--1--write mac add to:");
+
+	data_dump(ndev->dev_addr, 6);
+#if defined (CONFIG_AML_NAND_KEY) || defined (CONFIG_SECURITYKEY)
+        if (!g_mac_addr_setup)
+		read_mac_from_nand(ndev);
+#endif
+	printk("--2--write mac add to:");
+	data_dump(ndev->dev_addr, 6);
 	write_mac_addr(ndev, ndev->dev_addr);
 
 	val = 0xc80c |		//8<<8 | 8<<17; //tx and rx all 8bit mode;
@@ -937,6 +991,14 @@ static void aml_adjust_link(struct net_device *dev)
 		return;
 
 	spin_lock_irqsave(&priv->lock, flags);
+
+#ifdef CONFIG_LEDS_TRIGGER_NETWORK
+	if (phydev->link)
+		ledtrig_eth_linkup(NULL);
+	else
+		ledtrig_eth_linkdown(NULL);
+#endif
+
 	if(phydev->phy_id == INTERNALPHY_ID){
 		val = (8<<27)|(7 << 24)|(1<<16)|(1<<15)|(1 << 13)|(1 << 12)|(4 << 4)|(0 << 1);
 		PERIPHS_SET_BITS(P_PREG_ETHERNET_ADDR0, val);
@@ -992,8 +1054,8 @@ eth_cfg_57	0x99	7:6	R/W	0	co_st_miimode[1:0]
 				PERIPHS_CLEAR_BITS(P_PREG_ETHERNET_ADDR0, 1);
 			switch (phydev->speed) {
 				case 1000:
-					ctrl &= ~((1 << 14)|(1 << 15));//1000m 
-					ctrl |= (1 << 13);//1000m 
+					ctrl &= ~((1 << 14)|(1 << 15));//1000m
+					ctrl |= (1 << 13);//1000m
 					break;
 				case 100:
 					ctrl |= (1 << 14)|(1 << 15);
@@ -1256,7 +1318,7 @@ static int netdev_open(struct net_device *dev)
 	val |= (1 << 1); /*start receive*/
 	writel(val, (void*)(np->base_addr + ETH_DMA_6_Operation_Mode));
 	running = 1;
-	if(new_maclogic == 1){	
+	if(new_maclogic == 1){
 		writel(0xffffffff,(void*)(np->base_addr + ETH_MMC_ipc_intr_mask_rx));
 		writel(0xffffffff,(void*)(np->base_addr + ETH_MMC_intr_mask_rx));
 	}
@@ -1399,7 +1461,7 @@ static int start_tx(struct sk_buff *skb, struct net_device *dev)
 	}
 
 	writel(1,(void*)(np->base_addr + ETH_DMA_1_Tr_Poll_Demand));
-	writel(np->irq_mask, (void*)(np->base_addr + ETH_DMA_7_Interrupt_Enable));	
+	writel(np->irq_mask, (void*)(np->base_addr + ETH_DMA_7_Interrupt_Enable));
 	spin_unlock_irqrestore(&np->lock, flags);
 	tasklet_enable(&np->rx_tasklet);
 	return NETDEV_TX_OK;
@@ -1527,6 +1589,41 @@ static void tx_timeout(struct net_device *dev)
 	}
 }
 
+/* --------------------------------------------------------------------------*/
+/**
+ * @brief  write_mac_addr
+ *
+ * @param  dev
+ * @param  macaddr
+ */
+/* --------------------------------------------------------------------------*/
+/*static void get_mac_from_nand(struct net_device *dev, char *macaddr)
+{
+	int ret;
+	int use_nand_mac=0;
+	u8 mac[ETH_ALEN];
+
+	extenal_api_key_set_version("nand3");
+	ret = get_aml_key_kernel("mac_wifi", print_buff, 0);
+	printk("ret = %d\nprint_buff=%s\n", ret, print_buff);
+	if (ret >= 0) {
+		strcpy(mac_addr, print_buff);
+	}
+	for(; j < ETH_ALEN; j++)
+		{
+		mac[j] = simple_strtol(&mac_addr[3 * j], &endp, 16);
+		printk("%d : %d\n", j, mac[j]);
+	}
+	memcpy(macaddr, mac, ETH_ALEN);
+}
+static void print_mac(char *macaddr)
+{
+	printk("write mac add to:");
+	data_dump(macaddr, 6);
+}*/
+
+
+
 static void write_mac_addr(struct net_device *dev, char *macaddr)
 {
 	struct am_net_private *np = netdev_priv(dev);
@@ -1576,7 +1673,8 @@ static void config_mac_addr(struct net_device *dev, void *mac)
 	if(g_mac_addr_setup)
 		memcpy(dev->dev_addr, mac, 6);
 	else
-		random_ether_addr(dev->dev_addr);
+		memcpy(dev->dev_addr, &DEFMAC, 6);
+		// random_ether_addr(dev->dev_addr);
 
 	write_mac_addr(dev, dev->dev_addr);
 }
@@ -2740,7 +2838,7 @@ static int am_net_cali(int argc, char **argv,int gate)
 	for(ii=0;ii < cali_time;ii++){
 		value = aml_read_reg32(P_PREG_ETH_REG1);
 		if((value>>15) & 0x1){
- 			printk("value == %x,  cali_len == %d, cali_idx == %d,  cali_sel =%d,  cali_rise = %d\n",value,(value>>5)&0x1f,(value&0x1f),(value>>11)&0x7,(value>>14)&0x1);
+			printk("value == %x,  cali_len == %d, cali_idx == %d,  cali_sel =%d,  cali_rise = %d\n",value,(value>>5)&0x1f,(value&0x1f),(value>>11)&0x7,(value>>14)&0x1);
 		}
 	}
 	return 0;
@@ -2782,9 +2880,9 @@ static ssize_t eth_cali_store(struct class *class, struct class_attribute *attr,
 		default:
 			goto end;
 		}
-	
+
 		return count;
-	
+
 	end:
 		kfree(buff);
 		return 0;
@@ -2834,14 +2932,10 @@ static int __init am_eth_class_init(void)
 }
 #define OWNER_NAME "meson-eth"
 void hardware_reset_phy(void){
-	struct am_net_private *priv = netdev_priv(my_ndev);
-
 	if(reset_pin_enable){
 		amlogic_gpio_direction_output(reset_pin_num, 0, OWNER_NAME);
 		mdelay(reset_delay);
 		amlogic_gpio_direction_output(reset_pin_num, 1, OWNER_NAME);
-	} else {
-		mdio_write(priv->mii, priv->phy_addr, MII_BMCR, BMCR_RESET);
 	}
 }
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -2924,7 +3018,7 @@ void pmu4_phy_conifg(void){
 		/*cfg4- --- cfg 45*/
 		aml1220_write(0x88,0x0);
 		aml1220_write(0x89,0x0);
-		aml1220_write(0x8A,0x22);
+		aml1220_write(0x8A,0x33);
 		aml1220_write(0x8B,0x01);
 		aml1220_write(0x8C,0xd0);
 
@@ -2932,8 +3026,6 @@ void pmu4_phy_conifg(void){
 		//aml1220_write(0x8C,0x01);
 		//aml1220_write(0x8D,0xc0);
 		aml1220_write(0x8E,0x00);
-
-		aml1220_write(0x93,0x81);
 
 /* pmu4 phyid = 20142014*/
 		aml1220_write(0x94,0x14);
@@ -3145,7 +3237,7 @@ static int ethernet_remove(struct platform_device *pdev)
 static int ethernet_suspend(struct platform_device *dev, pm_message_t event)
 {
 	printk("ethernet_suspend!\n");
-	netdev_close(my_ndev);	
+	netdev_close(my_ndev);
 	return 0;
 }
 #endif
@@ -3183,33 +3275,6 @@ static const struct of_device_id eth_dt_match[]={
 #define eth_dt_match NULL
 #endif
 
-#ifdef CONFIG_HIBERNATION
-static int  ethernet_freeze(struct device *dev)
-{
-	printk("ethernet_suspend!\n");
-	netdev_close(my_ndev);
-	return 0;
-}
-
-static int  ethernet_restore(struct device *dev)
-{
-	int res = 0;
-	printk("ethernet_resume()\n");
-	hardware_reset_phy();
-	res = netdev_open(my_ndev);
-	if (res != 0) {
-		printk("nono, it can not be true!\n");
-	}
-	return 0;
-}
-
-struct dev_pm_ops ethernet_pm = {
-	.freeze		= ethernet_freeze,
-	.thaw		= ethernet_restore,
-	.restore	= ethernet_restore,
-};
-#endif
-
 static struct platform_driver ethernet_driver = {
 	.probe   = ethernet_probe,
 	.remove  = ethernet_remove,
@@ -3220,9 +3285,6 @@ static struct platform_driver ethernet_driver = {
 	.driver  = {
 		.name = "meson-eth",
 		.of_match_table = eth_dt_match,
-#ifdef CONFIG_HIBERNATION
-		.pm = &ethernet_pm,
-#endif
 	}
 };
 
@@ -3286,5 +3348,3 @@ static void __exit am_net_exit(void)
 
 module_init(am_net_init);
 module_exit(am_net_exit);
-
-

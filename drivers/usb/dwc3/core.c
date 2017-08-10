@@ -332,11 +332,9 @@ void aml_enable_scrambling(void)
 	reg &= ~DWC3_GCTL_DISSCRAMBLE;
 	dwc3_writel(g_dwc->regs, DWC3_GCTL, reg);
 
-	udelay(100);
+	udelay(500);
 
 	usb_phy_init(g_dwc->usb3_phy);
-
-	udelay(100);
 
 	return;
 }
@@ -351,11 +349,9 @@ void aml_disable_scrambling(void)
 		reg |= DWC3_GCTL_DISSCRAMBLE;
 		dwc3_writel(g_dwc->regs, DWC3_GCTL, reg);
 
-		udelay(100);
+		udelay(500);
 
 		usb_phy_init(g_dwc->usb3_phy);
-
-		udelay(100);
 	}
 
 	return;
@@ -402,11 +398,6 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	} while (true);
 
 	dwc3_core_soft_reset(dwc);
-
-	reg = dwc3_readl(dwc->regs, DWC3_GUCTL);
-	reg |= DWC3_GUCTL_USBHSTINAUTORETRYEN;
-	dwc3_writel(dwc->regs, DWC3_GUCTL, reg);
-
 
 	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
 	reg &= ~DWC3_GCTL_SCALEDOWN_MASK;
@@ -700,12 +691,6 @@ static int dwc3_remove(struct platform_device *pdev)
 {
 	struct dwc3	*dwc = platform_get_drvdata(pdev);
 
-	usb_phy_set_suspend(dwc->usb2_phy, 1);
-	usb_phy_set_suspend(dwc->usb3_phy, 1);
-
-	pm_runtime_put(&pdev->dev);
-	pm_runtime_disable(&pdev->dev);
-
 	dwc3_debugfs_exit(dwc);
 
 	switch (dwc->mode) {
@@ -726,7 +711,14 @@ static int dwc3_remove(struct platform_device *pdev)
 
 	dwc3_event_buffers_cleanup(dwc);
 	dwc3_free_event_buffers(dwc);
+
+	usb_phy_set_suspend(dwc->usb2_phy, 1);
+	usb_phy_set_suspend(dwc->usb3_phy, 1);
+
 	dwc3_core_exit(dwc);
+
+	pm_runtime_put_sync(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
 
 	return 0;
 }
@@ -868,15 +860,7 @@ static struct platform_driver dwc3_driver = {
 	},
 };
 
-static int __init dwc3_driver_init(void)
-{
-	int retval = 0;
-
-	platform_driver_register(&dwc3_driver);
-	return retval;
-}
-
-late_initcall(dwc3_driver_init);
+module_platform_driver(dwc3_driver);
 
 MODULE_ALIAS("platform:dwc3");
 MODULE_AUTHOR("Felipe Balbi <balbi@ti.com>");

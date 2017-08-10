@@ -84,17 +84,17 @@ static void saradc_reset(void)
 	set_input_delay(10, INPUT_DELAY_TB_1US);
 	set_sample_delay(10, SAMPLE_DELAY_TB_1US);
 	set_block_delay(10, BLOCK_DELAY_TB_1US);
-	
+
 	// channels sampling mode setting
 	for(i=0; i<SARADC_CHAN_NUM; i++) {
 		set_sample_sw(i, IDLE_SW);
 		set_sample_mux(i, chan_mux[i]);
 	}
-	
+
 	// idle mode setting
 	set_idle_sw(IDLE_SW);
 	set_idle_mux(chan_mux[CHAN_0]);
-	
+
 	// detect mode setting
 	set_detect_sw(DETECT_SW);
 	set_detect_mux(chan_mux[CHAN_0]);
@@ -127,7 +127,7 @@ static int  saradc_internal_cal(struct saradc *saradc)
 //	enable_cal_res_array();
 	for (i=0; i<INTERNAL_CAL_NUM; i++) {
 		set_cal_voltage(voltage[i]);
-		udelay(10);
+		msleep(20);
 		val[i] = get_adc_sample(CHAN_7);
 		if (val[i] < 0) {
 			return -1;
@@ -147,7 +147,7 @@ static int  saradc_internal_cal(struct saradc *saradc)
 static int saradc_get_cal_value(struct saradc *saradc, int val)
 {
   int nominal;
-/*  
+/*
   ((nominal - ref_nominal) << 10) / (val - ref_val) = coef
   ==> nominal = ((val - ref_val) * coef >> 10) + ref_nominal
 */
@@ -159,7 +159,7 @@ static int saradc_get_cal_value(struct saradc *saradc, int val)
   }
   if (nominal < 0) nominal = 0;
   if (nominal > 1023) nominal = 1023;
- 	return nominal;
+	return nominal;
 }
 #endif
 
@@ -238,7 +238,7 @@ end:
 int saradc_ts_service(int cmd)
 {
 	int value = -1;
-	
+
 	switch (cmd) {
 	case CMD_GET_X:
 		//set_sample_sw(CHAN_YP, X_SW);
@@ -265,7 +265,7 @@ int saradc_ts_service(int cmd)
 		value = !detect_level();
 		set_sample_sw(CHAN_YP, X_SW); // preset for x
 		break;
-	
+
 	case CMD_INIT_PENIRQ:
 		enable_detect_pullup();
 		enable_detect_sw();
@@ -278,7 +278,7 @@ int saradc_ts_service(int cmd)
 		enable_detect_sw();
 		value = 0;
 		break;
-		
+
 	case CMD_CLEAR_PENIRQ:
 		disable_detect_pullup();
 		disable_detect_sw();
@@ -286,9 +286,9 @@ int saradc_ts_service(int cmd)
 		break;
 
 	default:
-		break;		
+		break;
 	}
-	
+
 	return value;
 }
 
@@ -337,10 +337,10 @@ static ssize_t saradc_temperature_store(struct class *cla, struct class_attribut
       enable_temp();
       enable_temp__();
 #else
-    	temp_sens_sel(1);
-    	set_tempsen(2);
+	temp_sens_sel(1);
+	set_tempsen(2);
 #endif
-    	printk("enter temperature mode(trimming=%d),please get the value from chan6\n",(tempsen-1)&0xf);
+	printk("enter temperature mode(trimming=%d),please get the value from chan6\n",(tempsen-1)&0xf);
 		}
 		else {
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
@@ -348,11 +348,11 @@ static ssize_t saradc_temperature_store(struct class *cla, struct class_attribut
       disable_temp();
       unselect_temp();
 #else
-     	temp_sens_sel(0);
-   		set_tempsen(0);
+	temp_sens_sel(0);
+		set_tempsen(0);
 #endif
-    	printk("exit temperature mode\n");
-  	}
+	printk("exit temperature mode\n");
+	}
     return count;
 }
 
@@ -435,7 +435,7 @@ static struct class_attribute saradc_class_attrs[] = {
     __ATTR_RO(temperature),
     __ATTR(temperature_mode, S_IRUGO | S_IWUSR, temperature_mode_show, temperature_mode_store),
 #endif
-    __ATTR_RO(saradc_ch7),    
+    __ATTR_RO(saradc_ch7),
     __ATTR_NULL
 };
 static struct class saradc_class = {
@@ -471,7 +471,7 @@ static int saradc_probe(struct platform_device *pdev)
 
 err_free_mem:
 	kfree(saradc);
-	printk(KERN_INFO "saradc probe error\n");	
+	printk(KERN_INFO "saradc probe error\n");
 	return err;
 }
 

@@ -65,9 +65,9 @@
 
 #define RATE_MEASURE_NUM 8
 #define RATE_CORRECTION_THRESHOLD 5
-#define RATE_2397_FPS  4004   /* 23.97 */
+#define RATE_24_FPS  4004   /* 23.97 */
 #define RATE_25_FPS  3840   /* 25 */
-#define RATE_2997_FPS  3203   /* 29.97 */
+#define RATE_30_FPS  3203   /* 29.97 */
 
 #define DUR2PTS(x) ((x)*90/96)
 #define PTS2DUR(x) ((x)*96/90)
@@ -668,7 +668,7 @@ static int vh264_set_params(void)
             frame_width  = frame_width - (2>>chroma444)*min(crop_right, (unsigned int)((8<<chroma444)-1));
         } else {
             frame_height = frame_height - (4>>chroma444)*min(crop_bottom, (unsigned int)((8<<chroma444)-1));
-            frame_width   = frame_width - (4>>chroma444)*min(crop_right, (unsigned int)((8<<chroma444)-1));			
+            frame_width   = frame_width - (4>>chroma444)*min(crop_right, (unsigned int)((8<<chroma444)-1));
         }
         printk("frame_mbs_only_flag %d, crop_bottom %d,  frame_height %d, mb_height %d,crop_right %d, frame_width %d, mb_width %d\n",
             frame_mbs_only_flag, crop_bottom,frame_height, mb_height,crop_right,frame_width, mb_height);
@@ -684,7 +684,7 @@ static int vh264_set_params(void)
 
     if(mb_total > 8160){//resolution exceed 1920x1088,
         printk("mb_total %d, mb_width %d, mb_height %d\n",  mb_total, mb_width, mb_height);
-        return -1;  
+        return -1;
     }
 
     // max_reference_size <= max_dpb_size <= actual_dpb_size
@@ -848,27 +848,19 @@ static int vh264_set_params(void)
     aspect_ratio_idc = (seq_info >> 16) & 0xff;
 
     if (timing_info_present_flag) {
-        fixed_frame_rate_flag = seq_info & 0x40;
+        if (tsync_get_enable()) {
+            fixed_frame_rate_flag = seq_info & 0x40;
+        }
 
         if (((num_units_in_tick * 120) >= time_scale && ((!sync_outside) || (!frame_dur))) && num_units_in_tick && time_scale) {
-            if (use_idr_framerate || fixed_frame_rate_flag || !frame_dur || !duration_from_pts_done || vh264_running) {
+            if (use_idr_framerate || !frame_dur || !duration_from_pts_done || vh264_running) {
                 u32 frame_dur_es = div_u64(96000ULL * 2 * num_units_in_tick, time_scale);
-                if (frame_dur != frame_dur_es) {
-                    h264_first_valid_pts_ready=false;
-                    h264pts1 = 0;
-                    h264pts2 = 0;
-                    h264_pts_count = 0;
-                    duration_from_pts_done = 0;
-                    fixed_frame_rate_mode = FIX_FRAME_RATE_OFF;
-                    pts_duration = 0;
-                    frame_dur = frame_dur_es;
-                }
 
                 // hack to avoid use ES frame duration when it's half of the rate from system info
                 // sometimes the encoder is given a wrong frame rate but the system side infomation is more reliable
-                //if ((frame_dur * 2) != frame_dur_es) {
-                //    frame_dur = frame_dur_es;
-                //}
+                if ((frame_dur * 2) != frame_dur_es) {
+                    frame_dur = frame_dur_es;
+                }
             }
         }
     } else {
@@ -876,8 +868,8 @@ static int vh264_set_params(void)
     }
 
     if (pts_unstable && (fixed_frame_rate_flag == 0)) {
-        if (((RATE_2397_FPS == frame_dur) && (dec_control & DEC_CONTROL_FLAG_FORCE_RATE_2397_FPS_FIX_FRAME_RATE)) ||
-            ((RATE_2997_FPS == frame_dur) && (dec_control & DEC_CONTROL_FLAG_FORCE_RATE_2997_FPS_FIX_FRAME_RATE))) {
+        if (((RATE_24_FPS == frame_dur) && (dec_control & DEC_CONTROL_FLAG_FORCE_RATE_2397_FPS_FIX_FRAME_RATE)) ||
+            ((RATE_30_FPS == frame_dur) && (dec_control & DEC_CONTROL_FLAG_FORCE_RATE_2997_FPS_FIX_FRAME_RATE))) {
             printk("force fix frame rate\n");
             fixed_frame_rate_flag = 0x40;
         }
@@ -995,7 +987,6 @@ static void vh264_isr(void)
     vframe_t *vf;
     unsigned int cpu_cmd;
     unsigned int pts,pts_lookup_save,pts_valid_save, pts_valid = 0;
-    unsigned int pts_us64_valid = 0;
     u64 pts_us64;
     bool force_interlaced_frame = false;
     unsigned int sei_itu35_flags;
@@ -1037,7 +1028,7 @@ static void vh264_isr(void)
             vh264_running = 0;
             fatal_error_flag = DECODER_FATAL_ERROR_UNKNOW;
             if(!fatal_error_reset)
-                schedule_work(&error_wd_work);            
+                schedule_work(&error_wd_work);
         }
 
     } else if ((cpu_cmd & 0xff) == 2) {
@@ -1119,32 +1110,24 @@ static void vh264_isr(void)
             default:
                 break;
             }
-        // some ts streams without vpts from HW demux, do a check here
-        if ((sync_outside == 0) && (!first_pts_checkin_complete(PTS_TYPE_VIDEO)))
-        {
-                pts_valid = 0;
-               if (first_pts_checkin_complete(PTS_TYPE_AUDIO))
-                         vf->flag |= VFRAME_FLAG_NO_PTS;
-        } else {
+
+            // add 64bit pts us ;
             if (unlikely((b_offset == first_offset) && (first_pts_cached))) {
                 pts = first_pts;
                 pts_us64 = first_pts64;
                 first_pts_cached = false;
                 pts_valid = 1;
-                pts_us64_valid = 1;
 #ifdef DEBUG_PTS
                 pts_hit++;
 #endif
             }
             else if (pts_lookup_offset_us64(PTS_TYPE_VIDEO, b_offset, &pts, 0,&pts_us64) == 0){
                 pts_valid = 1;
-                pts_us64_valid = 1;
 #ifdef DEBUG_PTS
                 pts_hit++;
 #endif
             } else {
                 pts_valid = 0;
-                pts_us64_valid = 0;
 #ifdef DEBUG_PTS
                 pts_missed++;
 #endif
@@ -1232,24 +1215,19 @@ static void vh264_isr(void)
 
                             if (close_to(pts_duration,new_pts_duration,5)) {
                                 frame_dur = (pts_duration + new_pts_duration)/2;
-                                if (close_to(frame_dur,RATE_2397_FPS,3)) {
-                                    frame_dur = RATE_2397_FPS;
-                                } else if (close_to(frame_dur,RATE_2997_FPS,3)) {
-                                    frame_dur = RATE_2997_FPS;
-                                }
                                 if (use_idr_framerate || (fixed_frame_rate_flag != 0)) {
                                     fixed_frame_rate_mode = FIX_FRAME_RATE_SMOOTH_CHECKING;
                                     iframe_count = 0;
+                                } else {
+                                    printk("incorrect duration,pts mode play\n");
                                 }
-                            } else {
-                                printk("incorrect duration,pts mode play\n");
                             }
                             duration_from_pts_done = 1;
                         }
                     }
                 }
 
-                last_checkout_pts = pts_valid? pts : (last_checkout_pts + DUR2PTS(frame_dur));
+                last_checkout_pts = pts_valid? pts : (pts + DUR2PTS(frame_dur));
                 if (h264_pts_count) {
                     h264_pts_count += 2;
                 }
@@ -1265,10 +1243,10 @@ static void vh264_isr(void)
 
             // if use_idr_framerate or fixed frame rate, only use PTS for IDR frames except for pts discontinue
             if (timing_info_present_flag &&
-                frame_dur && 
+                frame_dur &&
                 (fixed_frame_rate_mode != FIX_FRAME_RATE_OFF) &&
                 pts_valid &&
-                h264_first_valid_pts_ready && 
+                h264_first_valid_pts_ready &&
                 (!pts_discontinue)) {
                 pts_valid = (slice_type == SLICE_TYPE_I) ? 1 : 0;
             }
@@ -1324,7 +1302,7 @@ static void vh264_isr(void)
             if ((fixed_frame_rate_mode == FIX_FRAME_RATE_SMOOTH_CHECKING) && (sync_outside == 0) && pts_valid_save) {
                 pts = pts_lookup_save;
             }
-            }
+
             if (pic_struct_present) {
                 if ((pic_struct == PIC_TOP_BOT) || (pic_struct == PIC_BOT_TOP)) {
                     prog_frame = 0;
@@ -1356,13 +1334,8 @@ static void vh264_isr(void)
                 vf->duration_pulldown = 0;
                 vf->index = buffer_index;
                 vf->pts = (pts_valid) ? pts : 0;
-                if (pts_us64_valid == 1)
-                    vf->pts_us64= pts_us64;
-                else
-                    vf->pts_us64= div64_u64(((u64)vf->pts)*100,9);
+                vf->pts_us64= (pts_valid) ? pts_us64 : 0;
                 vf->canvas0Addr = vf->canvas1Addr = spec2canvas(&buffer_spec[buffer_index]);
-                vf->type_original = vf->type;
-
                 vfbuf_use[buffer_index]++;
                 if ((error_recovery_mode_use & 2) && error) {
                     kfifo_put(&recycle_q, (const vframe_t **)&vf);
@@ -1370,6 +1343,7 @@ static void vh264_isr(void)
                     p_last_vf = vf;
                     pts_discontinue=false;
                     kfifo_put(&display_q, (const vframe_t **)&vf);
+
                     vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
                 }
 
@@ -1382,6 +1356,11 @@ static void vh264_isr(void)
                     vf->type = poc_sel ? VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
                 }
 
+                if (READ_VREG(AV_SCRATCH_F) & 2) {
+                    // swap field type for I only mode
+                    vf->type ^= VIDTYPE_INTERLACE_TOP ^ VIDTYPE_INTERLACE_BOTTOM;
+                }
+
 #ifdef NV21
                 vf->type |= VIDTYPE_VIU_NV21;
 #endif
@@ -1391,13 +1370,8 @@ static void vh264_isr(void)
                 vf->duration_pulldown = 0;
                 vf->index = buffer_index;
                 vf->pts = (pts_valid) ? pts : 0;
-                if (pts_us64_valid == 1)
-                    vf->pts_us64= pts_us64;
-                else
-                    vf->pts_us64= div64_u64(((u64)vf->pts)*100,9);
+                vf->pts_us64= (pts_valid) ? pts_us64 : 0;
                 vf->canvas0Addr = vf->canvas1Addr = spec2canvas(&buffer_spec[buffer_index]);
-                vf->type_original = vf->type;
-
                 vfbuf_use[buffer_index]++;
                 p_last_vf = vf;
                 vf->ready_jiffies64=jiffies_64;
@@ -1440,8 +1414,6 @@ static void vh264_isr(void)
                 vf->pts = 0;
 
                 vf->canvas0Addr = vf->canvas1Addr = spec2canvas(&buffer_spec[buffer_index]);
-                vf->type_original = vf->type;
-
                 vfbuf_use[buffer_index]++;
 
                 p_last_vf = vf;
@@ -1470,10 +1442,9 @@ static void vh264_isr(void)
         // reserved for slice group
         WRITE_VREG(AV_SCRATCH_0, 0);
     } else if ((cpu_cmd & 0xff) == 6) {
-        amvdec_stop();
-        WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
         vh264_running = 0;
         fatal_error_flag = DECODER_FATAL_ERROR_UNKNOW;
+        // this is fatal error, need restart
         printk("fatal error happend\n");
         if (!fatal_error_reset) {
             schedule_work(&error_wd_work);
@@ -1493,7 +1464,7 @@ static void vh264_isr(void)
         if (pts_lookup_offset_us64(PTS_TYPE_VIDEO, first_offset, &first_pts, 0,&first_pts64) == 0) {
             first_pts_cached = true;
         }
-        WRITE_VREG(AV_SCRATCH_0, 0);        
+        WRITE_VREG(AV_SCRATCH_0, 0);
     }
 
     sei_itu35_flags = READ_VREG(AV_SCRATCH_J);
@@ -1529,7 +1500,7 @@ static void vh264_isr(void)
         user_data_poc.poc_number = READ_VREG(AV_SCRATCH_M);
         set_userdata_poc(user_data_poc);
         WRITE_VREG(AV_SCRATCH_J, 0);
-        wakeup_userdata_poll(sei_itu35_wp, (void *)sei_data_buffer_remap, USER_DATA_SIZE, sei_itu35_data_length);
+        wakeup_userdata_poll(sei_itu35_wp, (int)sei_data_buffer_remap, USER_DATA_SIZE, sei_itu35_data_length);
     }
 #ifdef HANDLE_H264_IRQ
     return IRQ_HANDLED;
@@ -1796,9 +1767,6 @@ static void vh264_local_init(void)
     printk("H264 sysinfo: %dx%d duration=%d, pts_outside=%d, sync_outside=%d, use_idr_framerate=%d,pts_unstable=%d\n",
             frame_width, frame_height, frame_dur, pts_outside, sync_outside, use_idr_framerate,pts_unstable);
 
-    if (frame_dur < 96000/960) { // more than 960fps,it should not be a correct value,give default 30fps
-        frame_dur = 96000/30;
-    }
     if ((u32)vh264_amstream_dec_info.param & 0x08)
     {
         ucode_type = UCODE_IP_ONLY_PARAM ;
@@ -1954,7 +1922,7 @@ static s32 vh264_init(void)
     };
 
 	if(!firmwareloaded){
-        printk("start load orignal firmware ...\n");
+        printk("start load original firmware ...\n");
         if (amvdec_loadmc(vh264_mc) < 0) {
             amvdec_disable();
             return -EBUSY;
@@ -2162,7 +2130,7 @@ static void stream_switching_do(struct work_struct *work)
         if (!videoKeepBuf[0] || !videoKeepBuf[1]) {
             do_copy = false;
         }
-#endif    
+#endif
 #else
         if (!videoKeepBuf[0] || !videoKeepBuf[1] || !videoKeepBuf[2]) {
             do_copy = false;
@@ -2172,7 +2140,7 @@ static void stream_switching_do(struct work_struct *work)
         mb_total_num = mb_total;
         mb_width_num = mb_width;
         mb_height_num = mb_height;
-        
+
         if(buffer_index > VF_BUF_NUM-1){
             do_copy = false;
         }
@@ -2229,7 +2197,6 @@ static void stream_switching_do(struct work_struct *work)
         switching_fense_vf = *p_last_vf;
         switching_fense_vf.duration = 1;
         switching_fense_vf.index = -1;
-		switching_fense_vf.flag |= VFRAME_FLAG_SWITCHING_FENSE;
         if (do_copy) {
 #ifdef NV21
             switching_fense_vf.canvas0Addr = 0x010100;
@@ -2244,10 +2211,10 @@ static void stream_switching_do(struct work_struct *work)
         if (vh264_stream_switching_state != SWITCHING_STATE_OFF) {
             /* we only insert the fense frame when necessary,
              * if all buffers are already recycled to decoder then it's not
-             * necessary to post fense frame. Such cases may happen when 
+             * necessary to post fense frame. Such cases may happen when
              * receiver side generates its own buffer for final output, such
              * as ppmgr and ionvideo. The frame buffer from provider will
-             * be recycled pretty fast. It could happen that all frames are 
+             * be recycled pretty fast. It could happen that all frames are
              * returned to decoder before a fense frame is ready from this delay work queue.
              */
             kfifo_put(&display_q, (const vframe_t **)&vf);
@@ -2362,7 +2329,7 @@ static struct codec_profile_t amvdec_h264_profile = {
 static int __init amvdec_h264_driver_init_module(void)
 {
     printk("amvdec_h264 module init\n");
-#ifdef CONFIG_GE2D_KEEP_FRAME	
+#ifdef CONFIG_GE2D_KEEP_FRAME
     ge2d_videoh264task_init();
 #endif
     if (platform_driver_register(&amvdec_h264_driver)) {
@@ -2378,7 +2345,7 @@ static void __exit amvdec_h264_driver_remove_module(void)
     printk("amvdec_h264 module remove.\n");
 
     platform_driver_unregister(&amvdec_h264_driver);
-#ifdef CONFIG_GE2D_KEEP_FRAME	
+#ifdef CONFIG_GE2D_KEEP_FRAME
     ge2d_videoh264task_release();
 #endif
 }

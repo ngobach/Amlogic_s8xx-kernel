@@ -392,17 +392,17 @@ static ssize_t vfm_map_store(struct class *class,
 	  }
 	  else if (i == 1){
 	      id = token;
-    	    if (cmd == VFM_CMD_ADD){
-    	        //printk("vfm_map_add(%s,%s)\n",id,ps);
-    	        vfm_map_add(id,  ps);
-    	    }
-    	    else if (cmd == VFM_CMD_RM){
-    	        //printk("vfm_map_remove(%s)\n",id);
-    	        if(vfm_map_remove(id)<0){
-    	            count = 0;
-    	        }
-    	    }
-    	    break;
+	    if (cmd == VFM_CMD_ADD){
+	        //printk("vfm_map_add(%s,%s)\n",id,ps);
+	        vfm_map_add(id,  ps);
+	    }
+	    else if (cmd == VFM_CMD_RM){
+	        //printk("vfm_map_remove(%s)\n",id);
+	        if(vfm_map_remove(id)<0){
+	            count = 0;
+	        }
+	    }
+	    break;
 	  }
     i++;
 	}
@@ -453,5 +453,3 @@ module_param(vfm_map_num, int, 0664);
 MODULE_DESCRIPTION("Amlogic video frame manager driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Bobby Yang <bo.yang@amlogic.com>");
-
-

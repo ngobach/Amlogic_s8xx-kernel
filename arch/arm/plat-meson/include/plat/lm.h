@@ -44,11 +44,6 @@ enum usb_dma_config_e {
 	USB_DMA_DISABLE,
 };
 
-enum usb_dma_type_e {
-	USB_DMA_BUFFER = 0,
-	USB_DMA_DESC,
-};
-
 enum usb_phy_id_mode_e {
 	USB_PHY_ID_MODE_HW = 0,
 	USB_PHY_ID_MODE_SW_HOST,

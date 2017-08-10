@@ -124,7 +124,7 @@ struct meson_clock {
 	struct clock_event_device	clockevent;
 	struct irqaction	irq;
 	const char * name;	/*A,B,C,D,F,G,H,I*/
-	int	bit_enable;	
+	int	bit_enable;
 	int 	bit_mode;
 	int	bit_resolution;
 	unsigned int	mux_reg;
@@ -183,7 +183,7 @@ static struct meson_clock meson_timer_a = {
 static struct meson_clock meson_timer_f = {
         .clockevent={
             .name           = "MESON TIMER-F",
-            .rating         = 300, 
+            .rating         = 300,
 
             .features       = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
             .shift          = 20,
@@ -233,7 +233,7 @@ static struct meson_clock meson_timer_b = {
 static struct meson_clock meson_timer_g = {
         .clockevent={
             .name           = "MESON TIMER-G",
-            .rating         = 300, 
+            .rating         = 300,
 
             .features       = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
             .shift          = 20,
@@ -283,7 +283,7 @@ static struct meson_clock meson_timer_c = {
 static struct meson_clock meson_timer_h = {
         .clockevent={
             .name           = "MESON TIMER-H",
-            .rating         = 300, 
+            .rating         = 300,
 
             .features       = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
             .shift          = 20,
@@ -333,7 +333,7 @@ static struct meson_clock meson_timer_d = {
 static struct meson_clock meson_timer_i = {
         .clockevent={
             .name           = "MESON TIMER-I",
-            .rating         = 300, 
+            .rating         = 300,
 
             .features       = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
             .shift          = 20,
@@ -433,9 +433,9 @@ static void __init meson_timer_setup(struct clock_event_device *evt, struct meso
      * Enable Timer and setting the time base;
      */
     aml_set_reg32_mask(clk->mux_reg,
-    		((1 << clk->bit_enable)
-    		|(1 << clk->bit_mode)
-    		|(TIMER_RESOLUTION_1us << clk->bit_resolution)) );
+		((1 << clk->bit_enable)
+		|(1 << clk->bit_mode)
+		|(TIMER_RESOLUTION_1us << clk->bit_resolution)) );
     aml_write_reg32(clk->reg, 9999);
     meson_timer_init_device(&clk->clockevent);
     printk(KERN_DEBUG "Global timer: %s (%p) initialized\n",clk->clockevent.name,clk);
@@ -463,7 +463,7 @@ int  __cpuinit meson_local_timer_setup(struct clock_event_device *evt)
 	int cpu;
 	struct meson_clock * clk;
 	struct clock_event_device * meson_evt;
-	
+
 	if(!evt){
 		printk(KERN_ERR"meson_local_timer_setup: null evt!\n");
 		return -EINVAL;
@@ -472,15 +472,15 @@ int  __cpuinit meson_local_timer_setup(struct clock_event_device *evt)
 	cpu = smp_processor_id();
 	if(cpu == 0)
 		return 0;
-	
+
 	clk = meson8_smp_local_timer[cpu];
-	
+
 	aml_set_reg32_mask(clk->mux_reg,
 		((1 << clk->bit_enable)
 		|(1 << clk->bit_mode)
 		|(TIMER_RESOLUTION_1us << clk->bit_resolution)) );
 	aml_write_reg32(clk->reg, 9999);
-	
+
 	meson_timer_init_device(&(clk->clockevent));
 	//printk(KERN_ERR"Local timer: %s (%p) for CPU%d initialized\n",
 	//	clk->clockevent.name,clk,cpu);
@@ -500,14 +500,14 @@ int  __cpuinit meson_local_timer_setup(struct clock_event_device *evt)
 	clk->irq.dev_id=evt;
 
 	clockevents_register_device(evt);
-		
+
 	if(cpu){
 		irq_set_affinity(clk->irq.irq, cpumask_of(cpu));
 	}
 	/* Set up the IRQ handler */
 	//setup_irq(clk->irq.irq, &clk->irq);
 	enable_percpu_irq(clk->irq.irq, 0);
-	
+
 	return 0;
 }
 void  __cpuinit meson_local_timer_stop(struct clock_event_device *evt)
@@ -551,7 +551,7 @@ static void __init meson_clockevent_init(void)
      * Now all of the timer is 1us base
      */
     aml_write_reg32(P_ISA_TIMER_MUX1,0);
-	
+
 #ifdef CONFIG_SMP
     meson_timer_setup(NULL,meson8_smp_local_timer[0]);
 #else
@@ -586,6 +586,7 @@ void __init meson_timer_init(void)
 	aml_delay_timer.read_current_timer = &cycle_read_timerE1;
 	aml_delay_timer.freq = 1000*1000;//1us resolution
 	register_current_timer_delay(&aml_delay_timer);
+
 }
 
 #define ADD_CLOCKSOURCE_SYSFS
@@ -604,12 +605,12 @@ static struct class clocksource_class = {
 	.name = "clocksource",
 	.class_attrs = clocksource_class_attrs,
 };
-
+ 
 static int __init clocksource_sysfs_init(void)
 {
 	class_register(&clocksource_class);
 	return 0;
 }
-
+ 
 core_initcall(clocksource_sysfs_init);
 #endif //ADD_CLOCKSOURCE_SYSFS

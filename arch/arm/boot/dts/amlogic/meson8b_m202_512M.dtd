@@ -18,27 +18,27 @@ void root_func(){
         #size-cells = <0>;
 //$$ DEVICE="cpu0"
         cpu@0 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x200>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x200>;
         };
 //$$ DEVICE="cpu1"
         cpu@1 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x1>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x1>;
         };
 //$$ DEVICE="cpu2"
         cpu@2 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x2>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x2>;
         };
 //$$ DEVICE="cpu3"
         cpu@3 {
-        	device_type = "cpu";
-        	compatible = "arm,cortex-a5";
-        	reg = <0x3>;
+		device_type = "cpu";
+		compatible = "arm,cortex-a5";
+		reg = <0x3>;
         };
     };
 
@@ -312,12 +312,6 @@ void root_func(){
 	mesonvout{
 		compatible = "amlogic,mesonvout";
 		dev_name = "mesonvout";
-		status = "okay";
-	};
-
-	tvout {
-		compatible = "amlogic,tvout";
-		dev_name = "tvout";
 		status = "okay";
 	};
 
@@ -706,7 +700,7 @@ void root_func(){
 		#size-cells = <0>;
 		use_pio = <0>;
 		master_i2c_speed = <300000>;
- 	};
+	};
 
 //$$ DEVICE="I2C_C"
 //$$ L2 PROP_STR = "status"
@@ -771,9 +765,9 @@ void root_func(){
                  408000         860000      860000
                  504000         860000      860000
                  600000         860000      860000
-                 720000         970000      970000
-                 816000         970000      970000
-                1008000         970000      970000
+                 720000         860000      860000
+                 816000         900000      900000
+                1008000         920000      920000
                 1200000         970000      970000
                 1320000        1100000     1100000
                 1488000        1100000     1100000
@@ -1233,8 +1227,8 @@ void root_func(){
 		#thermal-cells=<7>;
 		dev_name = "aml_thermal";
         trip_point=<70 1488001 1488001 511 511 3 2
-                    80 1206001 1206001 435 435 2 2
-                    90  804001  804001 328 328 1 1
+                    80 1200001 1200001 435 435 2 2
+                    90  800001  800001 328 328 1 1
                     260 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff 0xffffffff>;
 		cpu_cali_a=<0>;
 		idle_interval=<1000>;
@@ -1277,7 +1271,7 @@ void root_func(){
 //$$ L2 PROP_CHOICE "Unifykey_0_match" = "unifykey-index-0"
 //$$ L2 PROP_CHOICE "Unifykey_1_match" = "unifykey-index-1"
 //$$ L2 PROP_CHOICE "Unifykey_2_match" = "unifykey-index-2"
-    	unifykey{
+	unifykey{
 		compatible = "amlogic,unifykey";
 		status = "ok";
 
@@ -1430,7 +1424,6 @@ void root_func(){
     cpufreq-meson{
         compatible = "amlogic,cpufreq-meson";
         syspll_fixed;
-        fixpll_target = <1200000>;
         status = "okay";
     };
 
@@ -1517,7 +1510,7 @@ void root_func(){
 						"BOOT_14","BOOT_15","BOOT_16","BOOT_17";
 			amlogic,enable-output=<1>;
 		};
-
+		
 		nand_cs_pins: nand_cs{
 			amlogic,setmask=<2 0x3000000>;
 			amlogic,clrmask=<7 0x80000
@@ -1861,7 +1854,7 @@ void root_func(){
 //$$ L2 PROP_U32 2 = "amlogic,clrmask"
 //$$ L2 PROP_STR = "amlogic,pins"
 		aml_pwm_pins:aml_pwm{
-		    	amlogic,setmask=<3 0x1000000>;
+			amlogic,setmask=<3 0x1000000>;
 			amlogic,clrmask=<0 0x48
 					 7 0x10000020>;
 			amlogic,pins="GPIODV_9";

@@ -227,7 +227,7 @@ void Edid_CompareTimingDescriptors(HDMI_TX_INFO_t * info, unsigned char *Data)
     {
         for(index2=0;index2<12;index2++)
         {
-            if(Data[index2]!=Edid_TimingDescriptors[index1*12+index2])
+            if(Data[index2]!=Edid_TimingDescriptors[index1*14+index2])
                 break;
         }
         if(index2==12)
@@ -1319,16 +1319,6 @@ static dispmode_vic_t dispmode_VIC_tab[]=
     {"4k05k200hz420", HDMI_3840x540p200hz},
     {"4k05k240hz", HDMI_3840x540p240hz},
     {"4k05k240hz420", HDMI_3840x540p240hz},
-#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
-    {"720p59hz",  HDMI_720p60},
-    {"1080p23hz", HDMI_1080p24},
-    {"1080p59hz", HDMI_1080p60},
-    {"1080i59hz", HDMI_1080i60},
-    {"4k2k29hz",  HDMI_4k2k_30},
-    {"4k2k23hz",  HDMI_4k2k_24},
-    {"4k2k59hz",  HDMI_4k2k_60},
-    {"4k2k59hz420",  HDMI_4k2k_60},
-#endif
 };
 
 int hdmitx_edid_VIC_support(HDMI_Video_Codes_t vic)

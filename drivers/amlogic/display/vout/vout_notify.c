@@ -6,7 +6,7 @@
  * This file is subject to the terms and conditions of the GNU General Public
  * License.  See the file COPYING in the main directory of this archive
  * for more details.
- * author :   
+ * author :
  *		 jianfeng_wang@amlogic
  */
 #include <linux/module.h>
@@ -22,7 +22,7 @@ static BLOCKING_NOTIFIER_HEAD(vout_notifier_list);
 static DEFINE_MUTEX(vout_mutex);
 static vout_module_t  vout_module={
 		.vout_server_list={&vout_module.vout_server_list,&vout_module.vout_server_list},
-		.curr_vout_server=NULL,	
+		.curr_vout_server=NULL,
 };
 /**
  *	vout_register_client - register a client notifier
@@ -61,15 +61,13 @@ const vinfo_t *get_current_vinfo(void)
 {
 	const vinfo_t *info=NULL;
 
-	/* mutex_lock(&vout_mutex); */
+	mutex_lock(&vout_mutex);
 	if(vout_module.curr_vout_server)
 	{
 		BUG_ON(vout_module.curr_vout_server->op.get_vinfo == NULL);
 		info = vout_module.curr_vout_server->op.get_vinfo();
 	}
-	if (info == NULL)
-		info = get_invalid_vinfo();
-	/* mutex_unlock(&vout_mutex); */
+	mutex_unlock(&vout_mutex);
 
 	return info;
 }
@@ -83,16 +81,16 @@ vmode_t get_current_vmode(void)
 	const vinfo_t *info;
 	vmode_t mode=VMODE_MAX;
 
-	/* mutex_lock(&vout_mutex); */
+	mutex_lock(&vout_mutex);
 
 	if(vout_module.curr_vout_server)
 	{
 		BUG_ON(vout_module.curr_vout_server->op.get_vinfo == NULL);
 		info = vout_module.curr_vout_server->op.get_vinfo();
 		mode=info->mode;
-	}	
-	/* mutex_unlock(&vout_mutex); */
-	
+	}
+	mutex_unlock(&vout_mutex);
+
 	return mode;
 }
 EXPORT_SYMBOL(get_current_vmode);
@@ -109,7 +107,7 @@ int set_vframe_rate_hint(int duration)
     list_for_each_entry(p_server, &vout_module.vout_server_list, list)
     {
 		if ( (p_server->op.set_vframe_rate_hint!=NULL) && (p_server->op.set_vframe_rate_hint(duration)==0) )
-    	{
+	{
 			//mutex_unlock(&vout_mutex);
 			return 0;
         }
@@ -190,7 +188,7 @@ int vout_resume(int pm_event)
 			p_server->op.vout_resume(pm_event) ; //ignore error when resume.
 		}
 	}
-	
+
 	mutex_unlock(&vout_mutex);
 	return 0;
 }
@@ -203,7 +201,7 @@ int set_current_vmode(vmode_t mode)
 {
 	int r=-1;
 	vout_server_t  *p_server;
-	
+
 	mutex_lock(&vout_mutex);
 	list_for_each_entry(p_server, &vout_module.vout_server_list, list)
 	{
@@ -244,7 +242,7 @@ vmode_t validate_vmode(char *name)
 {
 	vmode_t r=VMODE_MAX;
 	vout_server_t  *p_server;
-	
+
 	mutex_lock(&vout_mutex);
 	list_for_each_entry(p_server, &vout_module.vout_server_list, list)
 	{
@@ -283,7 +281,7 @@ int vout_register_server(vout_server_t*  mem_server)
 		if(p_server->name && mem_server->name && strcmp(p_server->name,mem_server->name)==0)
 		{
 			//vout server already registered.
-			
+
 			mutex_unlock(&vout_mutex);
 			return -1;
 		}
@@ -304,11 +302,11 @@ int vout_unregister_server(vout_server_t*  mem_server)
 		if(p_server->name && mem_server->name && strcmp(p_server->name,mem_server->name)==0)
 		{
 			//we will not move current vout server pointer automatically if current vout server
-			//pointer is the one which will be deleted next .so you should change current vout server 
+			//pointer is the one which will be deleted next .so you should change current vout server
 			//first then remove it .
 			if(vout_module.curr_vout_server==p_server)
 			vout_module.curr_vout_server=NULL;
-			
+
 			list_del(&mem_server->list);
 			mutex_unlock(&vout_mutex);
 			return 0;

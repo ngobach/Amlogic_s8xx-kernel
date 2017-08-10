@@ -582,87 +582,6 @@ inline void early_init_dt_check_for_initrd(unsigned long node)
 }
 #endif /* CONFIG_BLK_DEV_INITRD */
 
-#ifdef CONFIG_HIBERNATION
-#include <linux/utsname.h>
-#include <linux/version.h>
-
-int is_instabooting;
-static void __init early_init_dt_check_for_instaboot(unsigned long node)
-{
-	unsigned long version_code, len;
-	__be32 *prop;
-	char* p;
-
-	pr_debug("Looking for instaboot properties... ");
-
-	prop = of_get_flat_dt_prop(node, "instaboot,version_code", &len);
-	if (!prop) {
-		pr_info("no prop version_code \n");
-		return;
-	}
-	version_code = of_read_ulong(prop, len/4);
-	if (version_code != LINUX_VERSION_CODE) {
-		pr_info("version code unmatch\n");
-		return;
-	}
-
-	p = of_get_flat_dt_prop(node, "instaboot,sysname", &len);
-	if (p != NULL && len > 0) {
-		if (strncmp(init_utsname()->sysname, p,
-				min((int)len, __NEW_UTS_LEN))) {
-			pr_info("sysname unmatch\n");
-			return ;
-		}
-	} else {
-		pr_info("no prop sysname\n");
-		return;
-	}
-
-	p = of_get_flat_dt_prop(node, "instaboot,release", &len);
-	if (p != NULL && len > 0) {
-		if (strncmp(init_utsname()->release, p,
-				min((int)len, __NEW_UTS_LEN))) {
-			pr_info("release unmatch\n");
-			return ;
-		}
-	} else {
-		pr_info("no prop release\n");
-		return;
-	}
-
-	p = of_get_flat_dt_prop(node, "instaboot,version", &len);
-	if (p != NULL && len > 0) {
-		if (strncmp(init_utsname()->version, p,
-				min((int)len, __NEW_UTS_LEN))) {
-			pr_info("version unmatch\n");
-			return ;
-		}
-	} else {
-		pr_info("no prop version\n");
-		return;
-	}
-
-	p = of_get_flat_dt_prop(node, "instaboot,machine", &len);
-	if (p != NULL && len > 0) {
-		if (strncmp(init_utsname()->machine, p,
-				min((int)len, __NEW_UTS_LEN))) {
-			pr_info("machine unmatch\n");
-			return ;
-		}
-	} else {
-		pr_info("no prop machine\n");
-		return;
-	}
-
-	is_instabooting = 1;
-	return;
-}
-#else
-static inline void early_init_dt_check_for_instaboot(unsigned long node)
-{
-}
-#endif
-
 /**
  * early_init_dt_scan_root - fetch the top level address and size cells
  */
@@ -1055,23 +974,18 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 
 	early_init_dt_check_for_initrd(node);
 
-	early_init_dt_check_for_instaboot(node);
-
 	/* Retrieve command line */
 	p = of_get_flat_dt_prop(node, "bootargs", &l);
 	if (p != NULL && l > 0)
 		strlcpy(data, p, min((int)l, COMMAND_LINE_SIZE));
 
-	/*
-	 * CONFIG_CMDLINE is meant to be a default in case nothing else
-	 * managed to set the command line, unless CONFIG_CMDLINE_FORCE
-	 * is set in which case we override whatever was found earlier.
-	 */
 #ifdef CONFIG_CMDLINE
-#ifndef CONFIG_CMDLINE_FORCE
-	if (!((char *)data)[0])
+#if defined(CONFIG_CMDLINE_FORCE)
+	strlcpy(data, CONFIG_CMDLINE, COMMAND_LINE_SIZE);
+#elif defined(CONFIG_CMDLINE_APPEND)
+	strlcat(data, " ", COMMAND_LINE_SIZE);
+	strlcat(data, CONFIG_CMDLINE, COMMAND_LINE_SIZE);
 #endif
-		strlcpy(data, CONFIG_CMDLINE, COMMAND_LINE_SIZE);
 #endif /* CONFIG_CMDLINE */
 
 	pr_debug("Command line is: %s\n", (char*)data);

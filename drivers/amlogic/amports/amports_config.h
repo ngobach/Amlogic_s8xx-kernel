@@ -52,4 +52,3 @@ arch\arm\plat-meson\include\plat\cpu.h
 #endif
 
 #endif //AMPORTS_CONFIG_HHH
-

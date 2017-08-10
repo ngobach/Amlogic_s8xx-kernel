@@ -184,12 +184,6 @@ void root_func(){
 		power_level = <1>;							//  0: normal;  1: power save mode for g35
 	};
 
-	tvout {
-		compatible = "amlogic,tvout";
-		dev_name = "tvout";
-		status = "okay";
-	};
-
 /// ***************************************************************************************
 ///	-	EARLY_INIT
 //$$ MODULE="early_init"
@@ -351,7 +345,7 @@ void root_func(){
 //$$ L2 PROP_U32 = "irq_out"
 //$$ L2 PROP_U32 = "card_type"
 	    sd{
-	    	status = "okay";
+		status = "okay";
 	        port = <1>;          /**0:sdio_a, 1:sdio_b, 2:sdio_c, 3:sdhc_a, 4:sdhc_b, 5:sdhc_c */
 	        pinname = "sd";
 	        ocr_avail = <0x200000>;          /**VDD voltage 3.3 ~ 3.4 */
@@ -979,7 +973,7 @@ void root_func(){
 //$$ L2 PROP_U32 2 = "amlogic,clrmask"
 //$$ L2 PROP_STR = "amlogic,pins"
 		aml_pwm_pins:aml_pwm{
-		    	amlogic,setmask=<2 0x4>;
+			amlogic,setmask=<2 0x4>;
 			amlogic,clrmask=<1 0x20000000>;
 			amlogic,pins="GPIOD_0";
 		};
@@ -1212,4 +1206,3 @@ void root_func(){
 		};
 	};
 }; /* end of / */
-

@@ -62,4 +62,3 @@ struct am_smc_param {
 #define AMSMC_IOC_SET_PARAM    _IOW(AMSMC_IOC_MAGIC, 0x05, struct am_smc_param)
 
 #endif
-

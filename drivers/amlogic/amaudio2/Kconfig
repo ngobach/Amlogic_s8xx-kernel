@@ -8,5 +8,5 @@ config	AMAUDIO2
     	depends on PLAT_MESON
 	help
 		"Amlogic Audio Interface V2, The interface different from amaudio"
-	
-endmenu	
+
+endmenu

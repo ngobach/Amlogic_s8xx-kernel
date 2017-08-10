@@ -231,6 +231,3 @@ int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_pa
     hdmitx_special_handler_audio(hdmitx_device);
     return ret;
 }
-
-
-

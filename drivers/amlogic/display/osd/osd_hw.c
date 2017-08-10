@@ -47,18 +47,16 @@
 #include "osd_prot.h"
 #include "osd_antiflicker.h"
 #include "osd_clone.h"
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-#include <mach/vpu.h>
-#endif
 
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV
+#include <mach/vpu.h>
 #define OSD_SUPER_SCALER_MEM_POWER_ON() \
 	do { \
-		switch_vpu_mem_pd_vmod(VPU_VIU_OSDSR, VPU_MEM_POWER_ON); \
+		switch_vpu_mem_pd_vmod(VPU_VIU_OSD_SCALE, VPU_MEM_POWER_ON); \
 	} while (0)
 #define OSD_SUPER_SCALER_MEM_POWER_OFF() \
 	do { \
-		switch_vpu_mem_pd_vmod(VPU_VIU_OSDSR, VPU_MEM_POWER_DOWN); \
+		switch_vpu_mem_pd_vmod(VPU_VIU_OSD_SCALE, VPU_MEM_POWER_DOWN); \
 	} while (0)
 #endif
 
@@ -66,8 +64,12 @@
 #ifdef CONFIG_AML_VSYNC_FIQ_ENABLE
 #define  FIQ_VSYNC
 #endif
+
+
 #ifdef CONFIG_VSYNC_RDMA
-extern void osd_rdma_interrupt_done_clear(void);
+int reset_rdma(void);
+int osd_rdma_enable(u32  enable);
+int read_rdma_table(void);
 #endif
 
 static DEFINE_MUTEX(osd_mutex);
@@ -449,8 +451,7 @@ static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
 	unsigned  int  odd_or_even_line;
 	unsigned  int  scan_line_number = 0;
 	unsigned  char output_type = 0;
-	char is_init = 0;
-	osd_rdma_update_config(is_init);
+
 	reset_rdma();
 	read_rdma_table();
 	output_type = aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL) & 0x3;
@@ -525,6 +526,7 @@ static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
 		wait_vsync_wakeup();
 #endif
 	}
+	aml_write_reg32(P_RDMA_CTRL, 1 << 24);
 
 	return IRQ_HANDLED;
 }
@@ -644,9 +646,6 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 #endif
 
-#ifdef CONFIG_VSYNC_RDMA
-	osd_rdma_interrupt_done_clear();
-#endif
 #ifndef CONFIG_VSYNC_RDMA
 	if (!vsync_hit) {
 #ifdef FIQ_VSYNC
@@ -1443,9 +1442,6 @@ void osd_set_osd_rotate_on_hw(u32 index, u32 on_off)
 {
 	//static dispdata_t save_disp_data={0,0,0,0};
 	//static dispdata_t save_disp_data2={0,0,0,0};
-	if (on_off == osd_hw.rotate[index].on_off)
-		return;
-
 	osd_hw.rotate[index].on_off = on_off;
 
 	if (on_off) {
@@ -1469,14 +1465,8 @@ void osd_set_osd_rotate_on_hw(u32 index, u32 on_off)
 				aml_set_reg32_mask(P_VPU_SW_RESET, 1 << 8);
 				aml_clr_reg32_mask(P_VPU_SW_RESET, 1 << 8);
 			}
-			if (IS_MESON_M8M2_CPU)
-			{
-				aml_set_reg32_mask(P_VPU_SW_RESET, (1 << 8) | (1 << 0));
-				aml_clr_reg32_mask(P_VPU_SW_RESET, (1 << 8) | (1 << 0));
-			}
 		}
 #endif
-
 		if (index == OSD1) {
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 			if (IS_MESON_M8_CPU) {
@@ -1868,7 +1858,7 @@ static void osd1_update_disp_freescale_enable(void)
 	dst_h = osd_hw.free_dst_data[OSD1].y_end - osd_hw.free_dst_data[OSD1].y_start +
 		1;
 
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV
 	/* super scaler mode */
 	if (osd_hw.free_scale_mode[OSD1] & 0x2) {
 		if (osd_hw.free_scale_enable[OSD1]) {
@@ -2061,7 +2051,7 @@ static void osd2_update_disp_freescale_enable(void)
 	dst_h = osd_hw.free_dst_data[OSD2].y_end - osd_hw.free_dst_data[OSD2].y_start +
 		1;
 
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV
 	/* super scaler mode */
 	if (osd_hw.free_scale_mode[OSD2] & 0x2) {
 		if (osd_hw.free_scale_enable[OSD2]) {
@@ -2415,7 +2405,7 @@ static void osd1_update_disp_osd_rotate(void)
 
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 	{
-		if ((IS_MESON_M8_CPU) || (IS_MESON_M8M2_CPU)) {
+		if (IS_MESON_M8_CPU) {
 			osd_set_prot(
 				x_rev,
 				y_rev,
@@ -2489,7 +2479,7 @@ static void osd2_update_disp_osd_rotate(void)
 
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 	{
-		if ((IS_MESON_M8_CPU) || (IS_MESON_M8M2_CPU)) {
+		if (IS_MESON_M8_CPU) {
 			osd_set_prot(
 				x_rev,
 				y_rev,
@@ -2878,7 +2868,7 @@ static void osd1_update_disp_geometry(void)
 			VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK0_CFG_W2, data32);
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 			{
-				if ((IS_MESON_M8_CPU) || (IS_MESON_M8M2_CPU))
+				if (IS_MESON_M8_CPU)
 					VSYNCOSD_WR_MPEG_REG(VPU_PROT1_Y_START_END, data32);
 			}
 #endif
@@ -2895,7 +2885,7 @@ static void osd1_update_disp_geometry(void)
 			VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK0_CFG_W2, data32);
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 			{
-				if ((IS_MESON_M8_CPU) || (IS_MESON_M8M2_CPU))
+				if (IS_MESON_M8_CPU)
 					VSYNCOSD_WR_MPEG_REG(VPU_PROT1_Y_START_END, data32);
 			}
 #endif
@@ -3035,11 +3025,6 @@ void osd_init_hw(u32  logo_loaded)
 			osd_hw.reg[group][idx].update_func = hw_func_array[group][idx];
 	osd_hw.updated[OSD1] = 0;
 	osd_hw.updated[OSD2] = 0;
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	switch_vpu_mem_pd_vmod(VPU_VIU_OSD1, VPU_MEM_POWER_ON);
-	switch_vpu_mem_pd_vmod(VPU_VIU_OSD2, VPU_MEM_POWER_ON);
-	switch_vpu_mem_pd_vmod(VPU_VIU_OSD_SCALE, VPU_MEM_POWER_ON);
-#endif
 	//here we will init default value ,these value only set once .
 #if defined(CONFIG_ARCH_MESON6TVD)||(defined(CONFIG_ARCH_MESON6TV))
 	aml_set_reg32_mask(P_VPU_OSD1_MMC_CTRL, 1 << 12); // set OSD to vdisp2
@@ -3239,33 +3224,6 @@ void osd_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h,
 }
 #endif //CONFIG_FB_OSD2_CURSOR
 
-void osddev_copy_data_tocursor_hw(u32 cursor_mem_vaddr, aml_hwc_addr_t *hwc_mem)
-{
-	u32 tmp;
-	u32 i;
-	u32 value_pixel = 0;
-	u32 size = 32*32*4;
-
-	if (hwc_mem->addr & 0x3) { /* Address not 32bit aligned */
-		for (i = 0; i < size; i += 4) {
-			tmp = readb(hwc_mem->addr + i);
-			value_pixel = tmp;
-			tmp = readb(hwc_mem->addr + i + 1);
-			value_pixel |= (tmp << 8);
-			tmp = readb(hwc_mem->addr + i + 2);
-			value_pixel |= (tmp << 16);
-			tmp = readb(hwc_mem->addr + i + 3);
-			value_pixel |= (tmp << 24);
-			writel(value_pixel, cursor_mem_vaddr+ i);
-		}
-	} else {
-		for (i = 0; i < size; i += 4) {
-			tmp = readl(hwc_mem->addr + i);
-			writel(tmp, cursor_mem_vaddr+ i);
-		}
-	}
-}
-
 void  osd_suspend_hw(void)
 {
 	osd_rdma_enable(0);
@@ -3295,7 +3253,6 @@ void osd_resume_hw(void)
 void  osd_freeze_hw(void)
 {
 	osd_rdma_enable(0);
-	enable_rdma(0);
 	printk("osd_freezed\n");
 
 	return ;
@@ -3304,13 +3261,11 @@ void osd_thaw_hw(void)
 {
 	printk("osd_thawed\n");
 	osd_rdma_enable(1);
-	enable_rdma(1);
 	return;
 }
 void osd_restore_hw(void)
 {
 	osd_rdma_enable(1);
-	enable_rdma(1);
 	printk("osd_restored\n");
 
 	return;

@@ -10,17 +10,17 @@
 #endif
 //#define CONFIG_OF
 
-#define NAND_COMPATIBLE_REGION     2
-#define NAND_RESERVED_REGION	   1
+#define NAND_COMPATIBLE_REGION     1
+#define NAND_RESERVED_REGION	       1
 #define NAND_ADDNEW_REGION	       1
 #define NAND_BUG_FIX_REGION	       6
 
 #define DRV_PHY_VERSION	   ((NAND_COMPATIBLE_REGION << 24)+(NAND_RESERVED_REGION << 16) \
-							+(NAND_ADDNEW_REGION << 8)+(NAND_BUG_FIX_REGION))	
+							+(NAND_ADDNEW_REGION << 8)+(NAND_BUG_FIX_REGION))
 
 #ifdef CONFIG_NAND_AML_M8
-#define NAND_MFR_USER          0x100 
-#define NAND_MFR_EFUSE         0x101 
+#define NAND_MFR_USER          0x100
+#define NAND_MFR_EFUSE         0x101
 //#define abs(value) (((value) < 0) ? ((value)*-1) : (value))
 /*
  ** Max page list cnt for usrdef mode
@@ -31,19 +31,19 @@
 ** nand read retry info, max equals to Zero, that means no need retry.
  */
 struct  nand_retry_t{
-    unsigned id;	
+    unsigned id;
     unsigned max;
     unsigned no_rb;
 } ;
 
  struct nand_cmd_t{
-    unsigned char type;	
+    unsigned char type;
     unsigned char val;
 } ;
 
 // read from page0, override default.
 struct nand_page0_cfg_t{
-    unsigned ext;  // 26:pagelist, 24:a2, 23:no_rb, 22:large. 21-0:cmd. 
+    unsigned ext;  // 26:pagelist, 24:a2, 23:no_rb, 22:large. 21-0:cmd.
     short id;
     short max; // id:0x100 user, max:0 disable.
     unsigned char list[NAND_PAGELIST_CNT];
@@ -51,11 +51,11 @@ struct nand_page0_cfg_t{
 
 // read from page0, override default.
 struct nand_page0_info_t{
-	unsigned nand_read_info;  
+	unsigned nand_read_info;
 	unsigned new_nand_type;
 	unsigned pages_in_block;
 	unsigned secure_block;
-	unsigned ce_mask;	
+	unsigned ce_mask;
 	unsigned reserved[3];
 } ;
 
@@ -93,7 +93,7 @@ typedef union nand_core_clk {
 #define NAND_MFR_MICRON				0x2c
 #define NAND_MFR_AMD				0x01
 #define NAND_MFR_INTEL				0x89
-#define NAND_MFR_SANDISK			0x45 
+#define NAND_MFR_SANDISK			0x45
 
 
 /***nand runing status***/
@@ -117,7 +117,6 @@ typedef union nand_core_clk {
 #define 	KEY_INFO_HEAD_MAGIC				"nkey"
 #define 	SECURE_INFO_HEAD_MAGIC 			"nsec"
 #define 	ENV_INFO_HEAD_MAGIC 			"nenv"
-#define 	PHY_PARTITION_HEAD_MAGIC 		"phyp"
 
 #define 	FBBT_COPY_NUM  						1
 
@@ -127,7 +126,7 @@ typedef union nand_core_clk {
 #define CONFIG_SECURE_SIZE         		(0x10000*2) //128k
 #define SECURE_SIZE (CONFIG_SECURE_SIZE - 2*(sizeof(uint32_t)))
 
-#define FULL_BLK     0 
+#define FULL_BLK     0
 #define FULL_PAGE  1
 
 #define 	MAX_BAD_BLK_NUM					2048
@@ -135,13 +134,13 @@ typedef union nand_core_clk {
 #define 	MAX_BLK_NUM						8192
 #define	RESERVED_BLOCK_CNT					48
 
-#define 	NANS_PARA_BLOCK_CNT				1		//nand parameter for read retry, or fulture	
+#define 	NANS_PARA_BLOCK_CNT				1		//nand parameter for read retry, or fulture
 
 //for shipped bbt block, short mode, full block, never update
 #define 	BBT_BLOCK_CNT						2		//common bbt table, rarely update
 #define 	SHIPPED_BBT_BLOCK_CNT				1		//shipped bbt table, just only one copy first detect
 //config block, short mode, full block, if update, erase whole block
-#define 	CONFIG_BLOCK_CNT					1		//nand config information, read by kernel	
+#define 	CONFIG_BLOCK_CNT					1		//nand config information, read by kernel
 #define 	KEY_BLOCK_CNT						4		//for nand key info, rarely update
 
 /***uboot code***/
@@ -191,7 +190,7 @@ typedef union nand_core_clk {
 
 
 	/***FOR TIMMING MODE ***/
-	
+
 #define 	NAND_TIMING_MODE0						(0x0)
 #define 	NAND_TIMING_MODE1						(0x1)
 #define 	NAND_TIMING_MODE2						(0x2)
@@ -243,11 +242,11 @@ typedef union nand_core_clk {
 #define	NAND_TRHW_TIME_CYCLE				20
 
 
-#ifdef AML_NAND_RB_IRQ	
+#ifdef AML_NAND_RB_IRQ
 #define NAND_CHIP_UNDEFINE   200
 #endif
 
-#ifdef AML_NAND_RB_IRQ	
+#ifdef AML_NAND_RB_IRQ
 #define DMA_TIME_CNT_220US      220000
 #define DMA_TIME_CNT_20US       20000
 #endif
@@ -302,7 +301,7 @@ typedef union nand_core_clk {
 #define 	NAND_CMD_UNLOCK2					0x24
 
 /*
-  *Extended common NAND CMD 
+  *Extended common NAND CMD
   *
   */
 #define 	NAND_CMD_PLANE2_READ_START			0x06
@@ -336,7 +335,7 @@ typedef union nand_core_clk {
 #define 	RETRY_NAND_COPY_NUM					4
 
 #define	READ_RETRY_REG_NUM   					8
-#define	READ_RETRY_CNT   						40
+#define	READ_RETRY_CNT   						30
 
 #define	EN_SLC_REG_NUM   						8
 
@@ -349,7 +348,6 @@ typedef union nand_core_clk {
 #define	NAND_CMD_TOSHIBA_PRE_CON1					0x5c
 #define	NAND_CMD_TOSHIBA_PRE_CON2					0xc5
 #define	NAND_CMD_TOSHIBA_SET_VALUE					0x55
-#define	NAND_CMD_TOSHIBA_BEF_COMMAND0		0xB3
 #define	NAND_CMD_TOSHIBA_BEF_COMMAND1				0x26
 #define	NAND_CMD_TOSHIBA_BEF_COMMAND2				0x5d
 #define      NAND_CMD_SAMSUNG_SET_VALUE				0XA1
@@ -362,15 +360,11 @@ typedef union nand_core_clk {
 
 #define	NAND_CMD_SANDISK_DYNAMIC_ENABLE			0xB6
 #define	NAND_CMD_SANDISK_DYNAMIC_DISABLE			0xD6
-#define 	NAND_CMD_SANDISK_SLC  							0xA2     
+#define 	NAND_CMD_SANDISK_SLC  							0xA2
 #define   NAND_CMD_SANDISK_SET_VALUE					0XEF
 #define	NAND_CMD_SANDISK_DSP_OFF					0x25
 #define	NAND_CMD_SANDISK_DSP_ON						0x26
 #define	NAND_CMD_SANDISK_RETRY_STA					 0x5D
-#define	NAND_CMD_SANDISK_TEST_MODE1					0x5c
-#define	NAND_CMD_SANDISK_TEST_MODE2					0xc5
-#define	NAND_CMD_SANDISK_TEST_MODE_ACCESS			0x55
-
 //for hynix 20nm OTP
 #define 	HYNIX_OTP_COPY							8
 #define 	HYNIX_OTP_LEN							528
@@ -380,13 +374,12 @@ typedef union nand_core_clk {
 #define	HYNIX_26NM_8GB 							2		//H27UBG8T2BTR
 #define	HYNIX_20NM_4GB 							3		//
 #define	HYNIX_20NM_8GB 							4		//
-#define	HYNIX_1YNM 								6
+#define	HYNIX_1YNM_8GB 							6
 //for Toshiba
 #define	TOSHIBA_2XNM 							20		//TC58NVG5D2HTA00
-#define	TOSHIBA_A19NM 							21		//TC58NVG6D2GTA00
-#define TOSHIBA_15NM							22		//TC58TEG6DDLTA00
+#define	TOSHIBA_A19NM 							21																//TC58NVG6D2GTA00
 //for SAMSUNG
-#define	SUMSUNG_2XNM 							30	
+#define	SUMSUNG_2XNM 							30
 
 //for SANDISK
 #define      SANDISK_19NM								40
@@ -405,30 +398,29 @@ struct read_retry_info
 	unsigned char	flag;
 	unsigned char	default_flag;
 	unsigned char     info_save_blk;
-	
+
 	unsigned char	reg_cnt_lp;
 	unsigned char	reg_cnt_up;
 	unsigned char	reg_cnt_tp;
-	
+
 	unsigned char	retry_cnt_lp;
 	unsigned char	retry_cnt_up;
 	unsigned char	retry_cnt_tp;
-    unsigned char	retry_stage;
-	
-	unsigned char	cur_cnt_lp[MAX_CHIP_NUM];	
+
+	unsigned char	cur_cnt_lp[MAX_CHIP_NUM];
 	unsigned char	cur_cnt_up[MAX_CHIP_NUM];
 	unsigned char	cur_cnt_tp[MAX_CHIP_NUM];
-	
+
 	unsigned char	reg_addr_lp[READ_RETRY_REG_NUM];
 	unsigned char	reg_addr_up[READ_RETRY_REG_NUM];
 	unsigned char	reg_addr_tp[READ_RETRY_REG_NUM];
-	
+
 	unsigned char	reg_def_val[MAX_CHIP_NUM][READ_RETRY_REG_NUM];
-	
+
 	char	reg_offs_val_lp[MAX_CHIP_NUM][READ_RETRY_CNT][READ_RETRY_REG_NUM];
 	char	reg_offs_val_up[MAX_CHIP_NUM][READ_RETRY_CNT][READ_RETRY_REG_NUM];
 	char	reg_offs_val_tp[MAX_CHIP_NUM][READ_RETRY_CNT][READ_RETRY_REG_NUM];
-	
+
 	int (*init)(struct hw_controller *controller);
 	int (*handle)(struct hw_controller *controller, unsigned char chipnr);
 	int (*exit)(struct hw_controller *controller, unsigned char chipnr);
@@ -441,7 +433,6 @@ struct en_slc_info{
 	unsigned char	reg_addr[EN_SLC_REG_NUM];
 	unsigned char	reg_def_val[MAX_CHIP_NUM][EN_SLC_REG_NUM];
 	char	reg_offs_val[EN_SLC_REG_NUM];
-	int mircon_l0l3_mode; /*mark micon L0_L3 mode*/
 	int (*init)(struct hw_controller *controller);
 	int (*enter)(struct hw_controller *controller);
 	int (*exit)(struct hw_controller *controller);
@@ -465,30 +456,30 @@ struct bch_desc{
 /*** HW controller configuration ***/
 struct hw_controller{
 	unsigned chip_selected;
-	unsigned rb_received;	
+	unsigned rb_received;
 	unsigned ce_enable[MAX_CHIP_NUM];
 	unsigned rb_enable[MAX_CHIP_NUM];
 
-	unsigned char  chip_num;	
+	unsigned char  chip_num;
 	unsigned char flash_type;
 	unsigned char mfr_type;
 	unsigned onfi_mode;
 
 
-	unsigned short  short_pgsz;			   //zero means no short 
-	
+	unsigned short  short_pgsz;			   //zero means no short
+
 	unsigned char  max_bch;
 
 	unsigned short ecc_unit;
 	unsigned short ecc_bytes;
 	unsigned short ecc_steps;
-	
+
 	unsigned short oobtail;
-	
+
 	unsigned char bch_mode;
 	unsigned char user_mode;
 	unsigned char ran_mode;
-	unsigned char oobavail;	
+	unsigned char oobavail;
 	unsigned char oob_mod;
 	int oob_fill_data;
 	int oob_fill_boot;
@@ -498,20 +489,20 @@ struct hw_controller{
 
 	unsigned short page_shift;
 	unsigned short block_shift;
-	
+
 	unsigned	internal_page_nums;
-    	unsigned zero_cnt;
-		
-    	unsigned page_addr;
-		
-    	unsigned option;
+	unsigned zero_cnt;
+
+	unsigned page_addr;
+
+	unsigned option;
 
 	unsigned char *data_buf;
 	unsigned int *user_buf;
 
 	unsigned char *page_buf;
 	unsigned char *oob_buf;
-	
+
 #ifdef NEW_NAND_SUPPORT
 	struct en_slc_info slc_info;
 	struct read_retry_info retry_info;
@@ -519,43 +510,41 @@ struct hw_controller{
 
 #ifndef 	AML_NAND_UBOOT
 	dma_addr_t data_dma_addr;
-	dma_addr_t info_dma_addr;	
+	dma_addr_t info_dma_addr;
 
 	void  __iomem	*IO_ADDR_R;
 	void  __iomem	*IO_ADDR_W;
 #endif
-	
-    	struct bch_desc 	*bch_desc;
-    	
+
+	struct bch_desc 	*bch_desc;
+
 #ifdef AML_NAND_DMA_POLLING
     struct hrtimer		timer;
 #endif
-		
+
 #if 0//#ifndef AML_NAND_UBOOT
-	struct hw_ctrl hw_ctrl;	
+	struct hw_ctrl hw_ctrl;
 #endif
 	struct amlnand_chip *aml_chip;
-	
+
 	/*** hw controller operation function ***/
 	int	(*init)(struct hw_controller *controller);
 	int	(*adjust_timing)(struct hw_controller *controller);
 	int	(*select_chip)(struct hw_controller *controller, unsigned char chipnr);
-	int (*ecc_confirm)(struct hw_controller *controller);	  
-	unsigned char (*readbyte)(struct hw_controller *controller);	
+	int (*ecc_confirm)(struct hw_controller *controller);
+	unsigned char (*readbyte)(struct hw_controller *controller);
 	void (*writebyte)(struct hw_controller *controller, unsigned char data);
 	void	(*cmd_ctrl)(struct hw_controller *controller, unsigned cmd,  unsigned ctrl);
 	int (*quene_rb)(struct hw_controller *controller, unsigned char chipnr);
-#ifdef AML_NAND_RB_IRQ	
+#ifdef AML_NAND_RB_IRQ
 	int (*quene_rb_irq)(struct hw_controller *controller, unsigned char chipnr);
-#endif	
-	int	(*dma_read)(struct hw_controller *controller, unsigned len, unsigned char bch_mode);		
+#endif
+	int	(*dma_read)(struct hw_controller *controller, unsigned len, unsigned char bch_mode);
 	int	(*dma_write)(struct hw_controller *controller, unsigned char *buf, unsigned len, unsigned char bch_mode);
 	int (*hwecc_correct)(struct hw_controller *controller, unsigned size, unsigned char *oob_buf);
-	
-	void	(*get_usr_byte)(struct hw_controller *controller, unsigned char *oob_buf, unsigned char byte_num);		
+
+	void	(*get_usr_byte)(struct hw_controller *controller, unsigned char *oob_buf, unsigned char byte_num);
 	void	(*set_usr_byte)(struct hw_controller *controller, unsigned char *oob_buf, unsigned char byte_num);
-	void	(*enter_standby)(struct hw_controller *controller);
-	
 };
 
 /*** nand chip operation function ***/
@@ -565,10 +554,10 @@ struct chip_operation{
 
 	int (*get_onfi_para)(struct amlnand_chip *aml_chip, unsigned char *buf, int addr);
 	int (*set_onfi_para)(struct amlnand_chip *aml_chip, unsigned char *buf, int addr);
-	
+
 	int (*reset)(struct amlnand_chip *aml_chip, unsigned char chip_nr);
 	int (*read_id)(struct amlnand_chip *aml_chip, unsigned char chip_nr, unsigned char id_addr, unsigned char *buf);
-	
+
       /*
 	 * Erase is an asynchronous operation.  Device drivers are supposed
 	 * to call instr->callback() whenever the operation completes, even
@@ -576,16 +565,16 @@ struct chip_operation{
 	 * Callers are supposed to pass a callback function and wait for it
 	 * to be called before writing to the block.
 	 */
-	int (*erase_block) (struct amlnand_chip *aml_chip);	
+	int (*erase_block) (struct amlnand_chip *aml_chip);
     int (*test_block_chip_op) (struct amlnand_chip *aml_chip);
 	int (*test_block_reserved) (struct amlnand_chip *aml_chip, int tst_blk);
 	/***basic data operation and included oob data****/
 	int (*read_page) (struct amlnand_chip *aml_chip);
 	int (*write_page) (struct amlnand_chip *aml_chip);
-	
+
 	int (*block_isbad) (struct amlnand_chip *aml_chip);
 	int (*block_markbad) (struct amlnand_chip *aml_chip);
-    
+
 	int (*blk_modify_bbt_chip_op) (struct amlnand_chip *aml_chip,int value);
 	int (*update_bbt_chip_op) (struct amlnand_chip *aml_chip);
 };
@@ -594,12 +583,12 @@ struct chip_operation{
 struct nand_flash {
 	char *name;
 	unsigned char id[MAX_ID_LEN];
-		
+
 	unsigned pagesize;
 	unsigned chipsize;
 	unsigned blocksize;
 	unsigned oobsize;
-	
+
 	unsigned char internal_chipnr;
 	unsigned char T_REA;
 	unsigned char T_RHOH;
@@ -610,17 +599,17 @@ struct nand_flash {
 };
 
 /*
-*operation type as below:				oob_mode    data_buf    oob_buf 	readlen 		
+*operation type as below:				oob_mode    data_buf    oob_buf 	readlen
 *1) read data hw ecc mode	  				0		    available	NULL			0
 *2) read oob hw ecc mode					0			NULL 		available		available
 *3) read data and oob hw ecc mode			0  			available    available           available
 *4) read data/oob none ecc mode			1			available 	NULL		    available
 *
 *					option			chipnr			page_addr
-*mulit-chip						0		    			
-*serial-chip						available			
-*multi-plane		
-*sigle-plane	
+*mulit-chip						0
+*serial-chip						available
+*multi-plane
+*sigle-plane
 */
 struct chip_ops_para{
 	unsigned page_addr;
@@ -646,19 +635,13 @@ struct chip_ops_para{
  */
 struct dev_para{
 	const char name[MAX_DEVICE_NAME_LEN];
-	
-	uint64_t offset;    
-	 uint64_t size;	    	
+
+	uint64_t offset;
+	 uint64_t size;
 	struct amlnf_partition partitions[MAX_NAND_PART_NUM];
 	unsigned char nr_partitions;
 
 	unsigned option;
-};
-struct _phy_partition{
-	const char name[MAX_DEVICE_NAME_LEN];
-	uint64_t phy_off;    
-	uint64_t phy_len;
-    uint64_t logic_len;
 };
 
 #define MAX_PART_NUM	16
@@ -672,15 +655,10 @@ struct partitions {
 
 struct nand_config{
 	unsigned int crc;
-	struct dev_para dev_para[MAX_DEVICE_NUM];	
+	struct dev_para dev_para[MAX_DEVICE_NUM];
 	unsigned int driver_version;
 	unsigned char dev_num;
 	unsigned short fbbt_blk_addr;
-};
-struct phy_partition_info{
-	unsigned int crc;
-	struct _phy_partition partition[MAX_DEVICE_NUM];	
-	unsigned char dev_num;
 };
 
 struct nand_bbt {
@@ -692,29 +670,29 @@ struct shipped_bbt {
 	unsigned short	shipped_bbt[MAX_CHIP_NUM][MAX_BAD_BLK_NUM];
 };
 
-struct nand_menson_key{	
-	uint32_t	crc;	
-	unsigned char	data[KEYSIZE]; 	
+struct nand_menson_key{
+	uint32_t	crc;
+	unsigned char	data[KEYSIZE];
 };
 typedef struct nand_menson_key meson_key;
 
-typedef	struct {	
-	uint32_t	crc;		/* CRC32 over data bytes	*/	
+typedef	struct {
+	uint32_t	crc;		/* CRC32 over data bytes	*/
 	unsigned char	data[SECURE_SIZE]; /* Environment data		*/
 } secure_t;
 
 struct _nand_arg_oobinfo{
 	char name[4];
-    	unsigned   short     timestamp;
+	unsigned   short     timestamp;
 };
 typedef struct _nand_arg_oobinfo  nand_arg_oobinfo;
 
 struct _nand_arg_info{
 	unsigned char    arg_type;
 	unsigned short	valid_blk_addr;
-	unsigned short	valid_page_addr;	
+	unsigned short	valid_page_addr;
 	unsigned short	free_blk_addr;
-	unsigned char  	arg_valid;	
+	unsigned char  	arg_valid;
 	unsigned short	 timestamp;
 	unsigned char update_flag;  // flag indicate that: if read ecc error of any page of this block, should move data to another block
 };
@@ -726,37 +704,35 @@ struct block_status{
 };
 
 /*** whole nand chip information  include hw controller and flash information ***/
-struct amlnand_chip {	
-	struct block_status *block_status;	
-	
+struct amlnand_chip {
+	struct block_status *block_status;
+
 	chip_state_t state;
-	unsigned char 	   nand_status;  
-	unsigned char 	   init_flag;  
+	unsigned char 	   nand_status;
+	unsigned char 	   init_flag;
 	unsigned char key_protect;
 	unsigned char secure_protect;
 	unsigned char fbbt_protect;
 	unsigned char ce_bit_mask;
-	struct hw_controller controller;	
+	struct hw_controller controller;
 
 	//current operation parameter, should clear before used.
 	struct chip_ops_para ops_para;
 
 	struct chip_operation	operation;
 	struct nand_flash		flash;
-	
+
 	nand_arg_info 	config_msg;
 	struct nand_config * config_ptr;
-    struct phy_partition_info* phy_part_ptr;
-    
-	nand_arg_info    nand_bbtinfo;	
-	 nand_arg_info  shipped_bbtinfo;	
+
+	nand_arg_info    nand_bbtinfo;
+	 nand_arg_info  shipped_bbtinfo;
 	struct shipped_bbt  * shipped_bbt_ptr;
 
 	 nand_arg_info  nand_key;
 	nand_arg_info  nand_secure;
 	nand_arg_info  uboot_env;
-    nand_arg_info  nand_phy_partition;
-#ifndef AML_NAND_UBOOT	
+#ifndef AML_NAND_UBOOT
 	struct pinctrl *nand_pinctrl;
 	struct pinctrl_state *nand_pinstate;
 	struct pinctrl_state *nand_rbstate;
@@ -768,7 +744,7 @@ struct amlnand_chip {
 	unsigned max_ecc_per_page;
 	unsigned char *user_page_buf;
 	unsigned char *user_oob_buf;
-	unsigned char  protect;	
+	unsigned char  protect;
 	unsigned char debug_flag;
 };
 
@@ -801,14 +777,11 @@ extern void nand_boot_info_prepare(struct amlnand_phydev *phydev, unsigned char 
 extern void uboot_set_ran_mode(struct amlnand_phydev *phydev);
 extern void get_sys_clk_rate(int * rate);
 extern int aml_ubootenv_init(struct amlnand_chip *aml_chip);
-extern int aml_ubootenv_reinit(struct amlnand_chip *aml_chip);
-unsigned int aml_info_checksum(unsigned char *data,int lenth);
 
 #ifndef AML_NAND_UBOOT
 extern  void   nand_get_chip(void *aml_chip);
 extern void  nand_release_chip(void *aml_chip);
 extern int aml_key_init(struct amlnand_chip *aml_chip);
-extern int aml_key_reinit(struct amlnand_chip *aml_chip);
 extern int aml_secure_init(struct amlnand_chip *aml_chip);
 extern int amlnand_info_init(struct amlnand_chip *aml_chip,unsigned char * info,unsigned char * buf,unsigned char *name,unsigned size);
 extern int amlnand_check_info_by_name(struct amlnand_chip *aml_chip,unsigned char * info,unsigned char * name ,unsigned size);

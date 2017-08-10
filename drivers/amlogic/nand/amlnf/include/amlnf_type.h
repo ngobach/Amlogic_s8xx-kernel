@@ -38,7 +38,7 @@
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 #include <linux/reboot.h>
-#include <asm/div64.h>	
+#include <asm/div64.h>
 #include <mach/clock.h>
 #include <linux/list.h>
 #include <asm/sizes.h>
@@ -72,13 +72,13 @@
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 //#ifdef CONFIG_ARCH_MESON8
-#define CONFIG_NAND_AML_M8   
+#define CONFIG_NAND_AML_M8
 #define	AML_NAND_DBG_M8
 #endif
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8B
 //#ifdef CONFIG_ARCH_MESON8
-#define CONFIG_NAND_AML_M8B   
+#define CONFIG_NAND_AML_M8B
 #endif
 
 //#define aml_nftl_malloc(n)		kzalloc(n, GFP_KERNEL)
@@ -90,7 +90,7 @@
 				  __func__, __LINE__, ##__VA_ARGS__)
 
 #define aml_nand_msg(fmt, ...) printk( "%s: line:%d " fmt "\n", \
-				  __func__, __LINE__, ##__VA_ARGS__)				  
+				  __func__, __LINE__, ##__VA_ARGS__)
 #else
 #define aml_nand_dbg(fmt, ...)
 #define aml_nand_msg(fmt, ...) printk( fmt "\n",  ##__VA_ARGS__)

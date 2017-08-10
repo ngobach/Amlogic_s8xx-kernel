@@ -1,5 +1,5 @@
 /*************************************************************
- * Amlogic 
+ * Amlogic
  * vout  serve program
  *
  * Copyright (C) 2010 Amlogic, Inc.
@@ -19,8 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
  *
  * Author:   jianfeng_wang@amlogic
- *		   
- *		   
+ *
+ *
  **************************************************************/
 #include <linux/version.h>
 #include <linux/module.h>
@@ -64,7 +64,7 @@ static int s_venc_mux = 0;
 
 /*****************************************************************
 **
-**	sysfs impletement part  
+**	sysfs impletement part
 **
 ******************************************************************/
 static  int   func_default_null(char  *str)
@@ -95,7 +95,7 @@ static  int   func_default_null(char  *str)
 }
 static   int* parse_para(char *para,char   *para_num)
 {
-	 static unsigned   int  buffer[MAX_NUMBER_PARA] ; 
+	 static unsigned   int  buffer[MAX_NUMBER_PARA] ;
 	 char  *endp ;
 	 int *pt=NULL;
 	 int len=0,count=0;
@@ -107,25 +107,25 @@ static   int* parse_para(char *para,char   *para_num)
 	endp=(char*)buffer;
 	do
 	{
-		//filter space out 
+		//filter space out
 		while(para && ( isspace(*para) || !isalnum(*para)) && len)
 		{
 			para++;
-			len --; 
+			len --;
 		}
 		if(len==0) break;
 		*pt++=simple_strtoul(para,&endp,0);
-		
+
 		para=endp;
 		len=strlen(para);
 	}while(endp && ++count<*para_num&&count<MAX_NUMBER_PARA) ;
 	*para_num=count;
-	
+
 	return  buffer;
 }
 
 
-#if 0	
+#if 0
 #ifdef  CONFIG_PM
 static int  meson_vout_suspend(struct platform_device *pdev, pm_message_t state);
 static int  meson_vout_resume(struct platform_device *pdev);
@@ -140,7 +140,7 @@ static  void  set_vout_mode(char * name)
 	if(VMODE_MAX==mode)
 	{
 		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"no matched vout2 mode\n");
-		return ; 
+		return ;
 	}
 	if(mode==get_current_vmode2())
 	{
@@ -155,7 +155,7 @@ static  void  set_vout_mode(char * name)
 void  set_vout2_mode_internal(char * name)
 {
     set_vout_mode(name);
-}    
+}
 EXPORT_SYMBOL(set_vout2_mode_internal);
 
 char* get_vout2_mode_internal(void)
@@ -165,17 +165,17 @@ char* get_vout2_mode_internal(void)
 EXPORT_SYMBOL(get_vout2_mode_internal);
 
 //axis type : 0x12  0x100 0x120 0x130
-static void  set_vout_window(char *para) 
+static void  set_vout_window(char *para)
 {
 #define   OSD_COUNT   2
 	static  disp_rect_t  disp_rect[OSD_COUNT];
-	char  count=OSD_COUNT*4;	
+	char  count=OSD_COUNT*4;
 	int   *pt=&disp_rect[0].x;
-	
+
 
 	//parse window para .
 	memcpy(pt,parse_para(para,&count),sizeof(disp_rect_t)*OSD_COUNT);
-	
+
 	if(count >=4 && count <8 )
 	{
 		disp_rect[1]=disp_rect[0] ;
@@ -187,7 +187,7 @@ static void  set_vout_window(char *para)
 
 /*****************************************************************
 **
-**	sysfs  declare part 
+**	sysfs  declare part
 **
 ******************************************************************/
 static const char *venc_mux_help = {
@@ -242,7 +242,7 @@ static ssize_t venc_mux_store(struct class *class, struct class_attribute *attr,
 
 static  struct  class_attribute   *vout_attr[]={
 &class_vout2_attr_enable,
-&class_vout2_attr_mode,	
+&class_vout2_attr_mode,
 &class_vout2_attr_axis ,
 };
 static CLASS_ATTR(venc_mux, S_IWUSR | S_IRUGO, venc_mux_show, venc_mux_store);
@@ -274,7 +274,7 @@ static int  create_vout_attr(void)
 #if 0
 #ifdef  CONFIG_PM
 static int  meson_vout_suspend(struct platform_device *pdev, pm_message_t state)
-{	
+{
 #if 0 //def CONFIG_HAS_EARLYSUSPEND
     if (early_suspend_flag)
         return 0;
@@ -292,7 +292,7 @@ static int  meson_vout_resume(struct platform_device *pdev)
 	vout2_resume();
 	return 0;
 }
-#endif 
+#endif
 #endif
 #if 0 //def CONFIG_HAS_EARLYSUSPEND
 static void meson_vout_early_suspend(struct early_suspend *h)
@@ -314,7 +314,7 @@ static void meson_vout_late_resume(struct early_suspend *h)
 
 /*****************************************************************
 **
-**	vout driver interface  
+**	vout driver interface
 **
 ******************************************************************/
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
@@ -325,11 +325,11 @@ static void meson_vout_late_resume(struct early_suspend *h)
 #define VPP_OFIFO_SIZE_MASK         0xfff
 #define VPP_OFIFO_SIZE_BIT          0
 
-static int 
+static int
  meson_vout_probe(struct platform_device *pdev)
 {
 	int ret =-1;
-	
+
 	vout_info.base_class=NULL;
 	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"start init vout2 module\n");
 #if 0 //def CONFIG_HAS_EARLYSUSPEND
@@ -357,26 +357,26 @@ static int
 #else
     aml_set_reg32_bits(P_VPP2_OFIFO_SIZE, 0x780,
                         VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
-#endif                        
+#endif
 
 	return ret;
 }
 static int
  meson_vout_remove(struct platform_device *pdev)
 {
-   	int i;
+	int i;
 	if(vout_info.base_class==NULL) return -1;
 #if 0 //def CONFIG_HAS_EARLYSUSPEND
     unregister_early_suspend(&early_suspend);
 #endif
-	
+
 	for(i=0;i<VOUT_ATTR_MAX;i++)
 	{
 		class_remove_file(vout_info.base_class,vout_attr[i]) ;
 	}
-		
+
 	class_destroy(vout_info.base_class);
-	
+
 	return 0;
 }
 
@@ -391,10 +391,10 @@ static struct platform_driver
 vout2_driver = {
     .probe      = meson_vout_probe,
     .remove     = meson_vout_remove,
-#if 0 //def  CONFIG_PM      
+#if 0 //def  CONFIG_PM
     .suspend  =meson_vout_suspend,
     .resume    =meson_vout_resume,
-#endif    
+#endif
     .driver     = {
         .name   = "mesonvout2",
         .of_match_table=meson_vout2_dt_match,
@@ -404,22 +404,22 @@ static int __init vout2_init_module(void)
 {
 	int ret =0;
   printk("%s enter\n", __func__);
-	if (platform_driver_register(&vout2_driver)) 
+	if (platform_driver_register(&vout2_driver))
 	{
     printk("%s fail\n", __func__);
-       		amlog_level(LOG_LEVEL_HIGH,"failed to register vout2 driver\n");
-        	ret= -ENODEV;
-    	}
-	
+		amlog_level(LOG_LEVEL_HIGH,"failed to register vout2 driver\n");
+		ret= -ENODEV;
+	}
+
 	return ret;
 
 }
 static __exit void vout2_exit_module(void)
 {
-	
+
 	amlog_level(LOG_LEVEL_HIGH,"vout2_remove_module.\n");
 
-    	platform_driver_unregister(&vout2_driver);
+	platform_driver_unregister(&vout2_driver);
 }
 module_init(vout2_init_module);
 module_exit(vout2_exit_module);

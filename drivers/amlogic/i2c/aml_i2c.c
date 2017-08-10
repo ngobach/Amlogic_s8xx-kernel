@@ -253,7 +253,7 @@ static void aml_i2c_stop(struct aml_i2c *i2c)
 #if MESON_CPU_TYPE > MESON_CPU_TYPE_MESON8
 	aml_i2c_wait_ack(i2c);
 #else
-  	udelay(i2c->wait_xfer_interval);
+	udelay(i2c->wait_xfer_interval);
 #endif
   }
 	aml_i2c_clear_token_list(i2c);
@@ -267,10 +267,10 @@ static int aml_i2c_read(struct aml_i2c *i2c, unsigned char *buf,
 	size_t rd_len;
 	int tagnum=0;
 
-	if (!buf || !len) return -EINVAL;
-		aml_i2c_clear_token_list(i2c);
+	if(!buf || !len) return -EINVAL;
+	aml_i2c_clear_token_list(i2c);
 
-	if (! (i2c->msg_flags & I2C_M_NOSTART)) {
+	if(! (i2c->msg_flags & I2C_M_NOSTART)){
 		i2c->token_tag[tagnum++]=TOKEN_START;
 		i2c->token_tag[tagnum++]=TOKEN_SLAVE_ADDR_READ;
 
@@ -319,8 +319,8 @@ static int aml_i2c_write(struct aml_i2c *i2c, unsigned char *buf,
         int ret;
         size_t wr_len;
 	int tagnum=0;
-	if (!buf || !len) return -EINVAL;
-		aml_i2c_clear_token_list(i2c);
+	if(!buf || !len) return -EINVAL;
+	aml_i2c_clear_token_list(i2c);
 	if(! (i2c->msg_flags & I2C_M_NOSTART)){
 		i2c->token_tag[tagnum++]=TOKEN_START;
 		i2c->token_tag[tagnum++]=TOKEN_SLAVE_ADDR_WRITE;
@@ -345,7 +345,7 @@ static int aml_i2c_write(struct aml_i2c *i2c, unsigned char *buf,
 			return ret;
 
 		aml_i2c_clear_token_list(i2c);
-    	}
+	}
 	return 0;
 }
 
@@ -540,14 +540,13 @@ static int aml_i2c_xfer(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
 	struct i2c_msg * p=NULL;
 	unsigned int i;
 	unsigned int ret=0, speed=0;
-	if (!i2c->i2c_bus_status) return -1;
 
-	if (!msgs || !num) return -1;
+	if(!msgs || !num) return -1;
 	BUG_ON(!i2c);
 	/*should not use spin_lock, cond_resched in wait ack*/
 	mutex_lock(i2c->lock);
 
-	if (i2c->state != I2C_STATE_IDLE) {
+	if(i2c->state != I2C_STATE_IDLE) {
 	  mutex_unlock(i2c->lock);
     return -EPERM;
 	}
@@ -626,7 +625,7 @@ static const struct i2c_algorithm aml_i2c_algorithm = {
 static int aml_i2c_set_mode(struct aml_i2c *i2c, int mode, int irq)
 {
 	int err = 0;
-
+	
 	if (mode > I2C_TIMER_POLLING_MODE) {
     printk("error mode\n");
     err = -EINVAL;
@@ -664,8 +663,8 @@ static int aml_i2c_test_slave(struct aml_i2c *i2c, int argn, char *argv[])
   char wbuf[8]={0}, rbuf[64]={0};
   int i;
   bool nostart;
-
-	if (argn < 3) goto err_arg;
+	
+	if (argn < 3) goto err_arg; 
 	addr = simple_strtol(argv[0], NULL, 16);
 	wnum = simple_strtol(argv[1], NULL, 0);
 	rnum = simple_strtol(argv[2], NULL, 0);
@@ -694,9 +693,9 @@ static int aml_i2c_test_slave(struct aml_i2c *i2c, int argn, char *argv[])
 	  msgp->len   = rnum;
 	  msgp->buf   = rbuf;
 	  msg_num++;
-	  msgp++;
+	  msgp++;	  
 	}
-
+	  
  	if (i2c_transfer(&i2c->adap, &msgs[0], msg_num) == msg_num) {
     for (i=0; i<rnum; i++)
       printk("0x%x, ", rbuf[i]);
@@ -707,7 +706,7 @@ static int aml_i2c_test_slave(struct aml_i2c *i2c, int argn, char *argv[])
   	printk("test failed!\n");
   	return -1;
   }
-
+  
 err_arg:
 	printk("error argurment\n");
 	return -1;
@@ -717,7 +716,7 @@ err_arg:
 static int aml_i2c_set_trig_gpio(struct aml_i2c *i2c, char *gpio_name)
 {
 	int gpio;
-
+	
 	mutex_lock(i2c->lock);
 	if (i2c->trig_gpio >= 0) {
 	  printk("free old trig_gpio(%d)!\n", i2c->trig_gpio);
@@ -741,7 +740,7 @@ static int aml_i2c_set_trig_gpio(struct aml_i2c *i2c, char *gpio_name)
 #endif
 
 static ssize_t show_aml_i2c(struct class *class,
-	struct class_attribute *attr, char *buf)
+	struct class_attribute *attr, char *buf) 
 {
 	int ret;
 	struct aml_i2c *i2c = container_of(class, struct aml_i2c, cls);
@@ -757,8 +756,6 @@ static ssize_t show_aml_i2c(struct class *class,
 
 	else if (!strcmp(attr->attr.name, "slave"))
 		ret = sprintf(buf, "slave=%d\n", i2c->cur_slave_addr);
-	else if (!strcmp(attr->attr.name, "i2c_bus_status"))
-		ret = sprintf(buf, "i2c_bus_status=%d\n", !!i2c->i2c_bus_status);
 
 #ifdef ENABLE_GPIO_TRIGGER
 	else if (!strcmp(attr->attr.name, "trig_gpio"))
@@ -769,19 +766,19 @@ static ssize_t show_aml_i2c(struct class *class,
 		printk("error attribute access\n");
 		ret = 0;
 	}
-
+	
 	return ret;
 }
 
 #define MAX_ARG_NUM 16
-static ssize_t store_aml_i2c(struct class *class,
+static ssize_t store_aml_i2c(struct class *class, 
 	struct class_attribute *attr, const char *buf, size_t count)
 {
 	struct aml_i2c *i2c = container_of(class, struct aml_i2c, cls);
 	char *kbuf, *p, *argv[MAX_ARG_NUM];
 	int argn;
 	unsigned int val=0, val2=0;
-
+	
 	kbuf = kstrdup(buf, GFP_KERNEL);
 	p = kbuf;
 	for (argn = 0; argn < MAX_ARG_NUM; argn++) {
@@ -791,7 +788,7 @@ static ssize_t store_aml_i2c(struct class *class,
 	}
 	val = argn ? simple_strtol(argv[0], NULL, 0) : 0;
 	val2 = (argn > 1) ? simple_strtol(argv[1], NULL, 0) : 0;
-
+	
 	if (!strcmp(attr->attr.name, "speed")) {
 		mutex_lock(i2c->lock);
 		i2c->master_i2c_speed = val;
@@ -804,7 +801,7 @@ static ssize_t store_aml_i2c(struct class *class,
 		aml_i2c_set_mode(i2c, val, val2);
 		mutex_unlock(i2c->lock);
 	}
-
+	
 	else if (!strcmp(attr->attr.name, "debug")) {
 		mutex_lock(i2c->lock);
 		i2c->i2c_debug = !!val;
@@ -815,26 +812,22 @@ static ssize_t store_aml_i2c(struct class *class,
 	else if (!strcmp(attr->attr.name, "slave")) {
 		aml_i2c_test_slave(i2c, argn, argv);
 	}
-
-	else if (!strcmp(attr->attr.name, "i2c_bus_status")) {
-		i2c->i2c_bus_status = !!val;
-	}
-
+	
 #ifdef ENABLE_GPIO_TRIGGER
 	else if (!strcmp(attr->attr.name, "trig_gpio")) {
 		aml_i2c_set_trig_gpio(i2c, argv[0]);
 	}
 #endif
-
+	
 	kfree(kbuf);
 	return count;
 }
+
 static struct class_attribute i2c_class_attrs[] = {
     __ATTR(speed, S_IRUGO|S_IWUSR, show_aml_i2c, store_aml_i2c),
     __ATTR(mode, S_IRUGO|S_IWUSR, show_aml_i2c, store_aml_i2c),
     __ATTR(debug, S_IRUGO|S_IWUSR, show_aml_i2c, store_aml_i2c),
     __ATTR(slave, S_IRUGO|S_IWUSR, show_aml_i2c, store_aml_i2c),
-    __ATTR(i2c_bus_status, S_IRUGO|S_IWUSR, show_aml_i2c, store_aml_i2c),
 #ifdef ENABLE_GPIO_TRIGGER
     __ATTR(trig_gpio, S_IRUGO|S_IWUSR, show_aml_i2c, store_aml_i2c),
 #endif
@@ -926,16 +919,16 @@ static int aml_i2c_probe(struct platform_device *pdev)
 
 	ret=of_property_read_string(pdev->dev.of_node,"pinctrl-names",&plat->master_state_name);
 	printk(KERN_DEBUG "plat->state_name:%s\n",plat->master_state_name);
-	i2c->i2c_bus_status = 1;
-	i2c->ops = &aml_i2c_m1_ops;
-	i2c->dev=&pdev->dev;
+
+  i2c->ops = &aml_i2c_m1_ops;
+  i2c->dev=&pdev->dev;
 
 
-	res_start = of_iomap(pdev->dev.of_node,0);
+  res_start = of_iomap(pdev->dev.of_node,0);
 	i2c->master_regs = (struct aml_i2c_reg_master __iomem*)(res_start);
 
-	BUG_ON(!i2c->master_regs);
-	BUG_ON(!plat);
+  BUG_ON(!i2c->master_regs);
+  BUG_ON(!plat);
 	aml_i2c_set_platform_data(i2c, plat);
 	printk(KERN_DEBUG "master_no = %d, master_regs=%p\n", i2c->master_no, i2c->master_regs);
 
@@ -987,7 +980,7 @@ static int aml_i2c_probe(struct platform_device *pdev)
   of_i2c_register_devices(&i2c->adap);
   dev_info(&pdev->dev, "aml i2c bus driver.\n");
 
-  	i2c->state = I2C_STATE_IDLE;
+	i2c->state = I2C_STATE_IDLE;
     init_completion(&i2c->aml_i2c_completion);
     if (i2c->mode == I2C_TIMER_POLLING_MODE) {
       hrtimer_init(&i2c->aml_i2c_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
@@ -1049,21 +1042,21 @@ static const struct of_device_id meson6_i2c_dt_match[]={
 //static	int aml_i2c_suspend(struct platform_device *pdev, pm_message_t state)
 static	int aml_i2c_suspend(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
+    struct platform_device *pdev = to_platform_device(dev);
 	struct i2c_adapter *adapter;
 	struct aml_i2c *i2c;
 
-	printk("%s\n", __func__);
+    printk("%s\n", __func__);
 	adapter = i2c_get_adapter(pdev->id==-1? 0: pdev->id);
 	BUG_ON(!adapter);
 	i2c = i2c_get_adapdata(adapter);
 	BUG_ON(!i2c);
 	if (i2c->mode == I2C_INTERRUPT_MODE) {
-		mutex_lock(i2c->lock);
-		i2c->state = I2C_STATE_SUSPEND;
+	mutex_lock(i2c->lock);
+	i2c->state = I2C_STATE_SUSPEND;
 		disable_irq(i2c->irq);
-		mutex_unlock(i2c->lock);
-		printk("%s: disable #%d irq\n", __func__, i2c->irq);
+	  mutex_unlock(i2c->lock);
+	  printk("%s: disable #%d irq\n", __func__, i2c->irq);
 	}
 
 	return 0;
@@ -1072,21 +1065,21 @@ static	int aml_i2c_suspend(struct device *dev)
 //static	int aml_i2c_resume(struct platform_device *pdev)
 static	int aml_i2c_resume(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
+    struct platform_device *pdev = to_platform_device(dev);
 	struct i2c_adapter *adapter;
 	struct aml_i2c *i2c;
 
-	printk("%s\n", __func__);
+    printk("%s\n", __func__);
 	adapter = i2c_get_adapter(pdev->id==-1? 0: pdev->id);
 	BUG_ON(!adapter);
 	i2c = i2c_get_adapdata(adapter);
 	BUG_ON(!i2c);
 	if (i2c->mode == I2C_INTERRUPT_MODE) {
-		mutex_lock(i2c->lock);
-		i2c->state = I2C_STATE_IDLE;
+    mutex_lock(i2c->lock);
+    i2c->state = I2C_STATE_IDLE;
 		enable_irq(i2c->irq);
-		mutex_unlock(i2c->lock);
-		printk("%s: enable #%d irq\n", __func__, i2c->irq);
+	  mutex_unlock(i2c->lock);
+	  printk("%s: enable #%d irq\n", __func__, i2c->irq);
 	}
 	return 0;
 }
@@ -1129,4 +1122,3 @@ module_exit(aml_i2c_exit);
 MODULE_AUTHOR("AMLOGIC");
 MODULE_DESCRIPTION("I2C driver for amlogic");
 MODULE_LICENSE("GPL");
-

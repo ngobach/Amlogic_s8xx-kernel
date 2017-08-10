@@ -25,7 +25,7 @@ config AMLOGIC_USB
 config USB_DWC_OTG_HCD
 	bool "USB Host controller dwc_otg support"
 	depends on AMLOGIC_USB
-	
+
 config USB_HOST_ELECT_TEST
 	bool
 	help

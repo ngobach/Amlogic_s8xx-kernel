@@ -35,7 +35,7 @@ int thermal_firmware_init()
 		if(IS_MESON_M8M2_CPU){
 			TS_C=temp&0x1f;
 			temp=(temp&0x7fff)>>5;
-			printk("M8M2:adc=%d,TS_C=%d,flag=%d\n",temp,TS_C,flag); 
+			printk("M8M2:adc=%d,TS_C=%d,flag=%d\n",temp,TS_C,flag);
 		}
 		temps->flag=flag;
 		temps->trimming=TS_C;
@@ -62,7 +62,7 @@ int thermal_firmware_init()
 	}
 	else
 		return -1;
-	
+
 }
 EXPORT_SYMBOL(thermal_firmware_init);
 

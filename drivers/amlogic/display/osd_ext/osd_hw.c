@@ -2476,7 +2476,7 @@ void osd_ext_set_angle_hw(u32 index, u32 angle)
 		osd_ext_clone_pan(index);
 	}
 }
-	
+
 void osd_ext_get_clone_hw(u32 index, u32 * clone)
 {
 	amlog_level(LOG_LEVEL_HIGH, "get osd_ext[%d]->clone: %d\n", index, osd_ext_hw.clone[index]);

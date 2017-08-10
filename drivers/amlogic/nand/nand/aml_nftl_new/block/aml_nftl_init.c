@@ -90,7 +90,7 @@ int aml_nftl_reinit_part(struct aml_nftl_blk_t *aml_nftl_blk)
 	if(aml_nftl_initialize(aml_nftl_blk,-1)){
 	   PRINT("aml_nftl_reinit_part : aml_nftl_initialize failed\n");
 	}
-	
+
 	mutex_unlock(aml_nftl_blk->aml_nftl_lock);
 	//wake_up_process(aml_nftl_blk->nftl_thread);
    if(aml_nftl_blk->nftl_thread!=NULL){
@@ -164,7 +164,7 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk,int no)
             {
                 aml_nftl_set_status(aml_nftl_blk->aml_nftl_part,1);
             }
-    	   // return ret;
+	   // return ret;
         }
 	}
 	aml_nftl_blk->mbd.size = aml_nftl_get_part_cap(aml_nftl_blk->aml_nftl_part);
@@ -181,9 +181,9 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk,int no)
     if(memcmp(mtd->name, "NFTL_Part", 9)==0)
     {
 		aml_nftl_blk->debug.name = kzalloc(strlen((const char*)AML_NFTL_MAGIC)+1, GFP_KERNEL);
-    	strcpy(aml_nftl_blk->debug.name, (char*)AML_NFTL_MAGIC);
-    	aml_nftl_blk->debug.class_attrs = nftl_class_attrs;
-   		error = aml_class_register(&aml_nftl_blk->debug);
+	strcpy(aml_nftl_blk->debug.name, (char*)AML_NFTL_MAGIC);
+	aml_nftl_blk->debug.class_attrs = nftl_class_attrs;
+		error = aml_class_register(&aml_nftl_blk->debug);
 		if(error)
 			printk(" class register nand_class fail!\n");
 	}
@@ -191,9 +191,9 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk,int no)
 	if(memcmp(mtd->name, "userdata", 8)==0)
     {
 		aml_nftl_blk->debug.name = kzalloc(strlen((const char*)AML_USERDATA_MAGIC)+1, GFP_KERNEL);
-    	strcpy(aml_nftl_blk->debug.name, (char*)AML_USERDATA_MAGIC);
-    	aml_nftl_blk->debug.class_attrs = nftl_class_attrs;
-   		error = aml_class_register(&aml_nftl_blk->debug);
+	strcpy(aml_nftl_blk->debug.name, (char*)AML_USERDATA_MAGIC);
+	aml_nftl_blk->debug.class_attrs = nftl_class_attrs;
+		error = aml_class_register(&aml_nftl_blk->debug);
 		if(error)
 			printk(" class register nand_class fail!\n");
 	}
@@ -360,7 +360,7 @@ static ssize_t do_erase_init(struct class *class, struct class_attribute *attr,c
 	if(ret){
 		PRINT("aml_nftl_reinit_part: failed\n");
 	}
-	
+
 	return count;
 }
 #endif

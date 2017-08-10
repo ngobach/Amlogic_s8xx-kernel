@@ -49,9 +49,8 @@
 #define NV21
 #endif
 
-static unsigned int profile; /* bit 0~7: profile (0x48 is avs plus); bit 8: 1, not support avs plus */
 
-#define USE_AVS_SEQ_INFO   //use stream info from ucode because we disable avs parser in ffmpeg
+//#define USE_AVS_SEQ_INFO_ONLY
 #define HANDLE_AVS_IRQ
 #define DEBUG_PTS
 
@@ -190,6 +189,7 @@ static void set_frame_info(vframe_t *vf, unsigned* duration)
         frame_height = vf->height;
         //printk("%s: (%d,%d)\n", __func__,vf->width, vf->height);
     }
+
 #ifndef USE_AVS_SEQ_INFO
     if(vavs_amstream_dec_info.rate > 0){
         *duration = vavs_amstream_dec_info.rate;
@@ -210,18 +210,18 @@ static void set_frame_info(vframe_t *vf, unsigned* duration)
         {
                 switch (pixel_ratio)
                 {
-   		        case 1:
-   		            ar = (vf->height*vavs_ratio)/vf->width;
-   		            break;
-   		        case 2:
-   		            ar = (vf->height*3*vavs_ratio)/(vf->width*4);
-   		            break;
-   		        case 3:
-   		            ar = (vf->height*9*vavs_ratio)/(vf->width*16);
-   		            break;
-   		        case 4:
-   		            ar = (vf->height*100*vavs_ratio)/(vf->width*221);
-   		            break;
+		        case 1:
+		            ar = (vf->height*vavs_ratio)/vf->width;
+		            break;
+		        case 2:
+		            ar = (vf->height*3*vavs_ratio)/(vf->width*4);
+		            break;
+		        case 3:
+		            ar = (vf->height*9*vavs_ratio)/(vf->width*16);
+		            break;
+		        case 4:
+		            ar = (vf->height*100*vavs_ratio)/(vf->width*221);
+		            break;
                 default:
                     ar = (vf->height*vavs_ratio)/vf->width;
                     break;
@@ -260,7 +260,6 @@ static void vavs_isr(void)
 
         if (reg)
         {
-                profile = READ_VREG(AV_SCRATCH_4);
                 if (debug_flag&1)
                     printk("AVS_BUFFEROUT=%x\n", reg);
                 if (pts_by_offset)
@@ -296,13 +295,8 @@ static void vavs_isr(void)
                         pts_i_hit++;
                 }
             #endif
-                   if (profile == 0x148) {
-                    /* bit 0~7: profile (0x48 is avs plus); bit 8: 1, not support avs plus */
-                  if (debug_flag&1)
-                      printk("avs plus not support\n");
-                  WRITE_VREG(AVS_BUFFERIN, ~(1<<buffer_index));
-                }
-                else if (throw_pb_flag && picture_type != I_PICTURE) {
+
+                if (throw_pb_flag && picture_type != I_PICTURE) {
 
                         if (debug_flag&1)
                             printk("picture type %d throwed\n", picture_type);
@@ -359,8 +353,6 @@ static void vavs_isr(void)
                         vf->type |= VIDTYPE_VIU_NV21;
 #endif
                         vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-                        vf->type_original = vf->type;
-
 
                         if (debug_flag&1)
                             printk("buffer_index %d, canvas addr %x\n",buffer_index, vf->canvas0Addr);
@@ -398,7 +390,6 @@ static void vavs_isr(void)
                         vf->type |= VIDTYPE_VIU_NV21;
 #endif
                         vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-                        vf->type_original = vf->type;
 
 
                         vfbuf_use[buffer_index]++;
@@ -459,7 +450,6 @@ static void vavs_isr(void)
                         vf->type |= VIDTYPE_VIU_NV21;
 #endif
                         vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-                        vf->type_original = vf->type;
 
                         if (debug_flag&1)
                             printk("buffer_index %d, canvas addr %x\n",buffer_index, vf->canvas0Addr);
@@ -470,6 +460,7 @@ static void vavs_isr(void)
                         vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
                         total_frame++;
                 }
+
 
                 //printk("PicType = %d, PTS = 0x%x\n", picture_type, vf->pts);
                 WRITE_VREG(AVS_BUFFEROUT, 0);
@@ -655,8 +646,8 @@ static void vavs_prot_init(void)
 #endif
 
         WRITE_VREG(POWER_CTL_VLD, 0x10);
-    	WRITE_VREG_BITS(VLD_MEM_VIFIFO_CONTROL, 2, MEM_FIFO_CNT_BIT, 2);
-    	WRITE_VREG_BITS(VLD_MEM_VIFIFO_CONTROL, 8, MEM_LEVEL_CNT_BIT, 6);
+	WRITE_VREG_BITS(VLD_MEM_VIFIFO_CONTROL, 2, MEM_FIFO_CNT_BIT, 2);
+	WRITE_VREG_BITS(VLD_MEM_VIFIFO_CONTROL, 8, MEM_LEVEL_CNT_BIT, 6);
 
         vavs_canvas_init();
 
@@ -980,13 +971,9 @@ MODULE_PARM_DESC(debug_flag, "\n debug_flag\n");
 module_param(pic_type, uint, 0444);
 MODULE_PARM_DESC(pic_type, "\n amdec_vas picture type \n");
 
-module_param(profile, uint, 0664);
-MODULE_PARM_DESC(profile, "\n profile\n");
-
 module_init(amvdec_avs_driver_init_module);
 module_exit(amvdec_avs_driver_remove_module);
 
 MODULE_DESCRIPTION("AMLOGIC AVS Video Decoder Driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Qi Wang <qi.wang@amlogic.com>");
-

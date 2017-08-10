@@ -353,11 +353,11 @@ typedef struct {
 }Hdmi_tx_video_para_t;
 
 typedef struct {
-    audio_type_t type;  
+    audio_type_t type;
     audio_channel_t channel_num;
-    audio_fs_t sample_rate; 
-    audio_sample_size_t sample_size; 
-}Hdmi_tx_audio_para_t;    
+    audio_fs_t sample_rate;
+    audio_sample_size_t sample_size;
+}Hdmi_tx_audio_para_t;
 
 // ACR packet CTS parameters have 3 types:
 // 1. HW auto calculated

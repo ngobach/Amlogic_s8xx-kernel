@@ -11,9 +11,7 @@
 #include <mach/mipi_dsi_reg.h>
 #include <mach/lcdoutc.h>
 #include <linux/amlogic/vout/lcdoutc.h>
-#ifdef CONFIG_AML_LCD_EXTERN
 #include <linux/amlogic/vout/aml_lcd_extern.h>
-#endif
 #include "lcd_config.h"
 #include "mipi_dsi_util.h"
 
@@ -173,7 +171,7 @@ static void print_info(void)
             i += n;
         }
     }
-    //DPRINT("DSI INIT EXTERN:        %d\n", dsi_config->lcd_extern_init);
+    DPRINT("DSI INIT EXTERN:        %d\n", dsi_config->lcd_extern_init);
     DPRINT("================================================\n");
 }
 
@@ -201,9 +199,9 @@ static void print_dphy_info(void)
         " INIT:                %d\n"
         " WAKEUP:              %d\n",
         (temp / 8 / 100), ((temp / 8) % 100),
-        (temp * dsi_phy_config.lp_lpx / 100), (temp * dsi_phy_config.lp_ta_sure / 100), (temp * dsi_phy_config.lp_ta_go / 100), 
-        (temp * dsi_phy_config.lp_ta_get / 100), (temp * dsi_phy_config.hs_exit / 100), (temp * dsi_phy_config.hs_trail / 100), 
-        (temp * dsi_phy_config.hs_zero / 100), (temp * dsi_phy_config.hs_prepare / 100), (temp * dsi_phy_config.clk_trail / 100), 
+        (temp * dsi_phy_config.lp_lpx / 100), (temp * dsi_phy_config.lp_ta_sure / 100), (temp * dsi_phy_config.lp_ta_go / 100),
+        (temp * dsi_phy_config.lp_ta_get / 100), (temp * dsi_phy_config.hs_exit / 100), (temp * dsi_phy_config.hs_trail / 100),
+        (temp * dsi_phy_config.hs_zero / 100), (temp * dsi_phy_config.hs_prepare / 100), (temp * dsi_phy_config.clk_trail / 100),
         (temp * dsi_phy_config.clk_post / 100), (temp * dsi_phy_config.clk_zero / 100), (temp * dsi_phy_config.clk_prepare / 100),
         (temp * dsi_phy_config.clk_pre / 100), (temp * dsi_phy_config.init / 100), (temp * dsi_phy_config.wakeup / 100));
     DPRINT("================================================\n");
@@ -1162,30 +1160,25 @@ static void mipi_dsi_host_config(Lcd_Config_t *pConf)
 void mipi_dsi_link_on(Lcd_Config_t *pConf)
 {
     unsigned int      operation_mode_disp, operation_mode_init;
-#ifdef CONFIG_AML_LCD_EXTERN
-    struct aml_lcd_extern_driver_t *ext_drv;
-    int index;
-#endif
+    struct aml_lcd_extern_driver_t *lcd_extern_driver;
     unsigned int init_flag = 0;
 
     DPRINT("%s\n", __FUNCTION__);
     operation_mode_disp = ((pConf->lcd_control.mipi_config->operation_mode >> BIT_OPERATION_MODE_DISP) & 1);
     operation_mode_init = ((pConf->lcd_control.mipi_config->operation_mode >> BIT_OPERATION_MODE_INIT) & 1);
 
-#ifdef CONFIG_AML_LCD_EXTERN
-    index = pConf->lcd_control.extern_index;
-    if (index < LCD_EXTERN_INDEX_INVALID) {
-        ext_drv = aml_lcd_extern_get_driver(index);
-        if (ext_drv == NULL) {
-            lcd_print("no lcd_extern driver for mipi-dsi\n");
-        } else {
-            if (ext_drv->init_on_cmd_8) {
-                init_flag += dsi_write_cmd(ext_drv->init_on_cmd_8);
-                DPRINT("[extern]%s dsi init on\n", ext_drv->config.name);
+    if (pConf->lcd_control.mipi_config->lcd_extern_init > 0) {
+        lcd_extern_driver = aml_lcd_extern_get_driver();
+        if (lcd_extern_driver == NULL) {
+            DPRINT("no lcd_extern driver\n");
+        }
+        else {
+            if (lcd_extern_driver->init_on_cmd_8) {
+                init_flag += dsi_write_cmd(lcd_extern_driver->init_on_cmd_8);
+                DPRINT("[extern]%s dsi init on\n", lcd_extern_driver->name);
             }
         }
     }
-#endif
 
     if (pConf->lcd_control.mipi_config->dsi_init_on) {
         init_flag += dsi_write_cmd(pConf->lcd_control.mipi_config->dsi_init_on);
@@ -1207,30 +1200,25 @@ void mipi_dsi_link_on(Lcd_Config_t *pConf)
 
 void mipi_dsi_link_off(Lcd_Config_t *pConf)
 {
-#ifdef CONFIG_AML_LCD_EXTERN
-    struct aml_lcd_extern_driver_t *ext_drv;
-    int index;
-#endif
+    struct aml_lcd_extern_driver_t *lcd_extern_driver;
 
     if (pConf->lcd_control.mipi_config->dsi_init_off) {
         dsi_write_cmd(pConf->lcd_control.mipi_config->dsi_init_off);
         lcd_print("dsi init off\n");
     }
 
-#ifdef CONFIG_AML_LCD_EXTERN
-    index = pConf->lcd_control.extern_index;
-    if (index < LCD_EXTERN_INDEX_INVALID) {
-        ext_drv = aml_lcd_extern_get_driver(index);
-        if (ext_drv == NULL) {
-            lcd_print("no lcd_extern driver for mipi-dsi\n");
-        } else {
-            if (ext_drv->init_off_cmd_8) {
-                dsi_write_cmd(ext_drv->init_off_cmd_8);
-                DPRINT("[extern]%s dsi init off\n", ext_drv->config.name);
+    if (pConf->lcd_control.mipi_config->lcd_extern_init > 0) {
+        lcd_extern_driver = aml_lcd_extern_get_driver();
+        if (lcd_extern_driver == NULL) {
+            DPRINT("no lcd_extern driver\n");
+        }
+        else {
+            if (lcd_extern_driver->init_off_cmd_8) {
+                dsi_write_cmd(lcd_extern_driver->init_off_cmd_8);
+                DPRINT("[extern]%s dsi init off\n", lcd_extern_driver->name);
             }
         }
     }
-#endif
 }
 
 void set_mipi_dsi_control_config(Lcd_Config_t *pConf)
@@ -1309,14 +1297,14 @@ void set_mipi_dsi_control_config_post(Lcd_Config_t *pConf)
 
     if (cfg->factor_numerator == 0) {
         lanebyteclk = cfg->bit_rate / 8;
-        lcd_print("pixel_clk = %d.%03dMHz, bit_rate = %d.%03dMHz, lanebyteclk = %d.%03dMHz\n", (pclk / 1000000), ((pclk / 1000) % 1000), 
+        lcd_print("pixel_clk = %d.%03dMHz, bit_rate = %d.%03dMHz, lanebyteclk = %d.%03dMHz\n", (pclk / 1000000), ((pclk / 1000) % 1000),
                  (cfg->bit_rate / 1000000), ((cfg->bit_rate / 1000) % 1000), (lanebyteclk / 1000000), ((lanebyteclk / 1000) % 1000));
 
         cfg->factor_denominator = lanebyteclk/1000;
         cfg->factor_numerator = pclk/1000;
         //cfg->factor_denominator = 10;
     }
-    lcd_print("d=%d, n=%d, factor=%d.%02d\n", cfg->factor_denominator, cfg->factor_numerator, (cfg->factor_denominator/cfg->factor_numerator), 
+    lcd_print("d=%d, n=%d, factor=%d.%02d\n", cfg->factor_denominator, cfg->factor_numerator, (cfg->factor_denominator/cfg->factor_numerator),
              ((cfg->factor_denominator % cfg->factor_numerator) * 100 / cfg->factor_numerator));
 
     operation_mode = ((cfg->operation_mode >> BIT_OPERATION_MODE_DISP) & 1);
@@ -1427,7 +1415,7 @@ static ssize_t dsi_debug(struct class *class, struct class_attribute *attr, cons
 
     if (ret != 1 || ret !=2)
         return -EINVAL;
-    
+
     return count;
     //return 0;
 }
@@ -1479,4 +1467,3 @@ void dsi_remove(Lcd_Config_t *pConf)
 {
     remove_dsi_attr(pConf);
 }
-

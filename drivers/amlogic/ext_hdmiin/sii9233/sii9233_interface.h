@@ -15,10 +15,6 @@ int sii_get_pwr5v_status(void);
 char sii_get_hdmi_port(void);
 void sii_set_hdmi_port(char port);
 
-// return values: port3status*1000+port2status*100+port1status*100+port0status
-int sii_get_pwr5v_status_all(void);
-
-
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 // sii9233a output signal horizontal parameters
 
@@ -52,4 +48,3 @@ int sii_get_audio_sampling_freq(void);
 int sii_get_chip_id(void);
 
 #endif
-

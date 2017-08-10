@@ -20,8 +20,6 @@
 #define INTERPOLATE_AUDIO_PTS
 #define INTERPOLATE_AUDIO_RESOLUTION 9000
 
-#define PTS_VALID_OFFSET_TO_CHECK      0x08000000
-
 #define OFFSET_DIFF(x, y)  ((int)(x - y))
 #define OFFSET_LATER(x, y) (OFFSET_DIFF(x, y) > 0)
 #define OFFSET_EQLATER(x, y) (OFFSET_DIFF(x, y) >= 0)
@@ -184,7 +182,7 @@ int calculation_stream_delayed_ms(u8 type, u32 *latestbitrate, u32 *avg_bitare)
     pts_table_t *pTable;
     int timestampe_delayed=0;
     unsigned long outtime;
-	
+
     if (type >= PTS_TYPE_MAX) {
         return 0;
     }
@@ -230,7 +228,7 @@ int calculation_stream_delayed_ms(u8 type, u32 *latestbitrate, u32 *avg_bitare)
             } else{
                 diff2 = stbuf_level(get_buf_by_type(type));
             }
-        } else 
+        } else
 #endif
         {
             diff2 = stbuf_level(get_buf_by_type(type));
@@ -302,12 +300,12 @@ int calculation_acached_delayed(void){
 	pTable = &pts_table[PTS_TYPE_AUDIO];
 
 	delay = pTable->last_checkin_pts-timestamp_apts_get();
-	if (0<delay && delay<5*90000) 
+	if (0<delay && delay<5*90000)
 		return delay;
 
 	if(pTable->last_avg_bitrate>0){
 		int diff = pTable->last_checkin_offset-pTable->last_checkout_offset;
-      		delay=diff*90000/(1+pTable->last_avg_bitrate/8);
+		delay=diff*90000/(1+pTable->last_avg_bitrate/8);
 
 		return delay;
 	}
@@ -366,7 +364,7 @@ static int pts_checkin_offset_inline(u8 type, u32 offset, u32 val,u64 uS64)
             //}
         }
         if (type == PTS_TYPE_AUDIO && pTable->first_checkin_pts == -1) {
-            pTable->first_checkin_pts = val;            
+            pTable->first_checkin_pts = val;
             //if (tsync_get_debug_pts_checkin() && tsync_get_debug_apts()) {
                 printk("first check in apts <0x%x:0x%x> ok!\n", offset, val);
             //}
@@ -391,7 +389,7 @@ static int pts_checkin_offset_inline(u8 type, u32 offset, u32 val,u64 uS64)
         rec->offset = offset;
         rec->val = val;
         rec->pts_uS64 = uS64;
-		
+
 #ifdef CALC_CACHED_TIME
 	{
 		s32 diff = offset-pTable->last_checkin_offset;
@@ -417,7 +415,7 @@ static int pts_checkin_offset_inline(u8 type, u32 offset, u32 val,u64 uS64)
 			pTable->last_checkin_offset = offset;
 			pTable->last_checkin_pts    = val;
 			pTable->last_checkin_jiffies = jiffies;
-			
+
 		}
 	}
 #endif
@@ -435,7 +433,7 @@ static int pts_checkin_offset_inline(u8 type, u32 offset, u32 val,u64 uS64)
                 printk("init apts[%d] at 0x%x\n", type, val);
             }
 
-            if (type == PTS_TYPE_VIDEO) {	
+            if (type == PTS_TYPE_VIDEO) {
                 WRITE_MPEG_REG(VIDEO_PTS, val);
             } else if (type == PTS_TYPE_AUDIO) {
                 WRITE_MPEG_REG(AUDIO_PTS, val);
@@ -454,7 +452,7 @@ static int pts_checkin_offset_inline(u8 type, u32 offset, u32 val,u64 uS64)
 }
 int pts_checkin_offset(u8 type, u32 offset, u32 val){
     u64 us;
-    us = div64_u64((u64)val*100,9);
+    us = div64_u64(val*100,9);
     return pts_checkin_offset_inline(type,offset,val,us);
 }
 int pts_checkin_offset_us64(u8 type, u32 offset, u64 us){
@@ -612,7 +610,7 @@ static int _pts_lookup_offset_inline(
     spin_lock_irqsave(&lock, flags);
 
     if (likely(pTable->status == PTS_RUNNING)) {
-        pts_rec_t *p = NULL, *p2 = NULL;
+        pts_rec_t *p, *p2 = NULL;
 
         if ((pTable->lookup_cache_valid) &&
             (offset == pTable->lookup_cache_offset)) {
@@ -620,27 +618,6 @@ static int _pts_lookup_offset_inline(
 
             *val = pTable->lookup_cache_pts;
             return 0;
-        }
-
-        if ((type == PTS_TYPE_VIDEO) && !list_empty(&pTable->valid_list)) {
-            pts_rec_t *rec = NULL, *next = NULL;
-            int look_cnt1 = 0;
-            list_for_each_entry_safe(rec, next, &pTable->valid_list, list) {
-                if (OFFSET_DIFF(offset, rec->offset) > PTS_VALID_OFFSET_TO_CHECK) {
-                    if (pTable->pts_search == &rec->list) {
-                        pTable->pts_search = rec->list.next;
-                    }
-
-                    if (tsync_get_debug_vpts()) {
-                        printk("remove node  offset: 0x%x cnt:%d\n", rec->offset, look_cnt1);
-                    }
-
-                    list_move_tail(&rec->list, &pTable->free_list);
-                    look_cnt1 ++;
-                }else {
-                    break;
-                }
-            }
         }
 
         if (list_empty(&pTable->valid_list)) {
@@ -698,7 +675,7 @@ static int _pts_lookup_offset_inline(
         if ((p2) &&
             (OFFSET_DIFF(offset, p2->offset) < lookup_threshold)) {
             if (p2->val==0) //FFT: set valid vpts
-                p2->val = 1;            
+                p2->val = 1;
             if (tsync_get_debug_pts_checkout()) {
                 if (tsync_get_debug_vpts() && (type == PTS_TYPE_VIDEO)) {
                     printk("vpts look up offset<0x%x> --> <0x%x:0x%x>, look_cnt = %d\n",
@@ -735,7 +712,7 @@ static int _pts_lookup_offset_inline(
                     timestamp_firstvpts_set(*val);
                 if (tsync_get_debug_pts_checkout()) {
                     if (tsync_get_debug_vpts() && (type == PTS_TYPE_VIDEO)) {
-                        printk("=====first vpts look up offset<0x%x> --> <0x%x:0x%x> ok!\n", offset, p2->offset, p2->val);                        
+                        printk("=====first vpts look up offset<0x%x> --> <0x%x:0x%x> ok!\n", offset, p2->offset, p2->val);
                     }
                     if (tsync_get_debug_apts() && (type == PTS_TYPE_AUDIO)) {
                         printk("====first apts look up offset<0x%x> --> <0x%x:0x%x> ok!\n", offset, p2->offset, p2->val);
@@ -765,7 +742,7 @@ static int _pts_lookup_offset_inline(
 #ifdef CALC_CACHED_TIME
             pTable->last_checkout_pts = *val;
                 pTable->last_checkout_offset = offset;
- 
+
 #endif
             pTable->lookup_cache_pts = *val;
             pTable->lookup_cache_offset = offset;
@@ -843,19 +820,19 @@ static int pts_lookup_offset_inline(
 
 #if 0
     if(timestamp_firstvpts_get()==0&&res==0&&(*val)!=0&&type==PTS_TYPE_VIDEO){
-    	timestamp_firstvpts_set(*val);
+	timestamp_firstvpts_set(*val);
     }
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8    
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     else if(timestamp_firstvpts_get()==0&&res==0&&(*val)!=0&&type==PTS_TYPE_HEVC){
-    	timestamp_firstvpts_set(*val);
+	timestamp_firstvpts_set(*val);
     }
-#endif    
-    else 
+#endif
+    else
 #endif
 
     if(timestamp_firstapts_get()==0&&res==0&&(*val)!=0&&type==PTS_TYPE_AUDIO){
-    	timestamp_firstapts_set(*val);
-    }    
+	timestamp_firstapts_set(*val);
+    }
 
     return res;
 }
@@ -1021,7 +998,7 @@ int pts_start(u8 type)
             pTable->first_checkin_pts = -1;
             pTable->first_lookup_ok = 0;
             pTable->first_lookup_is_fail = 0;
-        } else 
+        } else
 #endif
         if (type == PTS_TYPE_VIDEO) {
             pTable->buf_start = READ_VREG(VLD_MEM_VIFIFO_START_PTR);
@@ -1091,12 +1068,12 @@ int pts_stop(u8 type)
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     if (HAS_HEVC_VDEC && (type == PTS_TYPE_HEVC)) {
         pTable = &pts_table[PTS_TYPE_VIDEO];
-    } else 
+    } else
 #endif
     {
         pTable = &pts_table[type];
     }
-    
+
     spin_lock_irqsave(&lock, flags);
 
     if (likely((pTable->status == PTS_RUNNING) ||
@@ -1106,7 +1083,7 @@ int pts_stop(u8 type)
         spin_unlock_irqrestore(&lock, flags);
 
         free_pts_list(pTable);
-		
+
         pTable->status = PTS_IDLE;
 
         if (type == PTS_TYPE_AUDIO) {
@@ -1154,4 +1131,3 @@ int first_pts_checkin_complete(u8 type)
         return 1;
 }
 EXPORT_SYMBOL(first_pts_checkin_complete);
-
