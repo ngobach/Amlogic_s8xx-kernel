@@ -19,7 +19,7 @@
 
 #define aml_nftl_dbg            aml_nand_dbg
 
-	 
+
 #define aml_nftl_malloc		aml_nand_malloc
 #define aml_nftl_free		aml_nand_free
 
@@ -72,7 +72,7 @@
 #define 	NAND_DATA_NAME		  			"nfdata"
 #define 	NAND_RESERVED_NAME  			"nfrevd"
 
-#define	PHY_DEV_NUM		3			
+#define	PHY_DEV_NUM		3
 
 /***nand BOOT flags***/
 #define NAND_BOOT_NORMAL			0
@@ -122,7 +122,7 @@ struct _nftl_cfg{
     uint16 nftl_support_wear_leveling;
     uint16 nftl_need_erase;
     uint16 nftl_part_reserved_block_ratio;
-    uint16 nftl_part_adjust_block_num;	
+    uint16 nftl_part_adjust_block_num;
     uint16 nftl_min_free_block_num;
     uint16 nftl_gc_threshold_free_block_num;
     uint16 nftl_min_free_block;
@@ -168,12 +168,12 @@ struct phydev_ops{
 /*
  * API for NFTL driver.
  * Provide nand basic information and common operation function.
- * Must meet all the requirement of NFTL driver, and also consider the fulture extensions 
+ * Must meet all the requirement of NFTL driver, and also consider the fulture extensions
  */
 
 /**
- * struct amlnand_phydev - nand phy device 
- * @name:	
+ * struct amlnand_phydev - nand phy device
+ * @name:
  * @type: used for fulture, differ from SLC, MLC and TLC
  * @retlen:	number of data bytes written/read
  * @ooblen:	number of oob bytes to write/read
@@ -189,21 +189,21 @@ struct amlnand_phydev{
 	const char name[MAX_DEVICE_NAME_LEN];
 
     /*****nand flash chip type, maybe SLC/MLC/TLC ******/
-	unsigned char type; 
+	unsigned char type;
 
 	unsigned char ecc_failed;
 	unsigned char bit_flip;
-	
+
 	/*** used for Read-Only, or other feature ***/
 	unsigned flags;
 
 	/*** used for other feature setting***/
 	unsigned option;
-	
+
 	/*** struct for whole nand chip***/
-	//struct amlnand_chip *aml_chip;	
+	//struct amlnand_chip *aml_chip;
 	void *priv;
-	
+
 	struct list_head list;
 
 #ifndef AML_NAND_UBOOT
@@ -213,16 +213,16 @@ struct amlnand_phydev{
 	struct cdev	uboot_cdev;
 
 	/*** offset value of the whole nand device***/
-	uint64_t offset;	 	
-			
+	uint64_t offset;
+
 	/*** Total size of the cunrrent nand device***/
-	uint64_t size;	 
-	
+	uint64_t size;
+
 	unsigned char	chipnr;
 
 	/*** "Major" erase size for the device. ***/
 	unsigned erasesize;
-	
+
 	/* Minimal writable flash unit size. In case of NOR flash it is 1 (even
 	 * though individual bits can be cleared), in case of NAND flash it is
 	 * one NAND page (or half, or one-fourths of it), in case of ECC-ed NOR
@@ -233,20 +233,20 @@ struct amlnand_phydev{
 	unsigned writesize;
 
 	/**** Available OOB bytes per page ***/
-	unsigned oobavail;  
-	
+	unsigned oobavail;
+
 	/*
 	 * If erasesize is a power of 2 then the shift is stored in
 	 * erasesize_shift otherwise erasesize_shift is zero. Ditto writesize.
 	 */
 	unsigned erasesize_shift;
 	unsigned writesize_shift;
-	
+
 	/*** Masks based on writesize_shift ***/
 	unsigned writesize_mask;
-	
-	/***partitions info***/	
-	unsigned char nr_partitions;	
+
+	/***partitions info***/
+	unsigned char nr_partitions;
 	struct amlnf_partition *partitions;
 
 	struct phydev_ops ops;
@@ -257,8 +257,8 @@ struct amlnand_phydev{
 	 * Callers are supposed to pass a callback function and wait for it
 	 * to be called before writing to the block.
 	 */
-	int (*erase) (struct amlnand_phydev *phydev);	
-	
+	int (*erase) (struct amlnand_phydev *phydev);
+
 	/***basic data operation and included oob data****/
 	int (*read) (struct amlnand_phydev *phydev);
 	int (*write) (struct amlnand_phydev *phydev);
@@ -268,22 +268,22 @@ struct amlnand_phydev{
 	 * called when its known the kernel is about to panic and we need the
 	 * write to succeed. Since the kernel is not going to be running for much
 	 * longer, this function can break locks and delay to ensure the write
-	 * succeeds (but not sleep). 
+	 * succeeds (but not sleep).
 	 */
 	int (*panic_write) (struct amlnand_phydev *phydev);
 
 	int (*read_oob) (struct amlnand_phydev *phydev);
-	
+
 	/********not support yet**********/
 	int (*write_oob) (struct amlnand_phydev *phydev);
-	
+
 	/*
-	 * support read data for sect_uint(512bytes in genreal), 
-	 * not just writesize unit, to improve read data speed.  
+	 * support read data for sect_uint(512bytes in genreal),
+	 * not just writesize unit, to improve read data speed.
 	 * Not spport yet.
 	 */
 	int (*read_sect) (struct amlnand_phydev *phydev);
-			 
+
 	/* Sync to nand device, used for TLC nand to finish the current write ops*/
 	void (*sync) (struct amlnand_phydev *phydev);
 
@@ -305,18 +305,18 @@ struct amlnand_phydev{
 	int (*block_modifybbt) (struct amlnand_phydev *phydev,int value);
 	int (*update_bbt) (struct amlnand_phydev *phydev);
     int (*phydev_test_block) (struct amlnand_phydev *phydev);
-	//struct notifier_block reboot_notifier;  /* default mode before reboot */	 			
+	//struct notifier_block reboot_notifier;  /* default mode before reboot */
 };
 
 
 struct amlnf_logicdev_t{
-	
+
 #ifndef AML_NAND_UBOOT
 	struct mutex 			lock;
 	struct timespec 		ts_write_start;
-	spinlock_t				thread_lock;	
+	spinlock_t				thread_lock;
 	struct notifier_block   nb;
-	struct task_struct*		thread;	
+	struct task_struct*		thread;
 	struct class	  cls;
 #endif
 
@@ -325,13 +325,13 @@ struct amlnf_logicdev_t{
 
 	struct amlnand_phydev*  nand_dev;
 	//amlnf_dev list, since several dev can share one logicdev.
-	struct list_head nfdev_list;	   
+	struct list_head nfdev_list;
 
 	int (*read_data)(struct amlnf_logicdev_t *amlnf_logicdev,unsigned long start_sector,unsigned long len,unsigned char *buf);
 	int (*write_data)(struct amlnf_logicdev_t *amlnf_logicdev,unsigned long start_sector,unsigned long len,unsigned char *buf);
 	int (*flush)(struct amlnf_logicdev_t *amlnf_logicdev);
 	int (*shutdown)(struct amlnf_logicdev_t *amlnf_logicdev);
-	
+
 	struct _nftl_cfg        nftl_cfg;
 };
 
@@ -342,7 +342,7 @@ struct amlnf_dev{
 	uint64_t size_sector;
 	uint64_t offset_sector;
 	unsigned mask_flags;
-	
+
 #ifndef AML_NAND_UBOOT
 	struct kref ref;
 	struct request* 		req;
@@ -351,11 +351,11 @@ struct amlnf_dev{
 	struct mutex mutex_lock_req;
 	struct mutex mutex_lock;
 	struct scatterlist* 	bounce_sg;
-	unsigned int	bounce_sg_len;	
-	bool bg_stop;	
+	unsigned int	bounce_sg_len;
+	bool bg_stop;
 	struct task_struct*		thread;
 	struct gendisk *disk;
-	struct attribute_group *disk_attributes;	
+	struct attribute_group *disk_attributes;
 	struct class	  cls;
 #endif
 
@@ -390,7 +390,7 @@ extern ssize_t verify_nand_page(struct class *class, struct class_attribute *att
 extern ssize_t dump_nand_page(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
 extern ssize_t show_nand_info(struct class *class, struct class_attribute *attr, char *buf);
 extern ssize_t show_bbt_table(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
-extern ssize_t nand_ioctl(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
+extern ssize_t change_test_sync_flag(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
 extern ssize_t show_amlnf_version_info(struct class *class, struct class_attribute *attr, char *buf);
 extern ssize_t nand_page_read(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
 extern ssize_t nand_page_write(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
@@ -438,7 +438,7 @@ extern int amlnf_phy_init(unsigned char flag, struct platform_device *pdev );
 extern int amlnf_logic_init(unsigned flag);
 extern int amlnf_dev_init(unsigned flag);
 
-extern  int is_phydev_off_adjust(void); 
+extern  int is_phydev_off_adjust(void);
 extern  int get_adjust_block_num(void);
 
 #endif

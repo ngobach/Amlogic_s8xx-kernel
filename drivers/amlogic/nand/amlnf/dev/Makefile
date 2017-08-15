@@ -8,10 +8,10 @@ amlnf_api-objs += amlnf_env.o
 amlnf_api-objs += phydev.o
 
 
-#ifeq ($(CONFIG_AML_NAND_KEY), y) 
-amlnf_api-objs  +=nandkey.o 
+#ifeq ($(CONFIG_AML_NAND_KEY), y)
+amlnf_api-objs  +=nandkey.o
 #endif
- 
-#ifeq ($(CONFIG_SECURE_NAND), y) 
-amlnf_api-objs  +=secure_storage.o 
-#endif 
+
+#ifeq ($(CONFIG_SECURE_NAND), y)
+amlnf_api-objs  +=secure_storage.o
+#endif

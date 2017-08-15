@@ -154,7 +154,7 @@ static int part_erase(struct ntd_info *ntd, uint32_t block)
 
     byte_addr = block;
     byte_addr <<= ntd->blocksize_shift;
-		
+
     nand_dev->ops.mode = NAND_HW_ECC;
     nand_dev->ops.addr = byte_addr;
     nand_dev->ops.len = ntd->blocksize;
@@ -239,7 +239,7 @@ static int part_block_markbad(struct ntd_info *ntd, uint32_t block)
 *Note         :
 *****************************************************************************/
 static int part_suspend(struct ntd_info *ntd)
-{	
+{
 	struct amlnand_phydev* phy;
 	int ret = 0;
 	phy = ntd->priv;
@@ -249,12 +249,12 @@ static int part_suspend(struct ntd_info *ntd)
 		printk("%s : get phy dev failed\n",__func__);
 		return 0;
 	}
-   	ret = phy->suspend(phy);
+	ret = phy->suspend(phy);
 	if(ret){
 		printk("part_suspend %s  failed!!!\n",phy->name);
-	}	
+	}
+	printk("part_suspend %s\n",phy->name);
 
-	
     return ret;
 }
 
@@ -275,8 +275,9 @@ static void part_resume(struct ntd_info *ntd)
 		return ;
 	}
 	 phy->resume(phy);
-	
-	
+
+	printk("part_resume %s\n",phy->name);
+
 	return ;
 }
 
@@ -373,7 +374,7 @@ static struct ntd_info *allocate_partition(struct amlnand_phydev* master)
 	char *name;
 
     uint32_t block = 0;
-	
+
     uint32_t block_num = 0;
 	/* allocate the partition structure */
 	slave = kzalloc(sizeof(*slave), GFP_KERNEL);
@@ -474,7 +475,6 @@ int add_ntd_partitions(struct amlnand_phydev* master)
     }
 
     mutex_lock(&ntd_partitions_mutex);
-    slave->thread_stop_flag = 0;
     list_add(&slave->list, &ntd_partitions);
     mutex_unlock(&ntd_partitions_mutex);
 

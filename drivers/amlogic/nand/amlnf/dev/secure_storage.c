@@ -12,15 +12,15 @@ int aml_nand_update_secure(struct amlnand_chip * aml_chip, char *secure_ptr)
 	int ret = 0;
 	char malloc_flag = 0;
 	char *secure_buf = NULL;
-	
+
 	if(secure_buf == NULL){
-		
+
 		secure_buf = kzalloc(CONFIG_SECURE_SIZE, GFP_KERNEL);
 		if(secure_buf == NULL)
 			return -ENOMEM;
 		memset(secure_buf,0,CONFIG_SECURE_SIZE);
 		ret = amlnand_read_info_by_name(aml_chip,(unsigned char *)&(aml_chip->nand_secure),secure_buf,SECURE_INFO_HEAD_MAGIC, CONFIG_SECURE_SIZE);
-		if (ret) 
+		if (ret)
 		{
 			aml_nand_msg("read key error,%s\n",__func__);
 			ret = -EFAULT;
@@ -29,13 +29,13 @@ int aml_nand_update_secure(struct amlnand_chip * aml_chip, char *secure_ptr)
 	}else{
 		secure_buf = secure_ptr;
 	}
-	
+
 	ret = amlnand_save_info_by_name(aml_chip, (unsigned char *)&(aml_chip->nand_secure), secure_buf, SECURE_INFO_HEAD_MAGIC, CONFIG_SECURE_SIZE);
 	if(ret < 0){
 		aml_nand_msg("aml_nand_update_secure : update secure failed");
 	}
-	
-exit:	
+
+exit:
 	if(malloc_flag && (secure_buf)){
 		kfree(secure_buf);
 		secure_buf = NULL;
@@ -61,7 +61,7 @@ exit:
 	memset(secure_ptr,0,CONFIG_SECURE_SIZE);
 
 	error = amlnand_read_info_by_name(aml_chip, (unsigned char *)&(aml_chip->nand_secure),(unsigned char *)secure_ptr,SECURE_INFO_HEAD_MAGIC, CONFIG_SECURE_SIZE);
-	if (error) 
+	if (error)
 	{
 		aml_nand_msg("read key error,%s\n",__func__);
 		error = -EFAULT;
@@ -86,18 +86,18 @@ int32_t nand_secure_write(struct amlnand_chip * aml_chip, char *buf,int len)
 		aml_nand_msg("key data len too much,%s\n",__func__);
 		return -EFAULT;
 	}
-	
+
 	secure_ptr = kzalloc(CONFIG_SECURE_SIZE, GFP_KERNEL);
 	if(secure_ptr == NULL)
 		return -ENOMEM;
-	
+
 	memset(secure_ptr,0,CONFIG_SECURE_SIZE);
 	//memcpy(secure_ptr->data + 0, buf, len);
 	memcpy(secure_ptr, buf, len);
 	amlnand_get_device(aml_chip, CHIP_WRITING);
 
 	error = amlnand_save_info_by_name(aml_chip, (unsigned char *)&(aml_chip->nand_secure),(unsigned char *)secure_ptr,SECURE_INFO_HEAD_MAGIC, CONFIG_SECURE_SIZE);
-	if (error) 
+	if (error)
 	{
 		printk("save key error,%s\n",__func__);
 		error = -EFAULT;
@@ -114,7 +114,7 @@ int aml_secure_init(struct amlnand_chip *aml_chip)
 {
 	int ret = 0;
 	secure_t *secure_ptr = NULL;
-	
+
 	secure_ptr = aml_nand_malloc(CONFIG_SECURE_SIZE);
 	if (secure_ptr == NULL){
 		aml_nand_msg("nand malloc for secure_ptr failed");
@@ -123,7 +123,7 @@ int aml_secure_init(struct amlnand_chip *aml_chip)
 	}
 	memset(secure_ptr,0x0,CONFIG_SECURE_SIZE);
 	aml_nand_dbg("nand secure: nand_secure_probe. ");
-	
+
 	ret = amlnand_info_init(aml_chip, (unsigned char *)&(aml_chip->nand_secure),(unsigned char *)secure_ptr,SECURE_INFO_HEAD_MAGIC, CONFIG_SECURE_SIZE);
 	if(ret < 0){
 		aml_nand_msg("invalid nand secure_ptr\n");
@@ -137,11 +137,11 @@ int aml_secure_init(struct amlnand_chip *aml_chip)
 	}
 
 #endif
-	
+
 	aml_chip_secure = aml_chip;
 
 exit_error0:
-	if(secure_ptr) {
+	if(secure_ptr){
 		aml_nand_free(secure_ptr);
 		secure_ptr =NULL;
 	}
@@ -153,7 +153,7 @@ int secure_storage_nand_read(char *buf,unsigned int len)
 {
 	 struct amlnand_chip *aml_chip = aml_chip_secure;
 	int ret = 0;
-	
+
 	ret = nand_secure_read(aml_chip,buf,len);
 	if(ret < 0){
 		aml_nand_msg("secure storage nand read failed\n");
@@ -166,7 +166,7 @@ int secure_storage_nand_write(char *buf,unsigned int len)
 {
 	 struct amlnand_chip *aml_chip = aml_chip_secure;
 	int ret = 0;
-	
+
 	ret = nand_secure_write(aml_chip,buf,len);
 	if(ret < 0){
 		aml_nand_msg("secure storage nand write failed\n");

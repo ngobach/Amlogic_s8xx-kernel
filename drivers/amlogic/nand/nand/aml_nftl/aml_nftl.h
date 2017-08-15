@@ -31,7 +31,7 @@ typedef int16_t     	addr_linearblk_t;
 #define aml_nftl_malloc(n)		kzalloc(n, GFP_KERNEL)
 #define aml_nftl_free			kfree
 #define aml_nftl_dbg			printk
- 
+
 /**
 */
 //addr_sect_t nftl_get_sector(addr_sect_t addr,sect_map_t logic_map);
@@ -151,15 +151,15 @@ struct write_cache_node {
 	struct list_head list;
 	unsigned char *buf;
 	int8_t bounce_buf_num;
-   	uint32_t vt_sect_addr;	
-   	unsigned char cache_fill_status[MAX_BLKS_PER_SECTOR];		//blk unit fill status every vitual sector
+	uint32_t vt_sect_addr;
+	unsigned char cache_fill_status[MAX_BLKS_PER_SECTOR];		//blk unit fill status every vitual sector
 };
 
 struct free_sects_list {
 
 	struct list_head list;
-   	uint32_t vt_sect_addr;	
-   	unsigned char free_blk_status[MAX_BLKS_PER_SECTOR];
+	uint32_t vt_sect_addr;
+	unsigned char free_blk_status[MAX_BLKS_PER_SECTOR];
 };
 
 struct wl_rb_t {
@@ -176,11 +176,11 @@ struct wl_list_t {
 
 struct gc_blk_list {
 	struct list_head list;
-   	addr_blk_t	gc_blk_addr;	
+	addr_blk_t	gc_blk_addr;
 };
 
 /**
-* tree root & node count 
+* tree root & node count
 */
 struct wl_tree_t {
 	struct rb_root  root;	/*tree root*/
@@ -213,7 +213,7 @@ struct aml_nftl_wl_t {
 	/*list for dynamic wl(leaf blocks), read ecc error blocks*/
 	struct wl_list_t		readerr_head;
 	struct list_head 		gc_blk_list;
-	
+
 	/*static wl threshold*/
 	uint32_t		wl_delta;
 	uint32_t		cur_delta;
@@ -266,7 +266,7 @@ struct aml_nftl_blk_t{
 	struct task_struct *nftl_thread;
 	spinlock_t thread_lock;
 	struct aml_nftl_info_t *aml_nftl_info;
-	
+
 	int (*read_data)(struct aml_nftl_blk_t *aml_nftl_blk, unsigned long block, unsigned nblk, unsigned char *buf);
 	int (*write_data)(struct aml_nftl_blk_t *aml_nftl_blk, unsigned long block, unsigned nblk, unsigned char *buf);
 	int (*write_cache_data)(struct aml_nftl_blk_t *aml_nftl_blk, uint8_t cache_flag);

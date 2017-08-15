@@ -15,7 +15,7 @@ config AML_NFTL_NEW
 	default m
 	help
 	  Support for NAND flash on Amlogic Meson platforms for Next nftl
-	  
+
 config AML_NAND_KEY
 	bool "Meson key data store in nand device(dev/nand_key) support"
 	depends on AML_NEXT_GEN_NAND
@@ -31,4 +31,3 @@ config SECURE_NAND
 	  Support  secure storage in NAND device
 
 endmenu
-        
