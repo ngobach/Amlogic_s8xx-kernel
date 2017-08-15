@@ -35,8 +35,8 @@ obj-y += cpufreq/
 obj-$(CONFIG_GPIO_AMLOGIC) += gpio/
 obj-y += pinctrl/
 
-#obj-$(CONFIG_AML_NEXT_GEN_NAND) += nand/amlnf/
-#obj-$(CONFIG_AM_NAND) += nand/nand/
+obj-$(CONFIG_AML_NEXT_GEN_NAND) += nand/amlnf/
+obj-$(CONFIG_AM_NAND) += nand/nand/
 
 obj-y += ethernet/
 
