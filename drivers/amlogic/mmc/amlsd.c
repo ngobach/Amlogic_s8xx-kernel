@@ -344,7 +344,7 @@ static bool aml_sg_miter_next(struct sg_mapping_iter *miter)
     if (PageHighMem(miter->page)){
 		printk(KERN_DEBUG "AML_SDHC miter_next highmem\n");
 		local_irq_save(flags);
-	miter->addr = kmap_atomic(miter->page) + miter->__offset;
+    	miter->addr = kmap_atomic(miter->page) + miter->__offset;
 		local_irq_restore(flags);
     }
 	else
@@ -1171,11 +1171,11 @@ irqreturn_t aml_irq_cd_thread(int irq, void *data)
 
     //mdelay(500);
     if(pdata->is_in == 0){
-	mmc_detect_change(pdata->mmc, msecs_to_jiffies(2));
+    	mmc_detect_change(pdata->mmc, msecs_to_jiffies(2));
 
     }
     else{
-	mmc_detect_change(pdata->mmc, msecs_to_jiffies(500));
+    	mmc_detect_change(pdata->mmc, msecs_to_jiffies(500));
     }
 
 	return IRQ_HANDLED;
@@ -1522,3 +1522,4 @@ int aml_dbg_verify_pinmux (struct amlsd_platform * pdata)
     // return;
 // }
 // #endif
+
