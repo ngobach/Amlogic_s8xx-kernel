@@ -266,6 +266,9 @@ static void mmc_select_card_type(struct mmc_card *card)
 	card->ext_csd.card_type = card_type;
 }
 
+/* Minimum partition switch timeout in milliseconds */
+#define MMC_MIN_PART_SWITCH_TIME	300
+
 /*
  * Decode extended CSD.
  */
@@ -330,6 +333,10 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 		/* EXT_CSD value is in units of 10ms, but we store in ms */
 		card->ext_csd.part_time = 10 * ext_csd[EXT_CSD_PART_SWITCH_TIME];
+		/* Some eMMC set the value too low so set a minimum */
+		if (card->ext_csd.part_time &&
+		    card->ext_csd.part_time < MMC_MIN_PART_SWITCH_TIME)
+			card->ext_csd.part_time = MMC_MIN_PART_SWITCH_TIME;
 
 		/* Sleep / awake timeout in 100ns units */
 		if (sa_shift > 0 && sa_shift <= 0x17)
@@ -492,11 +499,11 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 		card->ext_csd.rel_param = ext_csd[EXT_CSD_WR_REL_PARAM];
 		card->ext_csd.rst_n_function = ext_csd[EXT_CSD_RST_N_FUNCTION];
-        
+
         if ((card->ext_csd.rst_n_function & EXT_CSD_RST_N_EN_MASK) != EXT_CSD_RST_N_ENABLED){
 
             pr_err("Enable hw reset function here, only once, rst_n_function:%d\n", card->ext_csd.rst_n_function);
-            //add enable hw reset function here, only run once for eMMC            
+            //add enable hw reset function here, only run once for eMMC
             err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_RST_N_FUNCTION,
                     EXT_CSD_RST_N_ENABLED,
                     10);
@@ -507,10 +514,6 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
             else{
                 card->ext_csd.rst_n_function |= EXT_CSD_RST_N_ENABLED;
             }
-        }
-        else{
-            pr_err("###check hw reset function is already enabled here\n");          
-
         }
 
 		/*
@@ -1076,7 +1079,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			}
 		}else
 			flag=1;
-		
+
 		if(flag && host->caps & MMC_CAP_MMC_HIGHSPEED){
 			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 					 EXT_CSD_HS_TIMING, 1,

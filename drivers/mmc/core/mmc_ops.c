@@ -130,26 +130,6 @@ int mmc_go_idle(struct mmc_host *host)
 	return err;
 }
 
-int mmc_send_cmd23_req(struct mmc_host *host, unsigned int blockcount)
-{
-	int err;
-	struct mmc_command cmd = {0};
-
-	BUG_ON(!host);
-
-	cmd.opcode = MMC_SET_BLOCK_COUNT;
-	cmd.arg = blockcount;
-	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
-
-	err = mmc_wait_for_cmd(host, &cmd, MMC_CMD_RETRIES);
-	if (err) {
-		pr_err("%s %d error\n",__func__, __LINE__);
-		return err;
-	}
-
-	return 0;
-}
-
 int mmc_send_op_cond(struct mmc_host *host, u32 ocr, u32 *rocr)
 {
 	struct mmc_command cmd = {0};
