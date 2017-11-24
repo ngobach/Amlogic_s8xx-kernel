@@ -64,6 +64,12 @@
         #address-cells = <1>;
         #size-cells = <1>;
 
+	mem_4k2k_decoder: region@1 {
+		region_name = "cma_4k2k";
+		linux,contiguous-region;
+		reg = <0x00000000 0x0ca00000>;
+	};
+
         cma_0:region@0 {
            region_name = "cma_0";
            reg = <0 0x01200000>;
@@ -124,6 +130,25 @@
                 reserve-iomap = "true";
         };
 
+
+	codec_mm{
+		compatible = "amlogic, codec, mm";
+		dev_name = "codec_mm";
+		status = "okay";
+		reserve-memory = <0x04100000>; // 65M
+		//reserve-iomap = "true";
+		linux,contiguous-region = <&mem_4k2k_decoder>;
+	};
+
+    picdec{
+		compatible = "amlogic,picdec";
+		dev_name = "picdec";
+		status = "okay";
+                share-memory-name = "vdec0";
+                share-memory-offset = <0>;
+                share-memory-size = <0x04000000>; //64M
+	};
+
     ppmgr{
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
@@ -152,7 +177,7 @@
         irq = <115>;
         vdin_id = <0>;
 	};
-	
+
 //	};
 //
     vdin1{
@@ -187,6 +212,13 @@
 		dev_name = "mesonvout";
 		status = "okay";
 	};
+
+	tvout {
+		compatible = "amlogic,tvout";
+		dev_name = "tvout";
+		status = "okay";
+	};
+
 /*
 	amvideocap{
 		compatible = "amlogic,amvideocap";
@@ -327,6 +359,7 @@ sdio{
         };
     };
 
+// L2 PROP_CHOICE "sdhc_pin_6_match" = "pinctrl-6"
     sdhc{
         compatible = "amlogic,aml_sdhc";
         dev_name = "aml_sdhc.0";
@@ -367,7 +400,7 @@ sdio{
             ocr_avail = <0x00200080>; // 3.3:0x200000, 1.8+3.3:0x00200080
             caps = "MMC_CAP_8_BIT_DATA","MMC_CAP_MMC_HIGHSPEED","MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE","MMC_CAP_ERASE", "MMC_CAP_HW_RESET"; // MMC_CAP_NEEDS_POLL -- for detect, MMC_CAP_NONREMOVABLE -- for eMMC/TSD
             caps2 = "MMC_CAP2_HS200_1_8V_SDR";
-	        f_min = <300000>;
+	    f_min = <300000>;
             f_max = <150000000>;
             max_req_size = <0x20000>;          /**128KB*/
             gpio_dat3 = "BOOT_3";
@@ -896,11 +929,15 @@ sdio{
         status = "okay";
     };
 
-    crypto_device{
-       compatible = "amlogic,crypto-device";
-       dev_name = "crypto_device";
+    aml_aes{
+       compatible = "amlogic,aes";
+       dev_name = "aml_aes";
     };
 
+    aml_tdes{
+       compatible = "amlogic,des,tdes";
+       dev_name = "aml_tdes";
+    };
 	gpio:gpio{
 		compatible = "amlogic,m8-gpio";
 		dev_name = "gpio";
@@ -1064,7 +1101,6 @@ sdio{
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
-
         sdhc_emmc_clk_cmd_pins:sdhc_emmc_clk_cmd_pins{
             amlogic,setmask=<4 0x0c000000>;         /*bit[26-27] */
             amlogic,clrmask=<2 0x04c000f0           /*sdhc b & nand*/
@@ -1085,7 +1121,6 @@ sdio{
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
-
         sdhc_sdio_clk_cmd_pins:sdhc_sdio_clk_cmd_pins{
             amlogic,setmask=<5 0x00000c00>;         /*sdhc a bit[10-11] */
             amlogic,clrmask=<2 0x058000f0           /*sdhc b*/
@@ -1220,13 +1255,13 @@ sdio{
 //                reset_delay = <100>;
 //	};
 	       ethmac: ethernet@0xc9410000{
-				compatible = "amlogic,meson8m2-rgmii-dwmac", "snps,dwmac";
-				reg = <0xc9410000 0x10000
+			compatible = "amlogic,meson8m2-rgmii-dwmac", "snps,dwmac";
+			reg = <0xc9410000 0x10000
 				0xc1108108 0x4>;
-				interrupts = <0 8 1>;
-                interrupt-names = "macirq";
-				clocks = "clk81";
-				clock-names = "stmmaceth";
+			interrupts = <0 8 1>;
+                	interrupt-names = "macirq";
+			clocks = "clk81";
+			clock-names = "stmmaceth";
        };
 
 	dvb{
@@ -1252,6 +1287,11 @@ sdio{
 		fe0_dev = <0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&dvb_fe_pins>;
+	};
+
+	meson-rng{
+		compatible = "amlogic,meson-rng";
+		status = "ok";
 	};
 
 }; /* end of / */
