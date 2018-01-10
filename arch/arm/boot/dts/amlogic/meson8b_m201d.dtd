@@ -690,7 +690,7 @@ void root_func(){
 	meson_vcck_dvfs_driver{
         compatible = "amlogic, meson_vcck_dvfs";
         dev_name = "meson_vcck_dvfs_driver";
-        status = "ok";
+        status = "disabled";
         pinctrl-names = "default";
         pinctrl-0 = <&aml_pwm_pins>;
         use_pwm = <1>; 
