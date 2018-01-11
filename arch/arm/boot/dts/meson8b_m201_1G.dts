@@ -91,12 +91,12 @@
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		status = "okay";
-		reserve-memory = <0x00800000 0x00100000>;
+		reserve-memory = <0x01800000  0x00100000>;
 		reserve-iomap = "true";
 	        vmode = <3>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
 		scale_mode = <1>; /*0:default 1:new*/
 		4k2k_fb = <0>;
-	        display_size_default = <1280 720 1280 1440 32>;  // osd0:8M, osd1:1m  1280*720*4*3 = 11,059,200
+		display_size_default = <1920 1080 1920 3240 32>; //1920*1080*4*3 = 0x17BB000
 	};
 
 	deinterlace{
@@ -111,14 +111,14 @@
 		dev_name = "mesonstream.0";
 		status = "okay";
 		reserve-memory = <0x02000000>; // 32M
-		//reserve-iomap = "true";
+//		reserve-iomap = "true";
 	};
 
         vdec{
                 compatible = "amlogic,vdec";
                 dev_name = "vdec.0";
                 status = "okay";
-								reserve-memory = <0x04000000>; // 64M
+		reserve-memory = <0x04000000>; // 64M
 //		reserve-iomap = "true";
         };
     picdec{
@@ -301,7 +301,7 @@
             gpio_dat3 = "CARD_4";
             jtag_pin = "CARD_0";
             gpio_cd = "CARD_6";
-//            gpio_ro = "GPIODV_25";
+//          gpio_ro = "GPIODV_25";
             irq_in = <3>;
             irq_out = <5>;
             card_type = <5>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
