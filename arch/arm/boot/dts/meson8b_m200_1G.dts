@@ -110,14 +110,14 @@
 		dev_name = "mesonstream.0";
 		status = "okay";
 		reserve-memory = <0x02000000>; // 32M
-		//reserve-iomap = "true";
+//		reserve-iomap = "true";
 	};
 
         vdec{
                 compatible = "amlogic,vdec";
                 dev_name = "vdec.0";
                 status = "okay";
-								reserve-memory = <0x04000000>; // 64M
+		reserve-memory = <0x04000000>; // 64M
 //		reserve-iomap = "true";
         };
     picdec{

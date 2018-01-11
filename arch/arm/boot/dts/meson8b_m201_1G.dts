@@ -91,7 +91,7 @@
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		status = "okay";
-		reserve-memory = <0x01800000  0x00100000>;
+		reserve-memory = <0x01800000 0x00100000>;
 		reserve-iomap = "true";
 	        vmode = <3>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
 		scale_mode = <1>; /*0:default 1:new*/
@@ -393,7 +393,6 @@
         //     card_type = <3>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
         // };
     };
-
 
 	i2c@c8100500{ /*I2C-AO*/
 		compatible = "amlogic,aml_i2c";
