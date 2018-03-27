@@ -11,9 +11,10 @@ export PATH=/opt/gcc-linaro-6.4.1-2017.11-x86_64_arm-linux-gnueabihf/bin/:$PATH
 #make meson8_k200b_1G_emmc_sdio.dtb meson8_k200b_2G_emmc_sdio.dtb
 #make meson8_k200b_1G_emmc_sdhc.dtb meson8_k200b_2G_emmc_sdhc.dtb
 
-#make meson8m2_n200_2G.dtd meson8m2_n200_1G.dtd
+#make meson8m2_n200_1G.dtd
 #make meson8m2_n200C_2G.dtd meson8m2_n200C_1G.dtd
 #make meson8_k200b_1G_emmc_sdio.dtd meson8_k200b_2G_emmc_sdio.dtd
 #make meson8_k200b_1G_emmc_sdhc.dtd meson8_k200b_2G_emmc_sdhc.dtd
 
+#make meson8m2_n200_2G_volumio.dtd
 make dtbs
