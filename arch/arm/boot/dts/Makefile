@@ -6,7 +6,8 @@ dtb-$(CONFIG_ARM) += meson8m2_n200_2G.dtb meson8m2_n200_1G.dtb \
 		meson8m2_n200_2G_M8SPlus.dtb \
 		meson8m2_n200_2G_MXIIIPlus.dtb \
 		meson8m2_n200_2G_SD1.dtb \
-		meson8m2_n200_2G_volumio.dtb
+		meson8m2_n200_2G_volumio.dtb \
+		meson8b_m201_1G.dtb
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)
