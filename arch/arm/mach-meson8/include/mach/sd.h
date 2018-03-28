@@ -671,7 +671,7 @@ extern struct mmc_host *sdio_host;
 	printk("[%s]\033[0;40;35m " fmt "\033[0m", __FUNCTION__, ##args);  \
 }while(0)
 
-//for external codec status, if using external codec, jtag should not be set.
+//for external codec status, if using external codec, jtag should not be set. 
 extern int ext_codec;
 
 #ifndef CONFIG_MESON_TRUSTZONE

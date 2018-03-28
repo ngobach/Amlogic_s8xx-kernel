@@ -55,6 +55,8 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_ML26124 if I2C
 	select SND_SOC_OMAP_HDMI_CODEC if OMAP4_DSS_HDMI
 	select SND_SOC_PCM3008
+	select SND_SOC_PCM512x_I2C if I2C
+	select SND_SOC_PCM512x_SPI if SPI_MASTER
 	select SND_SOC_RT5631 if I2C
         select SND_SOC_RT5616 if I2C
 	select SND_SOC_SGTL5000 if I2C
@@ -130,7 +132,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_TAS5707 if I2C
 	select SND_SOC_DUMMY_CODEC
 	select SND_SOC_AML_M8_CODEC
-	select SND_SOC_ES8323 if I2C
+	select SND_SOC_PCM5102
         help
           Normally ASoC codec drivers are only built if a machine driver which
           uses them is also built since they are only usable with a machine
@@ -298,6 +300,22 @@ config SND_SOC_OMAP_HDMI_CODEC
 
 config SND_SOC_PCM3008
        tristate
+
+config SND_SOC_PCM512x
+	tristate
+
+config SND_SOC_PCM512x_I2C
+	tristate "Texas Instruments PCM512x CODECs - I2C"
+	depends on I2C
+	select SND_SOC_PCM512x
+	select REGMAP_I2C
+
+config SND_SOC_PCM512x_SPI
+	tristate "Texas Instruments PCM512x CODECs - SPI"
+	depends on SPI_MASTER
+	select SND_SOC_PCM512x
+	select REGMAP_SPI
+
 config SND_SOC_RT5616
 	tristate
 
@@ -517,10 +535,7 @@ config SND_SOC_WM9713
 
 config SND_SOC_AML_M8_CODEC
 	tristate
-	
-config SND_SOC_ES8323
-	tristate
-	
+
 config SND_SOC_TAS5711
         tristate
 
@@ -529,10 +544,7 @@ config SND_SOC_TAS5707
 
 config SND_SOC_AMLPMU3
         tristate
- 
-config SND_SOC_AMLPMU4
-	tristate
-	       
+        
 # Amp
 config SND_SOC_LM4857
 	tristate
@@ -554,4 +566,6 @@ config SND_SOC_TPA6130A2
 config SND_SOC_DUMMY_CODEC
        tristate
 config SND_SOC_PCM2BT
+       tristate
+config SND_SOC_PCM5102
        tristate
