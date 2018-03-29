@@ -25,7 +25,7 @@
 #include <asm/proc-fns.h>
 #include <mach/system.h>
 #include <linux/slab.h>
-#include <../mach-meson8b/include/mach/pm.h>
+#include "../mach-meson8/include/mach/pm.h"
 /*
  * These are system power hooks to implement power down policy
  * pls add rule and policy notes
@@ -77,7 +77,11 @@ void meson_power_off_prepare(void)
 void meson_power_off(void)
 {
 	printk("meson power off \n");
-	meson_pm_poweroff();
+	if(reboot_flag)
+		meson_common_restart('h',"uboot_suspend");
+	else
+//		meson_common_restart('h',"charging_reboot");
+                meson_pm_poweroff();
 }
 
 void meson_power_idle(void)

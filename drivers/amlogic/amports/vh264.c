@@ -237,7 +237,7 @@ static struct vframe_s *p_last_vf;
 static u32 last_pts, last_pts_remainder;
 static bool check_pts_discontinue;
 static u32 wait_buffer_counter;
-static uint error_recovery_mode = 0;
+static uint error_recovery_mode = 1;
 static uint error_recovery_mode_in = 3;
 static uint error_recovery_mode_use = 3;
 
