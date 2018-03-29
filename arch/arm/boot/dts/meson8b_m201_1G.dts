@@ -254,6 +254,7 @@
         status = "ok";
         gpio_reset = "GPIOX_20";
     };
+
     wifi{
 		compatible = "amlogic,aml_broadcm_wifi";
 		dev_name = "aml_broadcm_wifi";
