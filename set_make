@@ -1,0 +1,8 @@
+#!/bin/sh
+
+export ARCH=arm
+export CROSS_COMPILE=arm-linux-gnueabihf-
+#export PATH=/opt/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/bin/:$PATH
+export PATH=/opt/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabihf/bin/:$PATH
+
+make -j5 LOADADDR=0x00208000 uImage dtbs modules
