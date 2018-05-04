@@ -64,8 +64,6 @@
 			reg = <0x200>;
 			enable-method = "amlogic,meson8-smp";
 			resets = <&clkc CLKC_RESET_CPU0_SOFT_RESET>;
-			operating-points-v2 = <&cpu_opp_table>;
-			clocks = <&cpu_clk>;
 		};
 
 		cpu1: cpu@201 {
@@ -75,8 +73,6 @@
 			reg = <0x201>;
 			enable-method = "amlogic,meson8-smp";
 			resets = <&clkc CLKC_RESET_CPU1_SOFT_RESET>;
-			operating-points-v2 = <&cpu_opp_table>;
-			clocks = <&cpu_clk>;
 		};
 
 		cpu2: cpu@202 {
@@ -86,8 +82,6 @@
 			reg = <0x202>;
 			enable-method = "amlogic,meson8-smp";
 			resets = <&clkc CLKC_RESET_CPU2_SOFT_RESET>;
-			operating-points-v2 = <&cpu_opp_table>;
-			clocks = <&cpu_clk>;
 		};
 
 		cpu3: cpu@203 {
@@ -97,74 +91,6 @@
 			reg = <0x203>;
 			enable-method = "amlogic,meson8-smp";
 			resets = <&clkc CLKC_RESET_CPU3_SOFT_RESET>;
-			operating-points-v2 = <&cpu_opp_table>;
-			clocks = <&cpu_clk>;
-		};
-	};
-
-	cpu_opp_table: opp-table {
-		compatible = "operating-points-v2";
-		opp-shared;
-
-		opp-96000000 {
-			opp-hz = /bits/ 64 <96000000>;
-			opp-microvolt = <825000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp-192000000 {
-			opp-hz = /bits/ 64 <192000000>;
-			opp-microvolt = <825000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp-312000000 {
-			opp-hz = /bits/ 64 <312000000>;
-			opp-microvolt = <825000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp-408000000 {
-			opp-hz = /bits/ 64 <408000000>;
-			opp-microvolt = <825000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp-504000000 {
-			opp-hz = /bits/ 64 <504000000>;
-			opp-microvolt = <825000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp-600000000 {
-			opp-hz = /bits/ 64 <600000000>;
-			opp-microvolt = <850000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp-720000000 {
-			opp-hz = /bits/ 64 <720000000>;
-			opp-microvolt = <850000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp-816000000 {
-			opp-hz = /bits/ 64 <816000000>;
-			opp-microvolt = <875000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp-1008000000 {
-			opp-hz = /bits/ 64 <1008000000>;
-			opp-microvolt = <925000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp-1200000000 {
-			opp-hz = /bits/ 64 <1200000000>;
-			opp-microvolt = <975000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp-1416000000 {
-			opp-hz = /bits/ 64 <1416000000>;
-			opp-microvolt = <1025000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp-1608000000 {
-			opp-hz = /bits/ 64 <1608000000>;
-			opp-microvolt = <1100000>;
-			clock-latency-ns = <8300000>;
 		};
 	};
 
@@ -204,35 +130,9 @@
 		};
 	};
 
-	cpu_clk: cpu-clk {
-		compatible = "amlogic,meson8-cpu-clk";
-		#clock-cells = <0>;
-		clocks = <&clkc CLKID_CPUCLK>, <&clkc CLKID_XTAL>;
-		clock-names = "cpu_clk_sel", "xtal";
-	};
-
 	scu@c4300000 {
 		compatible = "arm,cortex-a9-scu";
 		reg = <0xc4300000 0x100>;
-	};
-
-	apb: apb@d0040000 {
-		compatible = "simple-bus";
-		reg = <0xd0040000 0x200000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges = <0x0 0xd0040000 0x200000>;
-
-		nand_controller: nandc@8600 {
-			compatible = "amlogic,meson8-nand", "amlogic,meson-nand";
-			reg = <0x8600 0x24>;
-			interrupts = <GIC_SPI 34 IRQ_TYPE_EDGE_RISING>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			clocks = <&clkc CLKID_NAND_CLK>;
-			clock-names = "nand";
-			status = "disabled";
-		};
 	};
 }; /* end of / */
 
@@ -293,7 +193,7 @@
 	clkc: clock-controller@4000 {
 		#clock-cells = <1>;
 		#reset-cells = <1>;
-		compatible = "amlogic,meson8-clkc", "syscon";
+		compatible = "amlogic,meson8-clkc";
 		reg = <0x8000 0x4>, <0x4000 0x460>;
 	};
 
@@ -375,21 +275,6 @@
 			};
 		};
 
-		nand_pins: nand {
-			mux {
-				groups = "nand_io",
-					"nand_io_ce0",
-					"nand_io_ce1",
-					"nand_io_rb0",
-					"nand_ale",
-					"nand_cle",
-					"nand_wen_clk",
-					"nand_ren_clk",
-					"nand_dqs";
-				function = "nand";
-			};
-		};
-
 		pwm_e_pins: pwm-e {
 			mux {
 				groups = "pwm_e";
@@ -412,13 +297,6 @@
 				function = "uart_a";
 			};
 		};
-
-		xtal_32k_out_pins: xtal-32k-out {
-			mux {
-				groups = "xtal_32k_out";
-				function = "xtal";
-			};
-		};
 	};
 };
 
@@ -433,16 +311,6 @@
 	compatible = "amlogic,meson8-efuse";
 	clocks = <&clkc CLKID_EFUSE>;
 	clock-names = "core";
-
-	temperature_calibration: temperature-calibration@1f4 {
-		/* only the upper two bytes are relevant */
-		reg = <0x1f4 0x4>;
-	};
-
-	cvbs_trimming: cvbs-trimming@1f8 {
-		/* only the lower two bytes are relevant */
-		reg = <0x1f8 0x4>;
-	};
 };
 
 &ethmac {
@@ -495,8 +363,6 @@
 	clocks = <&clkc CLKID_XTAL>,
 		<&clkc CLKID_SAR_ADC>;
 	clock-names = "clkin", "core";
-	nvmem-cells = <&temperature_calibration>, <&cvbs_trimming>;
-	nvmem-cell-names = "temperature_calibration", "cvbs_trimming";
 };
 
 &sdio {

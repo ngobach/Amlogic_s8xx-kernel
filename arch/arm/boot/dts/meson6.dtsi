@@ -60,7 +60,6 @@
 			compatible = "arm,cortex-a9";
 			next-level-cache = <&L2>;
 			reg = <0x200>;
-			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		cpu@201 {
@@ -68,80 +67,6 @@
 			compatible = "arm,cortex-a9";
 			next-level-cache = <&L2>;
 			reg = <0x201>;
-			operating-points-v2 = <&cpu_opp_table>;
-		};
-	};
-
-	cpu_opp_table: opp-table {
-		compatible = "operating-points-v2";
-		opp-shared;
-
-		opp@200000 {
-			opp-hz = /bits/ 64 <200000>;
-			opp-microvolt = <1079000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp@600000 {
-			opp-hz = /bits/ 64 <600000>;
-			opp-microvolt = <1079000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp@792000 {
-			opp-hz = /bits/ 64 <792000>;
-			opp-microvolt = <1079000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp@816000 {
-			opp-hz = /bits/ 64 <816000>;
-			opp-microvolt = <1147000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp@840000 {
-			opp-hz = /bits/ 64 <840000>;
-			opp-microvolt = <1147000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp@984000 {
-			opp-hz = /bits/ 64 <984000>;
-			opp-microvolt = <1147000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp@1000000 {
-			opp-hz = /bits/ 64 <1000000>;
-			opp-microvolt = <1147000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp@1080000 {
-			opp-hz = /bits/ 64 <1080000>;
-			opp-microvolt = <1249000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp@1200000 {
-			opp-hz = /bits/ 64 <1200000>;
-			opp-microvolt = <1266000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp@1320000 {
-			opp-hz = /bits/ 64 <1320000>;
-			opp-microvolt = <1334000>;
-			clock-latency-ns = <8300000>;
-		};
-		opp@1500000 {
-			opp-hz = /bits/ 64 <1500000>;
-			opp-microvolt = <1334000>;
-			clock-latency-ns = <8300000>;
-		};
-	};
-
-	reserved-memory {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges;
-
-		/* 1 MiB reserved for Hardware ROM Firmware */
-		hwrom@0 {
-			reg = <0x1ff00000 0x100000>;
-			no-map;
 		};
 	};
 
