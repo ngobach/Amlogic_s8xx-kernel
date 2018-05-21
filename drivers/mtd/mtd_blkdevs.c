@@ -198,6 +198,7 @@ static int blktrans_open(struct block_device *bdev, fmode_t mode)
 	if (!dev)
 		return -ERESTARTSYS; /* FIXME: busy loop! -arnd*/
 
+	mutex_lock(&mtd_table_mutex);
 	mutex_lock(&dev->lock);
 
 	if (dev->open)
@@ -223,6 +224,7 @@ static int blktrans_open(struct block_device *bdev, fmode_t mode)
 unlock:
 	dev->open++;
 	mutex_unlock(&dev->lock);
+	mutex_unlock(&mtd_table_mutex);
 	blktrans_dev_put(dev);
 	return ret;
 
@@ -233,6 +235,7 @@ error_put:
 	module_put(dev->tr->owner);
 	kref_put(&dev->ref, blktrans_dev_release);
 	mutex_unlock(&dev->lock);
+	mutex_unlock(&mtd_table_mutex);
 	blktrans_dev_put(dev);
 	return ret;
 }
@@ -244,6 +247,7 @@ static void blktrans_release(struct gendisk *disk, fmode_t mode)
 	if (!dev)
 		return;
 
+	mutex_lock(&mtd_table_mutex);
 	mutex_lock(&dev->lock);
 
 	if (--dev->open)
@@ -259,6 +263,7 @@ static void blktrans_release(struct gendisk *disk, fmode_t mode)
 	}
 unlock:
 	mutex_unlock(&dev->lock);
+	mutex_unlock(&mtd_table_mutex);
 	blktrans_dev_put(dev);
 }
 
@@ -300,14 +305,6 @@ static int blktrans_ioctl(struct block_device *bdev, fmode_t mode,
 	case BLKFLSBUF:
 		ret = dev->tr->flush ? dev->tr->flush(dev) : 0;
 		break;
-		//add this for m6 old nand driver
-	case BLKWIPEPART:
-	//printk("blktrans_ioctl BLKWIPEPART \n");
-	if(dev->tr->wipe_part){
-	printk("blktrans_ioctl dev->tr->wipe_part : \n");
-	ret = dev->tr->wipe_part(dev);
-	}
-	break;
 	default:
 		ret = -ENOTTY;
 	}
@@ -397,13 +394,8 @@ int add_mtd_blktrans_dev(struct mtd_blktrans_dev *new)
 
 	if (tr->part_bits)
 		if (new->devnum < 26)
-	#if 1
 			snprintf(gd->disk_name, sizeof(gd->disk_name),
-			 "%s", tr->name);
-#else
-		snprintf(gd->disk_name, sizeof(gd->disk_name),
 				 "%s%c", tr->name, 'a' + new->devnum);
-#endif
 		else
 			snprintf(gd->disk_name, sizeof(gd->disk_name),
 				 "%s%c%c", tr->name,
@@ -413,7 +405,7 @@ int add_mtd_blktrans_dev(struct mtd_blktrans_dev *new)
 		snprintf(gd->disk_name, sizeof(gd->disk_name),
 			 "%s%d", tr->name, new->devnum);
 
-	set_capacity(gd, new->size *(tr->blksize >> 9));
+	set_capacity(gd, (new->size * tr->blksize) >> 9);
 
 	/* Create the request queue */
 	spin_lock_init(&new->queue_lock);

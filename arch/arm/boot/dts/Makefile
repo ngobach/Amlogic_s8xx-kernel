@@ -8,6 +8,19 @@ dtb-$(CONFIG_ARCH_MESON8B) += meson8b_mxq.dtb \
 			meson8b_m202_512M.dtb \
 			meson8b_m203a.dtb \
 			meson8b_m203b.dtb
+dtb-$(CONFIG_ARCH_MESON8) += meson8m2_n200_2G.dtb \
+			meson8m2_n200_1G.dtb \
+			meson8m2_n200C_2G.dtb \
+			meson8m2_n200C_1G.dtb \
+			meson8m2_n200_2G_LAN100.dtb \
+			meson8m2_n200C_2G_LAN100.dtb \
+			meson8_k200b_1G_emmc_sdio.dtb \
+			meson8_k200b_2G_emmc_sdio.dtb \
+			meson8_k200b_1G_emmc_sdhc.dtb \
+			meson8_k200b_2G_emmc_sdhc.dtb \
+			meson8m2_n200_2G_M8SPlus.dtb \
+			meson8m2_n200_2G_MXIIIPlus.dtb \
+			meson8m2_n200_2G_SD1.dtb
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)
@@ -25,12 +38,3 @@ dtbs: $(addprefix $(obj)/, $(DTB_LIST))
 	$(Q)rm -f $(obj)/../*.dtb
 
 clean-files := *.dtb
-
-#meson8b_m201_1G_old.dtb meson8b_m201C_512M_old.dtb \
-#meson8b_mxq.dtb meson8b_hd180.dtb meson8b_mk808.dtb \
-#meson8b_i5.dtb meson8b_i5_console.dtb \
-#meson8b_m100_1G.dtb meson8b_m101_512M.dtb \
-#meson8b_m102_1G.dtb meson8b_m200_1G.dtb \
-#meson8b_m201C_512M.dtb meson8b_m201_1G.dtb \
-#meson8b_m202_512M.dtb meson8b_m203a.dtb \
-#meson8b_m203b.dtb

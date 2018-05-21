@@ -2,24 +2,18 @@
 
 export ARCH=arm
 export CROSS_COMPILE=arm-linux-gnueabihf-
-#export PATH=/opt/gcc-linaro-4.9-2016.02-x86_64_arm-linux-gnueabihf/bin/:$PATH
+#export PATH=/opt/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf/bin/:$PATH
 export PATH=/opt/gcc-linaro-6.4.1-2017.11-x86_64_arm-linux-gnueabihf/bin/:$PATH
 
-#make dtbs
-#make meson8b_m201_1G_old.dtb 
-#make meson8b_m201C_512M_old.dtb
-#make meson8b_i5.dtb 
-#make meson8b_i5_console.dtb 
-#make meson8b_m100_1G.dtb 
-#make meson8b_m101_512M.dtb 
-#make meson8b_m102_1G.dtb 
-make meson8b_mxq.dtd meson8b_mxq.dts
-make meson8b_hd18q.dtd meson8b_hd18q.dts
-make meson8b_mk808bplus.dtd meson8b_mk808bplus.dts
-make meson8b_m200_1G.dtd meson8b_m200_1G.dts
-make meson8b_m201C_512M.dtd meson8b_m201C_512M.dts
-make meson8b_m201_1G.dtd meson8b_m201_1G.dts
-make meson8b_m201d.dtd meson8b_m201d.dts
-make meson8b_m202_512M.dtd meson8b_m202_512M.dts
-make meson8b_m203a.dtd meson8b_m203a.dts
-make meson8b_m203b.dtd meson8b_m203b.dts
+
+#make meson8m2_n200_2G.dtb meson8m2_n200_1G.dtb
+#make meson8m2_n200C_2G.dtb meson8m2_n200C_1G.dtb
+#make meson8_k200b_1G_emmc_sdio.dtb meson8_k200b_2G_emmc_sdio.dtb
+#make meson8_k200b_1G_emmc_sdhc.dtb meson8_k200b_2G_emmc_sdhc.dtb
+
+#make meson8m2_n200_2G.dtd meson8m2_n200_1G.dtd
+#make meson8m2_n200C_2G.dtd meson8m2_n200C_1G.dtd
+#make meson8_k200b_1G_emmc_sdio.dtd meson8_k200b_2G_emmc_sdio.dtd
+#make meson8_k200b_1G_emmc_sdhc.dtd meson8_k200b_2G_emmc_sdhc.dtd
+
+make dtbs
