@@ -504,9 +504,9 @@ config: scripts_basic outputmakefile FORCE
 	$(Q)mkdir -p include/linux include/config
 	$(Q)$(MAKE) $(build)=scripts/kconfig $@
 
-# %config: scripts_basic outputmakefile FORCE
-#	$(Q)mkdir -p include/linux include/config
-#	$(Q)$(MAKE) $(build)=scripts/kconfig $@
+ %config: scripts_basic outputmakefile FORCE
+	$(Q)mkdir -p include/linux include/config
+	$(Q)$(MAKE) $(build)=scripts/kconfig $@
 
 else
 # ===========================================================================
