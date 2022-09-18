@@ -153,7 +153,7 @@ static __initdata struct map_desc meson_default_io_desc[] = {
     },
 #ifdef CONFIG_AMLOGIC_SPI_HW_MASTER
     {
-            .virtual    = IO_SPIMEM_BASE,
+        .virtual    = IO_SPIMEM_BASE,
         .pfn        = __phys_to_pfn(IO_SPIMEM_PHY_BASE),
         .length     = SZ_64M,
         .type       = MT_ROM,

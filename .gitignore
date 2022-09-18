@@ -94,3 +94,5 @@ x509.genkey
 
 # customer folder
 customer
+/tar-install
+/arch/arm/boot/compressed
